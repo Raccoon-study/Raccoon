@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { supabase } from "../src/lib/supabase.js";
-
+import Link from "next/link";
 import {
   Menu,
   Bell,
@@ -392,6 +392,7 @@ calcularRacha();
 
   return (
 
+
 <main className="min-h-screen bg-[#f4f6fb] flex justify-center">
 
 <div className="w-full max-w-[430px] min-h-screen bg-[#f4f6fb] pb-24">
@@ -578,25 +579,23 @@ onChange={subirArchivo}
 <h3 className="font-semibold mt-8 mb-3">
   Continuar estudiando
 </h3>
-
-<button
-  onClick={generarIA}
-  className="
-  w-full
-  mb-4
-  rounded-xl
-  py-3
-  bg-gradient-to-r
-  from-purple-600
-  to-blue-500
-  text-white
-  font-medium
-  "
+<Link
+  href="/Chat"
+  className="block mt-5 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 p-5 text-white shadow-lg hover:scale-[1.02] transition"
 >
-  {cargandoIA
-    ? "Generando..."
-    : "Generar con IA ✨"}
-</button>
+    <h3 className="text-xl font-bold">
+        🤖 Raccoon IA
+    </h3>
+
+    <p className="text-sm opacity-90 mt-1">
+        Tu tutor inteligente disponible 24/7
+    </p>
+
+    <button className="mt-4 bg-white text-blue-600 font-semibold px-5 py-2 rounded-xl">
+        Abrir Chat →
+    </button>
+</Link>
+
 
 {ultimoMaterial ? (
 
@@ -696,40 +695,39 @@ Aún no has subido materiales.
 
 <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t flex justify-around py-3">
 
-<button className="flex flex-col items-center text-blue-600 text-xs">
+  <Link
+    href="/Dashboard"
+    className="flex flex-col items-center text-blue-600 text-xs"
+  >
+    <BookOpen size={20} />
+    <span>Inicio</span>
+  </Link>
 
-<BookOpen size={20}/>
+  <Link
+    href="/metodos"
+    className="flex flex-col items-center text-gray-400 hover:text-blue-600 text-xs"
+  >
+    <Brain size={20} />
+    <span>Métodos</span>
+  </Link>
 
-Inicio
+  <Link
+    href="/quizzes"
+    className="flex flex-col items-center text-gray-400 hover:text-blue-600 text-xs"
+  >
+    <FileText size={20} />
+    <span>Quiz</span>
+  </Link>
 
-</button>
-
-<button className="flex flex-col items-center text-gray-400 text-xs">
-
-<Brain size={20}/>
-
-Métodos
-
-</button>
-
-<button className="flex flex-col items-center text-gray-400 text-xs">
-
-<FileText size={20}/>
-
-Quiz
-
-</button>
-
-<button className="flex flex-col items-center text-gray-400 text-xs">
-
-<ChevronRight size={20}/>
-
-Perfil
-
-</button>
+  <Link
+    href="/perfil"
+    className="flex flex-col items-center text-gray-400 hover:text-blue-600 text-xs"
+  >
+    <ChevronRight size={20} />
+    <span>Perfil</span>
+  </Link>
 
 </nav>
-
 </div>
 
 </main>
