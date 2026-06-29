@@ -293,26 +293,26 @@ const handleRegister = async () => {
 
           </div>
 
-          {/* Botón registrarse */}
           <button
-            className="
-              w-full
-              h-16
-              mt-8
-              rounded-[24px]
-              bg-gradient-to-r
-              from-[#2563ff]
-              to-[#6BA8FF]
-              text-white
-              text-xl
-              font-bold
-              shadow-lg
-              hover:scale-[1.02]
-              transition
-            "
-          >
-            Registrarse
-          </button>
+  onClick={handleRegister}
+  className="
+    w-full
+    h-16
+    mt-8
+    rounded-[24px]
+    bg-gradient-to-r
+    from-[#2563ff]
+    to-[#6BA8FF]
+    text-white
+    text-xl
+    font-bold
+    shadow-lg
+    hover:scale-[1.02]
+    transition
+  "
+>
+  Registrarse
+</button>
 
           {/* Link login */}
           <p
