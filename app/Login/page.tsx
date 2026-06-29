@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { supabase } from "../src/lib/supabase";
+import Link from "next/link";import { supabase } from "../lib/supabase";
+
+
 
 import {
   Mail,

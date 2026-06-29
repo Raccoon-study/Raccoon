@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { supabase } from "../src/lib/supabase.js";
+import { supabase } from "../lib/supabase";
+
 import Link from "next/link";
 import {
   Menu,

@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { supabase } from "../src/lib/supabase.js";
+import { supabase } from "../lib/supabase";
+
+
 
 import {
   ChevronLeft,
