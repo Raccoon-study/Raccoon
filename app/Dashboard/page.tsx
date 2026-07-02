@@ -1,165 +1,120 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect,useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { supabase } from "../lib/supabase";
 
-import Link from "next/link";
-import {
-  Menu,
-  Bell,
-  FileText,
-  Brain,
-  Flame,
-  BookOpen,
-  Lightbulb,
-  ChevronRight,
-} from "lucide-react";
+import{
+Menu,
+Bell,
+FileText,
+Brain,
+Flame,
+BookOpen,
+ChevronRight
+}from "lucide-react";
 
-interface Material {
-  id:string;
-  nombre_archivo:string;
-  url_archivo:string;
-  progreso:number;
-  fecha_subida:string;
+interface Material{
+id:string;
+nombre_archivo:string;
+url_archivo:string;
+progreso:number;
+fecha_subida:string;
 }
 
 export default function Dashboard(){
 
 const [materiales,setMateriales]=
 useState<Material[]>([]);
-const [resultadoIA,setResultadoIA]=
-useState<any>(null);
-
-const [cargandoIA,setCargandoIA]=
-useState(false);
-const generarIA=async()=>{
-
-if(materiales.length===0){
-mostrarNotificacion(
-"Sube un material primero"
-);
-return;
-}
-
-setCargandoIA(true);
-
-try{
-
-const respuesta=
-await fetch("/api/ia",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-
-texto:
-ultimoMaterial.nombre_archivo
-
-})
-
-});
-
-const data=
-await respuesta.json();
-
-setResultadoIA(data);
-
-mostrarNotificacion(
-"IA generada ✨"
-);
-
-}catch{
-
-mostrarNotificacion(
-"Error al generar IA"
-);
-
-}
-
-setCargandoIA(false);
-
-};
-const [notificacion, setNotificacion] = useState("");
 
 const [nombreUsuario,setNombreUsuario]=
+useState("Usuario");
+
+const [notificacion,setNotificacion]=
 useState("");
 
 
-const [notificaciones,setNotificaciones]=
-useState<string[]>([]);
 
 useEffect(()=>{
 
 obtenerMateriales();
-const mostrarNotificacion = (
-  mensaje: string
-) => {
-
-  setNotificacion(mensaje);
-
-  setTimeout(() => {
-    setNotificacion("");
-  }, 2500);
-
-};
 obtenerNombreUsuario();
 
 },[]);
 
 
+
 const mostrarNotificacion=(mensaje:string)=>{
 
-setNotificaciones((prev)=>[
-mensaje,
-...prev
-]);
+setNotificacion(mensaje);
 
 setTimeout(()=>{
 
-setNotificaciones((prev)=>
-prev.slice(0,-1)
-);
+setNotificacion("");
 
-},3000);
+},2500);
 
 };
+
 
 
 const obtenerNombreUsuario=
 async()=>{
 
 const{
+
 data:{user}
+
 }
+
 =
+
 await supabase.auth.getUser();
 
 if(!user)return;
 
 setNombreUsuario(
+
 user.user_metadata?.nombre
 ||
 "Usuario"
+
 );
 
 };
 
 
+
 const obtenerMateriales=
 async()=>{
 
+const{
+
+data:{user}
+
+}
+
+=
+
+await supabase.auth.getUser();
+
+if(!user)return;
+
 const {data,error}=
+
 await supabase
 .from("materiales")
 .select("*")
+.eq(
+"usuario_id",
+user.id
+)
 .order(
 "fecha_subida",
-{ascending:false}
+{
+ascending:false
+}
 );
 
 if(error){
@@ -169,13 +124,18 @@ return;
 
 }
 
-setMateriales(data||[]);
+setMateriales(
+data||[]
+);
 
 };
 
 
+
 const subirArchivo=async(
+
 e:React.ChangeEvent<HTMLInputElement>
+
 )=>{
 
 const archivo=
@@ -183,61 +143,14 @@ e.target.files?.[0];
 
 if(!archivo)return;
 
-const nombreLimpio=
-archivo.name.replace(
-/[^a-zA-Z0-9.-]/g,
-"_"
-);
-const generarIA=async()=>{
-
-if(materiales.length===0)return;
-
-setCargandoIA(true);
-
 try{
 
-const respuesta=
-await fetch("/api/ia",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-
-texto:
-ultimoMaterial.nombre_archivo
-
-})
-
-});
-
-const data=
-await respuesta.json();
-
-setResultadoIA(data);
-
-mostrarNotificacion(
-"IA generada ✨"
-);
-
-}catch{
-
-mostrarNotificacion(
-"Error IA"
-);
-
-}
-
-setCargandoIA(false);
-
-};
 const nombre=
-`${Date.now()}-${nombreLimpio}`;
+
+`${Date.now()}-${archivo.name}`;
 
 const {error}=
+
 await supabase.storage
 .from("materiales")
 .upload(
@@ -245,31 +158,37 @@ nombre,
 archivo
 );
 
-if(error){
+if(error)
+throw error;
 
-mostrarNotificacion(
-error.message
-);
 
-return;
+const {data:urlData}=
 
-}
-
-const {data:urlData}
-=
 supabase.storage
 .from("materiales")
 .getPublicUrl(
 nombre
 );
 
+
+const{
+
+data:{user}
+
+}
+
+=
+
+await supabase.auth.getUser();
+
 const progresoAleatorio=
+
 Math.floor(
 Math.random()*101
 );
 
-const {error:dbError}
-=
+const {error:dbError}=
+
 await supabase
 .from("materiales")
 .insert({
@@ -281,239 +200,257 @@ url_archivo:
 urlData.publicUrl,
 
 progreso:
-progresoAleatorio
+progresoAleatorio,
+
+usuario_id:
+user?.id
 
 });
 
-if(dbError){
 
-mostrarNotificacion(
-dbError.message
-);
+if(dbError)
+throw dbError;
 
-return;
-
-}
 
 await obtenerMateriales();
 
 mostrarNotificacion(
-"Archivo subido correctamente 🎉"
+"Archivo subido 🎉"
 );
 
+}catch(error:any){
+
+mostrarNotificacion(
+error.message
+);
+
+}
+
 };
+
 
 
 const ultimoMaterial=
 materiales[0];
 
 
+
 const calcularRacha=()=>{
 
-if(
-materiales.length===0
-)
+if(materiales.length===0)
 return 0;
 
 const fechas=[
+
 ...new Set(
 
 materiales.map(
-(m)=>
+
+m=>
+
 new Date(
 m.fecha_subida
-).toDateString()
+)
+.toDateString()
+
 )
 
 )
 
 ];
 
-fechas.sort(
-(a,b)=>
-
-new Date(b).getTime()
--
-new Date(a).getTime()
-
-);
-
-let racha=1;
-
-for(
-let i=1;
-i<fechas.length;
-i++
-){
-
-const actual=
-new Date(
-fechas[i-1]
-);
-
-const anterior=
-new Date(
-fechas[i]
-);
-
-const diferencia=
-
-(
-actual.getTime()
--
-anterior.getTime()
-)
-
-/
-
-(
-1000*60*60*24
-);
-
-if(
-diferencia<=1
-){
-
-racha++;
-
-}else{
-
-break;
-
-}
-
-}
-
-return racha;
+return fechas.length;
 
 };
+
 
 const rachaActual=
 calcularRacha();
 
-  return (
 
 
-<main className="min-h-screen bg-[#f4f6fb] flex justify-center">
+return(
 
-<div className="w-full max-w-[430px] min-h-screen bg-[#f4f6fb] pb-24">
+<main
 
-<header className="flex justify-between items-center px-5 pt-6 pb-3">
+className="
+
+min-h-screen
+
+bg-gradient-to-b
+from-[#B9D1F8]
+via-[#D8E7FF]
+to-[#EEF5FF]
+
+dark:from-slate-900
+dark:to-slate-800
+
+transition-all
+duration-500
+
+"
+
+>
+
+<div className="
+
+w-full
+max-w-[1400px]
+
+mx-auto
+
+px-5
+lg:px-10
+
+pb-24
+
+">
+
+{/* HEADER */}
+
+<header className="
+
+flex
+justify-between
+items-center
+
+pt-6
+pb-4
+
+">
 
 <div className="flex items-center gap-2">
 
-<Menu className="w-5 h-5 text-blue-600"/>
+<Menu className="text-blue-600"/>
 
-<h1 className="font-bold text-blue-600">
-RaccoonStudy
+<h1 className="
+
+font-bold
+text-xl
+
+text-black
+dark:text-white
+
+">
+
+Raccoon
+
+<span className="text-blue-600">
+
+Study
+
+</span>
+
 </h1>
 
 </div>
 
-<div className="relative">
-
-<Bell
-className="w-5 h-5 text-blue-600"
-/>
-
-</div>
+<Bell className="text-blue-600"/>
 
 </header>
-{notificacion && (
 
-<div
-className="
+
+
+{/* NOTIFICACION */}
+
+{notificacion&&(
+
+<div className="
+
 fixed
 top-6
 left-1/2
 -translate-x-1/2
+
 z-50
+
 bg-gradient-to-r
-from-blue-600
-to-cyan-400
+from-[#2563ff]
+to-[#18C3F7]
+
 text-white
-px-5
+
+px-6
 py-3
+
 rounded-2xl
 shadow-xl
-animate-bounce
-font-medium
-"
->
+
+">
 
 {notificacion}
 
 </div>
 
 )}
-<section className="px-5">
 
-{notificaciones.length>0 && (
 
-<div
-className="
-bg-white
-rounded-3xl
-p-5
-shadow-sm
-mb-5
-"
->
 
-<h3 className="font-bold mb-3">
-Notificaciones
-</h3>
+<section>
 
-{
-notificaciones.map(
-(notificacion,index)=>(
+{/* SALUDO */}
 
-<div
-key={index}
-className="
-border-b
-py-2
-text-sm
-"
->
+<div className="
 
-{notificacion}
+bg-white/90
+dark:bg-slate-800
 
-</div>
+rounded-[35px]
 
-))
-}
+shadow-xl
 
-</div>
+p-6
 
-)}
+flex
+justify-between
+items-center
 
-<div className="bg-[#dce8f8] rounded-3xl p-5">
-
-<div className="flex justify-between">
+">
 
 <div>
 
-<h2 className="font-bold text-3xl leading-tight">
+<h2 className="
+
+font-bold
+
+text-2xl
+md:text-4xl
+
+text-black
+dark:text-white
+
+">
 
 ¡Buenas {
 
 new Date().getHours()<12
-? "mañanas"
+?
+"mañanas"
 :
 new Date().getHours()<18
-? "tardes"
+?
+"tardes"
 :
 "noches"
 
 },
+
 <br/>
 
-{nombreUsuario}! 🌙
+{nombreUsuario}
+
+👋
 
 </h2>
 
-<p className="text-sm text-gray-500 mt-2">
+<p className="
+
+mt-2
+
+text-gray-500
+dark:text-gray-300
+
+">
 
 ¿Lista para aprender algo increíble hoy?
 
@@ -523,53 +460,50 @@ new Date().getHours()<18
 
 <Image
 src="/raccoon.png"
-alt="Mapache"
-width={110}
-height={110}
+alt="raccoon"
+width={130}
+height={130}
+className="w-[100px] md:w-[130px] h-auto"
 />
 
 </div>
 
-</div>
 
-<h3 className="font-semibold text-xl mt-8 text-center">
 
-Sube tu material
+{/* SUBIR */}
 
-</h3>
+<div className="
 
-<p className="text-center text-gray-500 text-sm mb-4">
+bg-white/90
+dark:bg-slate-800
 
-y deja que la IA haga su magia ✨
+rounded-[35px]
 
-</p>
+shadow-xl
 
-<div className="bg-white rounded-3xl p-6 shadow-sm border">
+p-6
+
+mt-6
+
+">
 
 <label className="cursor-pointer flex flex-col items-center">
 
-<div className="bg-[#dce7ff] p-5 rounded-full">
+<div className="bg-[#DCE7FF] p-5 rounded-full">
 
 <BookOpen className="text-blue-600"/>
 
 </div>
 
-<h3 className="text-blue-600 font-semibold mt-4">
+<h3 className="font-bold mt-4 text-blue-600">
 
 Toca para subir
 
 </h3>
 
-<p className="text-xs text-gray-400 text-center mt-2">
-
-PDF, imágenes o apuntes escritos a mano
-
-</p>
-
 <input
 type="file"
 className="hidden"
-accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt"
 onChange={subirArchivo}
 />
 
@@ -577,161 +511,208 @@ onChange={subirArchivo}
 
 </div>
 
-<h3 className="font-semibold mt-8 mb-3">
-  Continuar estudiando
-</h3>
+
+
+{/* IA */}
+
 <Link
-  href="/Chat"
-  className="block mt-5 rounded-2xl bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 p-5 text-white shadow-lg hover:scale-[1.02] transition"
+
+href="/Chat"
+
+className="block mt-6"
+
 >
-    <h3 className="text-xl font-bold">
-        🤖 Raccoon IA
-    </h3>
 
-    <p className="text-sm opacity-90 mt-1">
-        Tu tutor inteligente disponible 24/7
-    </p>
+<div className="
 
-    <button className="mt-4 bg-white text-blue-600 font-semibold px-5 py-2 rounded-xl">
-        Abrir Chat →
-    </button>
-</Link>
+rounded-[35px]
 
+bg-gradient-to-r
+from-purple-600
+via-blue-500
+to-cyan-400
 
-{ultimoMaterial ? (
+p-6
 
-<div className="bg-white rounded-3xl p-5 shadow-sm">
+text-white
+shadow-xl
 
-<div className="flex justify-between">
+">
 
-<div className="flex gap-3">
+<h3 className="text-xl font-bold">
 
-<div className="bg-[#dce7ff] p-3 rounded-2xl">
+🤖 Raccoon IA
 
-<FileText className="text-blue-600"/>
+</h3>
 
-</div>
+<p className="mt-2">
 
-
-<div>
-
-<h4 className="font-medium">
-
-{ultimoMaterial.nombre_archivo}
-
-</h4>
-
-<p className="text-xs text-gray-400">
-
-Último material subido
+Tu tutor inteligente disponible 24/7
 
 </p>
 
 </div>
 
-</div>
+</Link>
 
-<span className="text-blue-600 font-semibold">
 
-{ultimoMaterial.progreso ?? 0}%
 
-</span>
+{/* MATERIAL */}
 
-</div>
+<div className="mt-6">
 
-<div className="bg-gray-200 rounded-full h-2 mt-4">
+{ultimoMaterial?(
 
-<div
-className="bg-blue-600 h-2 rounded-full"
-style={{
-width:
-`${ultimoMaterial.progreso ??0}%`
-}}
-/>
+<div className="
 
-</div>
+bg-white/90
+dark:bg-slate-800
+
+rounded-[35px]
+
+p-6
+
+shadow-xl
+
+">
+
+<h3 className="dark:text-white font-bold">
+
+{ultimoMaterial.nombre_archivo}
+
+</h3>
+
+<p className="text-gray-400">
+
+Último material
+
+</p>
 
 </div>
 
 ):(
 
+<div className="
 
-<div className="bg-white rounded-3xl p-5 text-center text-gray-400">
+bg-white/90
+dark:bg-slate-800
 
-Aún no has subido materiales.
+rounded-[35px]
+
+p-6
+
+shadow-xl
+
+text-center
+
+text-gray-400
+
+">
+
+No has subido materiales
 
 </div>
 
 )}
 
-<div className="bg-white rounded-3xl p-5 shadow-sm mt-6 flex justify-between items-center">
+</div>
+
+
+
+{/* RACHA */}
+
+<div className="
+
+bg-white/90
+dark:bg-slate-800
+
+rounded-[35px]
+
+p-6
+
+shadow-xl
+
+mt-6
+
+flex
+justify-between
+
+">
 
 <div>
 
-<p className="text-xs text-red-500 font-bold">
+<p className="text-red-500">
 
-🔥 RACHA ACTUAL
-
-</p>
-
-<h3 className="text-3xl font-bold">
-
-{rachaActual} días
-
-</h3>
-
-<p className="text-sm text-gray-400">
-
-¡Sigue así!
+🔥 RACHA
 
 </p>
+
+<h2 className="text-4xl font-bold dark:text-white">
+
+{rachaActual}
+
+</h2>
 
 </div>
 
-<Flame className="text-orange-500 w-12 h-12"/>
+<Flame className="text-orange-500"/>
 
 </div>
 
 </section>
 
-<nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t flex justify-around py-3">
 
-  <Link
-    href="/Dashboard"
-    className="flex flex-col items-center text-blue-600 text-xs"
-  >
-    <BookOpen size={20} />
-    <span>Inicio</span>
-  </Link>
 
-  <Link
-    href="/metodos"
-    className="flex flex-col items-center text-gray-400 hover:text-blue-600 text-xs"
-  >
-    <Brain size={20} />
-    <span>Métodos</span>
-  </Link>
+<nav className="
 
-  <Link
-    href="/quizzes"
-    className="flex flex-col items-center text-gray-400 hover:text-blue-600 text-xs"
-  >
-    <FileText size={20} />
-    <span>Quiz</span>
-  </Link>
+fixed
+bottom-0
+left-0
 
-  <Link
-    href="/perfil"
-    className="flex flex-col items-center text-gray-400 hover:text-blue-600 text-xs"
-  >
-    <ChevronRight size={20} />
-    <span>Perfil</span>
-  </Link>
+w-full
+
+bg-white
+dark:bg-slate-900
+
+border-t
+
+flex
+justify-around
+
+py-4
+
+">
+
+<Link href="/Dashboard" className="text-blue-600">
+
+<BookOpen/>
+
+</Link>
+
+<Link href="/metodos">
+
+<Brain className="text-gray-400"/>
+
+</Link>
+
+<Link href="/quizzes">
+
+<FileText className="text-gray-400"/>
+
+</Link>
+
+<Link href="/perfil">
+
+<ChevronRight className="text-gray-400"/>
+
+</Link>
 
 </nav>
+
 </div>
 
 </main>
 
 );
+
 }
