@@ -2,418 +2,437 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";import { supabase } from "../lib/supabase";
-
-
+import Link from "next/link";
+import { supabase } from "../lib/supabase";
 
 import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ArrowLeft,
+Mail,
+Lock,
+Eye,
+EyeOff,
+ArrowLeft
 } from "lucide-react";
 
-export default function Login() {
-  const [mostrar, setMostrar] = useState(false);
+export default function Login(){
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const [email,setEmail]=useState("");
+const [password,setPassword]=useState("");
 
-  async function iniciarSesion() {
-    const { error } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+const [mostrar,setMostrar]=useState(false);
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    window.location.href = "/Dashboard";
-  }
-
-  async function loginGoogle() {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo:
-          `${window.location.origin}/Dashboard`,
-      },
-    });
-  }
-
-  async function loginMicrosoft() {
-    await supabase.auth.signInWithOAuth({
-      provider: "azure",
-      options: {
-        redirectTo:
-          `${window.location.origin}/Dashboard`,
-      },
-    });
-  }
-
-  return (
-    <main
-      className="
-      min-h-screen
-      bg-gradient-to-b
-      from-[#B9D1F8]
-      via-[#D6E5FA]
-      to-[#EAF2FF]
-      flex
-      justify-center
-      overflow-hidden
-      "
-    >
-      <div
-        className="
-        w-full
-        max-w-md
-        min-h-screen
-        flex
-        flex-col
-        px-5
-        pt-5
-        "
-      >
-
-        {/* FLECHA */}
-
-        <Link href="/">
-          <button
-            className="
-            w-12
-            h-12
-            rounded-full
-            bg-white
-            shadow-md
-            flex
-            items-center
-            justify-center
-            "
-          >
-            <ArrowLeft
-              size={22}
-              className="text-[#2563ff]"
-            />
-          </button>
-        </Link>
+const [loading,setLoading]=useState(false);
 
 
-        {/* MAPACHE */}
+async function iniciarSesion(){
 
-        <div
-          className="
-          flex
-          justify-center
-          mt-3
-          mb-2
-          "
-        >
-          <Image
-            src="/raccoon.png"
-            alt="Raccoon"
-            width={160}
-            height={160}
-            priority
-            className="
-            w-[140px]
-            h-auto
-            object-contain
-            "
-          />
-        </div>
+if(!email||!password){
+alert("Completa todos los campos");
+return;
+}
 
+try{
 
-        {/* TARJETA */}
+setLoading(true);
 
-        <div
-          className="
-          bg-[#f8f8f8]
-          rounded-t-[35px]
-          px-6
-          py-7
-          shadow-xl
-          flex-1
-          "
-        >
+const {error}=await supabase.auth.signInWithPassword({
 
-          <h1
-            className="
-            text-[30px]
-            font-extrabold
-            text-center
-            text-gray-800
-            "
-          >
-            Iniciar sesión
-          </h1>
+email,
+password
 
-          <p
-            className="
-            text-center
-            text-gray-500
-            mt-2
-            "
-          >
-            Bienvenido nuevamente
-          </p>
+});
+
+if(error) throw error;
+
+window.location.href="/Dashboard";
+
+}catch(error:any){
+
+alert(error.message);
+
+}
+
+setLoading(false);
+
+}
 
 
-          {/* EMAIL */}
+async function loginGoogle(){
 
-          <div
-            className="
-            mt-6
-            h-14
-            rounded-2xl
-            border
-            border-gray-300
-            bg-white
-            flex
-            items-center
-            px-4
-            "
-          >
-            <Mail
-              size={18}
-              className="text-[#2563ff]"
-            />
+await supabase.auth.signInWithOAuth({
 
-            <input
-              value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
-              type="email"
-              placeholder="Correo electrónico"
-              className="
-              ml-3
-              w-full
-              outline-none
-              bg-transparent
-              "
-            />
-          </div>
+provider:"google"
+
+});
+
+}
 
 
-          {/* PASSWORD */}
+async function loginMicrosoft(){
 
-          <div
-            className="
-            mt-4
-            h-14
-            rounded-2xl
-            border
-            border-gray-300
-            bg-white
-            flex
-            items-center
-            px-4
-            "
-          >
-            <Lock
-              size={18}
-              className="text-[#2563ff]"
-            />
+await supabase.auth.signInWithOAuth({
 
-            <input
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-              type={
-                mostrar
-                  ? "text"
-                  : "password"
-              }
-              placeholder="Contraseña"
-              className="
-              ml-3
-              w-full
-              outline-none
-              bg-transparent
-              "
-            />
+provider:"azure"
 
-            <button
-              onClick={() =>
-                setMostrar(!mostrar)
-              }
-            >
-              {mostrar ? (
-                <EyeOff
-                  size={20}
-                  className="text-gray-400"
-                />
-              ) : (
-                <Eye
-                  size={20}
-                  className="text-gray-400"
-                />
-              )}
-            </button>
+});
 
-          </div>
+}
 
 
-          <div className="text-right mt-3">
-            <button
-              className="
-              text-[#2563ff]
-              text-sm
-              "
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-          </div>
+
+return(
+
+<main className="min-h-screen w-full bg-gradient-to-b from-[#B9D1F8] via-[#D8E7FF] to-[#EEF5FF] dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+
+{/* flecha */}
+
+<div className="absolute top-6 left-6 z-50">
+
+<Link href="/">
+
+<button className="w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center">
+
+<ArrowLeft
+size={24}
+className="text-blue-500"
+/>
+
+</button>
+
+</Link>
+
+</div>
 
 
-          {/* BOTÓN LOGIN */}
 
-          <button
-            onClick={iniciarSesion}
-            className="
-            w-full
-            h-14
-            mt-6
-            rounded-[22px]
-            bg-gradient-to-r
-            from-[#2563ff]
-            to-[#6ba8ff]
-            text-white
-            text-xl
-            font-bold
-            shadow-lg
-            hover:scale-[1.02]
-            transition
-            "
-          >
-            Iniciar sesión
-          </button>
+<div className="w-full min-h-screen flex flex-col items-center px-5 lg:px-20 pt-20 pb-10">
 
 
-          {/* DIVISOR */}
+{/* mapache */}
 
-          <div
-            className="
-            flex
-            items-center
-            gap-3
-            my-6
-            "
-          >
-            <div className="flex-1 h-[1px] bg-gray-300" />
+<div className="relative">
 
-            <span
-              className="
-              text-sm
-              text-gray-500
-              "
-            >
-              o continuar con
-            </span>
+<Image
+src="/raccoon.png"
+alt="login"
+width={450}
+height={450}
+priority
+className="
+w-[250px]
+sm:w-[320px]
+md:w-[400px]
+lg:w-[450px]
+h-auto
+"
+/>
 
-            <div className="flex-1 h-[1px] bg-gray-300" />
-          </div>
+</div>
 
 
-          {/* GOOGLE + MICROSOFT */}
-
-          <div
-            className="
-            flex
-            justify-center
-            gap-5
-            "
-          >
-
-            <button
-              onClick={loginGoogle}
-              className="
-              w-[90px]
-              h-[56px]
-              rounded-[18px]
-              bg-white
-              shadow-md
-              border
-              border-gray-200
-              flex
-              items-center
-              justify-center
-              hover:scale-105
-              transition
-              "
-            >
-              <Image
-                src="/google.png"
-                alt="Google"
-                width={28}
-                height={28}
-                className="w-auto h-auto"
-              />
-            </button>
 
 
-            <button
-              onClick={loginMicrosoft}
-              className="
-              w-[90px]
-              h-[56px]
-              rounded-[18px]
-              bg-white
-              shadow-md
-              border
-              border-gray-200
-              flex
-              items-center
-              justify-center
-              hover:scale-105
-              transition
-              "
-            >
-              <Image
-                src="/microsoft.png"
-                alt="Microsoft"
-                width={28}
-                height={28}
-                className="w-auto h-auto"
-              />
-            </button>
+{/* tarjeta EXACTAMENTE igual */}
 
-          </div>
+<div className="
+
+w-full
+max-w-[700px]
+
+bg-white/90
+dark:bg-slate-800
+
+backdrop-blur-md
+
+rounded-[40px]
+
+shadow-xl
+
+p-6
+sm:p-8
+md:p-10
+
+mt-4
+
+">
+
+<div className="space-y-5">
 
 
-          <p
-            className="
-            text-center
-            text-sm
-            text-gray-500
-            mt-6
-            "
-          >
-            ¿No tienes cuenta?{" "}
+{/* email */}
 
-            <Link
-              href="/Registro"
-              className="
-              text-[#2563ff]
-              font-bold
-              "
-            >
-              Regístrate
-            </Link>
+<InputBox
 
-          </p>
+icon={<Mail size={24}/>}
 
-        </div>
+placeholder="Correo"
 
-      </div>
-    </main>
-  );
+value={email}
+
+onChange={(e:any)=>
+setEmail(e.target.value)
+}
+
+/>
+
+
+
+
+{/* contraseña */}
+
+<InputBox
+
+icon={<Lock size={24}/>}
+
+placeholder="Contraseña"
+
+type={mostrar?"text":"password"}
+
+value={password}
+
+onChange={(e:any)=>
+
+setPassword(
+e.target.value
+)
+
+}
+
+rightIcon={
+
+<button
+onClick={()=>setMostrar(!mostrar)}
+>
+
+{
+mostrar
+?
+<EyeOff size={24}/>
+:
+<Eye size={24}/>
+}
+
+</button>
+
+}
+
+/>
+
+
+</div>
+
+
+
+<button
+
+onClick={iniciarSesion}
+
+className="
+
+w-full
+
+h-[58px]
+md:h-[65px]
+
+mt-8
+
+rounded-2xl
+
+bg-gradient-to-r
+from-[#2563ff]
+to-[#18C3F7]
+
+text-white
+
+font-bold
+text-lg
+md:text-xl
+
+shadow-lg
+
+hover:scale-[1.02]
+transition
+
+"
+
+>
+
+{
+loading
+?
+"Iniciando..."
+:
+"Iniciar sesión"
+}
+
+</button>
+
+
+
+
+{/* botones sociales iguales */}
+
+<div className="flex justify-center gap-6 mt-8">
+
+<button
+onClick={loginGoogle}
+
+className="
+w-14
+h-14
+md:w-16
+md:h-16
+
+bg-white
+
+rounded-full
+shadow-md
+
+flex
+items-center
+justify-center
+"
+
+>
+
+<Image
+src="/google.png"
+alt="google"
+width={30}
+height={30}
+/>
+
+</button>
+
+
+
+<button
+onClick={loginMicrosoft}
+
+className="
+w-14
+h-14
+md:w-16
+md:h-16
+
+bg-white
+
+rounded-full
+shadow-md
+
+flex
+items-center
+justify-center
+"
+
+>
+
+<Image
+src="/microsoft.png"
+alt="microsoft"
+width={30}
+height={30}
+/>
+
+</button>
+
+</div>
+
+
+
+<p className="text-center mt-8 text-gray-600 dark:text-gray-300">
+
+¿No tienes cuenta?
+
+<Link
+href="/Registro"
+className="ml-2 font-bold text-blue-500"
+>
+
+Regístrate
+
+</Link>
+
+</p>
+
+</div>
+
+</div>
+
+</main>
+
+);
+
+}
+
+
+
+function InputBox({
+
+icon,
+rightIcon,
+...props
+
+}:any){
+
+return(
+
+<div
+
+className="
+
+w-full
+
+h-[58px]
+md:h-[65px]
+
+border
+
+rounded-2xl
+
+px-5
+
+flex
+items-center
+
+"
+
+>
+
+<div className="text-blue-500 mr-4">
+
+{icon}
+
+</div>
+
+
+<input
+
+{...props}
+
+className="
+
+flex-1
+
+bg-transparent
+outline-none
+
+text-base
+md:text-lg
+
+text-black
+dark:text-white
+placeholder:text-gray-500
+dark:placeholder:text-gray-400
+
+"
+
+/>
+
+
+{rightIcon}
+
+</div>
+
+)
+
 }
