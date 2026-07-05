@@ -1,257 +1,563 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+
 import {
-  Menu,
-  Bell,
-  Sparkles,
-  ChevronRight,
-  Home,
-  Grid,
-  HelpCircle,
-  User,
+Menu,
+Bell,
+Sparkles,
+Brain,
+Home,
+Grid,
+HelpCircle,
+User2Icon,
+Play,
+FileText
 } from "lucide-react";
 
-export default function Quizzes() {
-  const router = useRouter();
+interface Material{
 
-  const quizzes = [
-    {
-      titulo: "Biología Celular",
-      preguntas: 20,
-      progreso: 0,
-    },
-    {
-      titulo: "Historia del Arte",
-      preguntas: 15,
-      progreso: 60,
-    },
-  ];
+id:string;
+nombre_archivo:string;
 
-  return (
-    <div className="min-h-screen bg-[#E9F1FA] pb-28">
+}
 
-      {/* HEADER */}
+interface Quiz{
 
-      <header className="flex items-center justify-between px-6 py-5">
+id:number;
+titulo:string;
+preguntas:number;
+progreso:number;
 
-        <button>
-          <Menu size={22} />
-        </button>
+}
 
-        <h1 className="font-bold text-blue-700 text-xl">
-          Raccoon Study
-        </h1>
+export default function Quizzes(){
 
-        <Bell size={20} />
+const [materiales,setMateriales]=
+useState<Material[]>([]);
 
-      </header>
+const [quizzes,setQuizzes]=
+useState<Quiz[]>([]);
 
-      <main className="px-5">
+const [loading,setLoading]=
+useState(false);
 
-        {/* HERO */}
+useEffect(()=>{
 
-        <div className="bg-white rounded-[30px] p-8 shadow">
+cargarUsuario();
 
-          <h2 className="text-3xl font-bold text-center">
-            Pon a prueba tus conocimientos
-          </h2>
+},[]);
 
-          <p className="text-center text-gray-500 mt-4 text-sm">
-            Deja que la IA cree un cuestionario
-            personalizado basado en tus apuntes
-            y materiales.
-          </p>
 
-          <button
-            onClick={() => router.push("/Tema")}
-            className="mt-8 mx-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-full shadow-lg"
-          >
-            <Sparkles size={18} />
-            Generar nuevo quiz
-          </button>
+async function cargarUsuario(){
 
-          <div className="mt-8 flex justify-center">
+const {
 
-            <img
-              src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png"
-              className="w-36"
-            />
+data:{user}
 
-          </div>
+}=await supabase.auth.getUser();
 
-        </div>
+if(!user)return;
 
-        {/* QUIZZES */}
+const {data}=await supabase
+.from("materiales")
+.select("*")
+.eq(
+"usuario_id",
+user.id
+)
+.order(
+"fecha_subida",
+{
+ascending:false
+});
 
-        <div className="mt-8 flex justify-between items-center">
+setMateriales(
+data||[]
+);
 
-          <h3 className="font-bold text-xl">
-            Quizzes listos para ti
-          </h3>
+}
 
-          <Link
-            href="/progreso"
-            className="text-blue-600 text-sm"
-          >
-            Ver todos
-          </Link>
 
-        </div>
+async function generarQuiz(){
 
-        <div className="space-y-4 mt-4">
+setLoading(true);
 
-          {quizzes.map((quiz, index) => (
+if(materiales.length===0){
 
-            <div
-              key={index}
-              className="bg-white rounded-3xl shadow p-4 flex justify-between items-center"
-            >
+alert(
+"Sube material primero"
+);
 
-              <div className="flex gap-4">
+setLoading(false);
 
-                <div className="w-12 h-12 rounded-full bg-cyan-100 flex items-center justify-center">
+return;
 
-                  🧠
+}
 
-                </div>
+const ultimo=
+materiales[0];
 
-                <div>
+const nuevoQuiz={
 
-                  <h4 className="font-semibold">
+id:Date.now(),
 
-                    {quiz.titulo}
+titulo:
+ultimo.nombre_archivo.replace(
+".pdf",
+""
+),
 
-                  </h4>
+preguntas:10,
 
-                  <p className="text-gray-500 text-sm">
+progreso:0
 
-                    {quiz.preguntas} preguntas
+};
 
-                  </p>
+setQuizzes(
+prev=>[
+nuevoQuiz,
+...prev
+]
+);
 
-                  <div className="w-44 bg-gray-200 rounded-full h-2 mt-2">
+setLoading(false);
 
-                    <div
-                      className="bg-blue-600 h-2 rounded-full"
-                      style={{
-                        width: `${quiz.progreso}%`,
-                      }}
-                    />
+}
 
-                  </div>
 
-                </div>
 
-              </div>
+return(
 
-              <div className="text-sm font-semibold text-gray-500">
+<div className="
 
-                {quiz.progreso}%
+min-h-screen
 
-              </div>
+bg-gradient-to-b
+from-[#B9D1F8]
+via-[#DDEBFF]
+to-[#EEF5FF]
 
-            </div>
+dark:from-slate-900
+dark:via-slate-800
+dark:to-slate-950
 
-          ))}
+pb-32
 
-        </div>
+">
 
-        {/* HISTORIAL */}
+<header className="
 
-        <h3 className="font-bold text-xl mt-10">
-          Historial reciente
-        </h3>
+flex
+justify-between
+items-center
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
+px-5
+pt-6
 
-          <div className="bg-white rounded-3xl p-5 shadow text-center">
+">
 
-            <h2 className="text-4xl font-bold text-blue-700">
+<button>
 
-              90%
+<Menu
+className="text-blue-600"
+/>
 
-            </h2>
+</button>
 
-            <p className="mt-2 font-semibold">
+<h1 className="
 
-              Física Cuántica
+font-bold
+text-xl
 
-            </p>
+dark:text-white
 
-            <span className="text-gray-400 text-sm">
+">
 
-              Ayer
+Raccoon
 
-            </span>
+<span className="text-blue-600">
 
-          </div>
+Study
 
-          <div className="bg-white rounded-3xl p-5 shadow text-center">
+</span>
 
-            <h2 className="text-4xl font-bold text-blue-700">
+</h1>
 
-              68%
+<Bell
+className="text-blue-600"
+/>
 
-            </h2>
+</header>
 
-            <p className="mt-2 font-semibold">
 
-              Literatura S.X
+<main className="px-5 mt-6 max-w-6xl mx-auto">
 
-            </p>
+<div className="
 
-            <span className="text-gray-400 text-sm">
+bg-white
+dark:bg-slate-800
 
-              Hace 2 días
+rounded-[35px]
 
-            </span>
+shadow-xl
 
-          </div>
+p-8
 
-        </div>
+">
 
-      </main>
+<div className="text-center">
 
-      {/* NAVBAR */}
+<div className="text-6xl">
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[35px] shadow-lg py-3 px-6 flex justify-around">
+🦝🧠
 
-        <Link
-          href="/Dashboard"
-          className="flex flex-col items-center text-blue-600"
-        >
-          <Home size={20} />
-          <span className="text-xs">Inicio</span>
-        </Link>
+</div>
 
-        <Link
-          href="/metodos"
-          className="flex flex-col items-center text-gray-500"
-        >
-          <Grid size={20} />
-          <span className="text-xs">Métodos</span>
-        </Link>
+<h2 className="
 
-        <Link
-          href="/quizzes"
-          className="flex flex-col items-center text-gray-500"
-        >
-          <HelpCircle size={20} />
-          <span className="text-xs">Quiz</span>
-        </Link>
+font-bold
+text-3xl
+mt-4
 
-        <Link
-          href="/perfil"
-          className="flex flex-col items-center text-gray-500"
-        >
-          <User size={20} />
-          <span className="text-xs">Perfil</span>
-        </Link>
+dark:text-white
 
-      </nav>
+">
 
-    </div>
-  );
+Pon a prueba tu aprendizaje
+
+</h2>
+
+<p className="
+
+text-gray-500
+mt-4
+
+">
+
+La IA crea cuestionarios usando
+tu material subido
+
+</p>
+
+<button
+
+onClick={generarQuiz}
+
+className="
+
+mx-auto
+mt-6
+
+bg-blue-600
+hover:bg-blue-700
+
+text-white
+
+px-6
+py-4
+
+rounded-full
+
+flex
+items-center
+gap-2
+
+"
+
+>
+
+<Sparkles size={18}/>
+
+{
+
+loading
+?
+"Generando..."
+:
+"Generar Quiz"
+
+}
+
+</button>
+
+</div>
+
+</div>
+
+
+
+<div className="mt-8">
+
+<h2 className="
+
+font-bold
+text-2xl
+
+dark:text-white
+
+">
+
+Material reciente
+
+</h2>
+
+
+<div className="space-y-4 mt-4">
+
+{
+
+materiales.slice(0,3).map(
+(material)=>(
+
+<div
+key={material.id}
+
+className="
+
+bg-white
+dark:bg-slate-800
+
+rounded-3xl
+
+shadow
+
+p-4
+
+flex
+items-center
+gap-3
+
+"
+
+>
+
+<FileText
+className="
+text-blue-600
+"
+/>
+
+<div>
+
+<h3 className="dark:text-white">
+
+{material.nombre_archivo}
+
+</h3>
+
+</div>
+
+</div>
+
+))
+
+}
+
+</div>
+
+</div>
+
+
+
+<div className="mt-10">
+
+<h2 className="
+
+font-bold
+text-2xl
+
+dark:text-white
+
+">
+
+Quizzes generados
+
+</h2>
+
+<div className="
+
+grid
+grid-cols-1
+md:grid-cols-2
+xl:grid-cols-3
+
+gap-5
+mt-5
+
+">
+
+{
+
+quizzes.map(
+(quiz)=>(
+
+<div
+
+key={quiz.id}
+
+className="
+
+bg-white
+dark:bg-slate-800
+
+rounded-[30px]
+
+shadow-xl
+
+p-5
+
+"
+
+>
+
+<div className="flex justify-between">
+
+<div className="text-4xl">
+
+🧠
+
+</div>
+
+<Brain
+className="
+text-blue-600
+"
+/>
+
+</div>
+
+<h3 className="
+
+font-bold
+mt-4
+
+dark:text-white
+
+">
+
+{quiz.titulo}
+
+</h3>
+
+<p className="text-gray-500">
+
+{quiz.preguntas}
+preguntas
+
+</p>
+
+<div className="
+
+bg-gray-200
+
+h-3
+
+rounded-full
+
+mt-4
+
+">
+
+<div
+
+className="
+
+bg-blue-600
+
+h-3
+
+rounded-full
+
+"
+
+style={{
+
+width:
+`${quiz.progreso}%`
+
+}}
+
+></div>
+
+</div>
+
+<button
+
+className="
+
+w-full
+
+mt-5
+
+bg-blue-600
+
+text-white
+
+rounded-xl
+
+py-3
+
+flex
+justify-center
+items-center
+gap-2
+
+"
+
+>
+
+<Play size={16}/>
+
+Comenzar
+
+</button>
+
+</div>
+
+))
+
+}
+
+</div>
+
+</div>
+
+</main>
+
+
+<nav className="fixed bottom-0 left-0 w-full bg-white dark:bg-slate-900 border-t flex justify-around py-4 z-30">
+
+<Link href="/Dashboard">
+
+<Home className="text-blue-600"/>
+
+</Link>
+
+<Link href="/metodos">
+
+<Brain className="text-gray-400"/>
+
+</Link>
+
+<Link href="/quizzes">
+
+<FileText className="text-gray-400"/>
+
+</Link>
+
+<Link href="/perfil">
+
+<User2Icon className="text-gray-400"/>
+
+</Link>
+
+</nav>
+
+</div>
+
+);
+
 }

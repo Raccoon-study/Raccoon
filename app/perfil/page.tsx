@@ -14,7 +14,7 @@ import {
   Calendar,
   Target,
   Flame,
-  User,
+  User2Icon,
   Mail,
   Sparkles,
   Globe,
@@ -24,6 +24,8 @@ import {
   Grid,
   HelpCircle,
   CheckCircle2,
+  FileText,
+  Brain,
 } from "lucide-react";
 
 export default function PerfilScreen() {
@@ -103,7 +105,7 @@ export default function PerfilScreen() {
       id: 1,
       etiqueta: "Nombre completo",
       valor: usuario.nombre,
-      icono: <User size={18} />,
+      icono: <User2Icon size={18} />,
       color: "text-blue-500 bg-blue-50",
       link: "#",
     },
@@ -288,30 +290,33 @@ export default function PerfilScreen() {
       )}
 
       {/* NAVBAR */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[35px] shadow-lg py-3 px-6 flex justify-around">
+      <nav className="fixed bottom-0 left-0 w-full bg-white dark:bg-slate-900 border-t flex justify-around py-4 z-30">
 
-        <Link href="/Dashboard" className="flex flex-col items-center text-gray-500">
-          <Home size={20} />
-          <span className="text-xs">Inicio</span>
-        </Link>
+<Link href="/Dashboard">
 
-        <Link href="/metodos" className="flex flex-col items-center text-gray-500">
-          <Grid size={20} />
-          <span className="text-xs">Métodos</span>
-        </Link>
+<Home className="text-blue-600"/>
 
-        <Link href="/quizzes" className="flex flex-col items-center text-gray-500">
-          <HelpCircle size={20} />
-          <span className="text-xs">Quiz</span>
-        </Link>
+</Link>
 
-        <Link href="/perfil" className="flex flex-col items-center text-blue-600">
-          <User size={20} />
-          <span className="text-xs font-semibold">Perfil</span>
-        </Link>
+<Link href="/metodos">
 
-      </nav>
+<Brain className="text-gray-400"/>
 
+</Link>
+
+<Link href="/quizzes">
+
+<FileText className="text-gray-400"/>
+
+</Link>
+
+<Link href="/perfil">
+
+<User2Icon className="text-gray-400"/>
+
+</Link>
+
+</nav>
     </div>
   );
 }

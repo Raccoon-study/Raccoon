@@ -4,15 +4,22 @@ import { useEffect,useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "../lib/supabase";
+import { useRouter } from "next/navigation";
 
 import{
 Menu,
+X,
 Bell,
 FileText,
 Brain,
 Flame,
-BookOpen,
-ChevronRight
+CloudUpload,
+ChevronRight,
+User,
+Settings,
+LogOut,
+Home,
+User2Icon
 }from "lucide-react";
 
 interface Material{
@@ -21,9 +28,12 @@ nombre_archivo:string;
 url_archivo:string;
 progreso:number;
 fecha_subida:string;
+usuario_id:string;
 }
 
 export default function Dashboard(){
+
+const router=useRouter();
 
 const [materiales,setMateriales]=
 useState<Material[]>([]);
@@ -34,12 +44,14 @@ useState("Usuario");
 const [notificacion,setNotificacion]=
 useState("");
 
+const [menuAbierto,setMenuAbierto]=
+useState(false);
 
 
 useEffect(()=>{
 
-obtenerMateriales();
 obtenerNombreUsuario();
+obtenerMateriales();
 
 },[]);
 
@@ -54,6 +66,16 @@ setTimeout(()=>{
 setNotificacion("");
 
 },2500);
+
+};
+
+
+
+const cerrarSesion=async()=>{
+
+await supabase.auth.signOut();
+
+router.push("/Login");
 
 };
 
@@ -77,6 +99,8 @@ if(!user)return;
 setNombreUsuario(
 
 user.user_metadata?.nombre
+||
+user.email?.split("@")[0]
 ||
 "Usuario"
 
@@ -120,13 +144,12 @@ ascending:false
 if(error){
 
 console.log(error);
+
 return;
 
 }
 
-setMateriales(
-data||[]
-);
+setMateriales(data||[]);
 
 };
 
@@ -145,9 +168,23 @@ if(!archivo)return;
 
 try{
 
+const{
+
+data:{user}
+
+}
+
+=
+
+await supabase.auth.getUser();
+
+if(!user)return;
+
+
 const nombre=
 
 `${Date.now()}-${archivo.name}`;
+
 
 const {error}=
 
@@ -171,22 +208,6 @@ nombre
 );
 
 
-const{
-
-data:{user}
-
-}
-
-=
-
-await supabase.auth.getUser();
-
-const progresoAleatorio=
-
-Math.floor(
-Math.random()*101
-);
-
 const {error:dbError}=
 
 await supabase
@@ -199,11 +220,10 @@ archivo.name,
 url_archivo:
 urlData.publicUrl,
 
-progreso:
-progresoAleatorio,
+progreso:0,
 
 usuario_id:
-user?.id
+user.id
 
 });
 
@@ -212,11 +232,11 @@ if(dbError)
 throw dbError;
 
 
-await obtenerMateriales();
-
 mostrarNotificacion(
 "Archivo subido 🎉"
 );
+
+obtenerMateriales();
 
 }catch(error:any){
 
@@ -227,11 +247,6 @@ error.message
 }
 
 };
-
-
-
-const ultimoMaterial=
-materiales[0];
 
 
 
@@ -259,14 +274,111 @@ m.fecha_subida
 
 ];
 
-return fechas.length;
+fechas.sort(
+
+(a,b)=>
+
+new Date(b).getTime()
+-
+new Date(a).getTime()
+
+);
+
+
+const hoy=
+new Date();
+
+const ultimaFecha=
+new Date(
+fechas[0]
+);
+
+const diferencia=
+
+Math.floor(
+
+(
+hoy.getTime()
+-
+ultimaFecha.getTime()
+)
+
+/
+
+(
+1000*60*60*24
+)
+
+);
+
+
+if(
+diferencia>1
+)
+return 0;
+
+
+let racha=1;
+
+
+for(
+let i=1;
+i<fechas.length;
+i++
+){
+
+const actual=
+new Date(
+fechas[i-1]
+);
+
+const anterior=
+new Date(
+fechas[i]
+);
+
+const dias=
+
+Math.floor(
+
+(
+actual.getTime()
+-
+anterior.getTime()
+)
+
+/
+
+(
+1000*60*60*24
+)
+
+);
+
+if(
+dias===1
+){
+
+racha++;
+
+}else{
+
+break;
+
+}
+
+}
+
+return racha;
 
 };
 
 
+const ultimoMaterial=
+materiales[0];
+
 const rachaActual=
 calcularRacha();
-
 
 
 return(
@@ -283,7 +395,8 @@ via-[#D8E7FF]
 to-[#EEF5FF]
 
 dark:from-slate-900
-dark:to-slate-800
+dark:via-slate-800
+dark:to-slate-950
 
 transition-all
 duration-500
@@ -292,46 +405,179 @@ duration-500
 
 >
 
-<div className="
 
-w-full
-max-w-[1400px]
+{menuAbierto&&(
 
-mx-auto
+<div
 
-px-5
-lg:px-10
+onClick={()=>
+setMenuAbierto(false)
+}
 
-pb-24
+className="
 
-">
+fixed
+inset-0
 
-{/* HEADER */}
+bg-black/50
 
-<header className="
+z-40
+
+"
+
+/>
+
+)}
+
+
+<div
+
+className={`
+
+fixed
+top-0
+left-0
+
+w-[280px]
+h-full
+
+bg-white
+dark:bg-slate-900
+
+z-50
+
+shadow-2xl
+
+transition-all
+
+duration-300
+
+${
+menuAbierto
+?
+"translate-x-0"
+:
+"-translate-x-full"
+}
+
+`}
+
+>
+
+<div className="p-6">
+
+<div className="flex justify-between">
+
+<h2 className="font-bold dark:text-white">
+
+{nombreUsuario}
+
+</h2>
+
+<X
+
+className="cursor-pointer"
+
+onClick={()=>
+
+setMenuAbierto(false)
+
+}
+
+/>
+
+</div>
+
+
+<div className="space-y-8 mt-10">
+
+<Link
+href="/perfil"
+className="flex gap-3"
+>
+
+<User/>
+
+Perfil
+
+</Link>
+
+
+<Link
+href="/configuracion"
+className="flex gap-3"
+>
+
+<Settings/>
+
+Configuración
+
+</Link>
+
+
+<button
+
+onClick={cerrarSesion}
+
+className="
+
+flex
+gap-3
+
+text-red-500
+
+"
+
+>
+
+<LogOut/>
+
+Cerrar sesión
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<div className="max-w-[1400px] mx-auto px-5 lg:px-10 pb-28">
+
+<header
+
+className="
 
 flex
 justify-between
-items-center
 
 pt-6
-pb-4
+pb-6
 
-">
+"
 
-<div className="flex items-center gap-2">
+>
 
-<Menu className="text-blue-600"/>
+<div className="flex gap-3">
 
-<h1 className="
+<Menu
 
-font-bold
-text-xl
+className="
+cursor-pointer
+text-blue-600
+"
 
-text-black
-dark:text-white
+onClick={()=>
 
-">
+setMenuAbierto(true)
+
+}
+
+/>
+
+<h1 className="font-bold text-xl">
 
 Raccoon
 
@@ -350,33 +596,33 @@ Study
 </header>
 
 
-
-{/* NOTIFICACION */}
-
 {notificacion&&(
 
-<div className="
+<div
+
+className="
 
 fixed
-top-6
+top-5
 left-1/2
 -translate-x-1/2
-
-z-50
 
 bg-gradient-to-r
 from-[#2563ff]
 to-[#18C3F7]
 
-text-white
-
 px-6
 py-3
 
 rounded-2xl
-shadow-xl
 
-">
+text-white
+
+z-50
+
+"
+
+>
 
 {notificacion}
 
@@ -388,71 +634,19 @@ shadow-xl
 
 <section>
 
-{/* SALUDO */}
-
-<div className="
-
-bg-white/90
-dark:bg-slate-800
-
-rounded-[35px]
-
-shadow-xl
-
-p-6
-
-flex
-justify-between
-items-center
-
-">
+<div className="bg-white/90 dark:bg-slate-800 rounded-[35px] p-6 shadow-xl flex justify-between items-center">
 
 <div>
 
-<h2 className="
+<h2 className="font-bold text-2xl md:text-4xl dark:text-white">
 
-font-bold
-
-text-2xl
-md:text-4xl
-
-text-black
-dark:text-white
-
-">
-
-¡Buenas {
-
-new Date().getHours()<12
-?
-"mañanas"
-:
-new Date().getHours()<18
-?
-"tardes"
-:
-"noches"
-
-},
-
-<br/>
-
-{nombreUsuario}
-
-👋
+¡Hola {nombreUsuario}! 👋
 
 </h2>
 
-<p className="
+<p className="text-gray-500 dark:text-gray-300 mt-2">
 
-mt-2
-
-text-gray-500
-dark:text-gray-300
-
-">
-
-¿Lista para aprender algo increíble hoy?
+¿Lista para estudiar?
 
 </p>
 
@@ -460,44 +654,27 @@ dark:text-gray-300
 
 <Image
 src="/raccoon.png"
-alt="raccoon"
+alt=""
 width={130}
 height={130}
-className="w-[100px] md:w-[130px] h-auto"
+className="w-[90px] md:w-[130px]"
 />
 
 </div>
 
 
-
-{/* SUBIR */}
-
-<div className="
-
-bg-white/90
-dark:bg-slate-800
-
-rounded-[35px]
-
-shadow-xl
-
-p-6
-
-mt-6
-
-">
+<div className="bg-white/90 dark:bg-slate-800 rounded-[35px] p-6 mt-6 shadow-xl">
 
 <label className="cursor-pointer flex flex-col items-center">
 
-<div className="bg-[#DCE7FF] p-5 rounded-full">
-
-<BookOpen className="text-blue-600"/>
-
-</div>
+<CloudUpload
+className="text-blue-600"
+size={35}
+/>
 
 <h3 className="font-bold mt-4 text-blue-600">
 
-Toca para subir
+Subir material
 
 </h3>
 
@@ -512,40 +689,17 @@ onChange={subirArchivo}
 </div>
 
 
+<Link href="/Chat">
 
-{/* IA */}
+<div className="mt-6 rounded-[35px] p-6 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 text-white shadow-xl">
 
-<Link
-
-href="/Chat"
-
-className="block mt-6"
-
->
-
-<div className="
-
-rounded-[35px]
-
-bg-gradient-to-r
-from-purple-600
-via-blue-500
-to-cyan-400
-
-p-6
-
-text-white
-shadow-xl
-
-">
-
-<h3 className="text-xl font-bold">
+<h2 className="font-bold text-xl">
 
 🤖 Raccoon IA
 
-</h3>
+</h2>
 
-<p className="mt-2">
+<p>
 
 Tu tutor inteligente disponible 24/7
 
@@ -556,35 +710,21 @@ Tu tutor inteligente disponible 24/7
 </Link>
 
 
-
-{/* MATERIAL */}
-
 <div className="mt-6">
 
 {ultimoMaterial?(
 
-<div className="
+<div className="bg-white/90 dark:bg-slate-800 rounded-[35px] p-6 shadow-xl">
 
-bg-white/90
-dark:bg-slate-800
-
-rounded-[35px]
-
-p-6
-
-shadow-xl
-
-">
-
-<h3 className="dark:text-white font-bold">
+<h3 className="font-bold dark:text-white">
 
 {ultimoMaterial.nombre_archivo}
 
 </h3>
 
-<p className="text-gray-400">
+<p className="text-gray-500">
 
-Último material
+Progreso: {ultimoMaterial.progreso}%
 
 </p>
 
@@ -592,22 +732,7 @@ shadow-xl
 
 ):(
 
-<div className="
-
-bg-white/90
-dark:bg-slate-800
-
-rounded-[35px]
-
-p-6
-
-shadow-xl
-
-text-center
-
-text-gray-400
-
-">
+<div className="bg-white/90 dark:bg-slate-800 rounded-[35px] p-6 text-center">
 
 No has subido materiales
 
@@ -618,26 +743,7 @@ No has subido materiales
 </div>
 
 
-
-{/* RACHA */}
-
-<div className="
-
-bg-white/90
-dark:bg-slate-800
-
-rounded-[35px]
-
-p-6
-
-shadow-xl
-
-mt-6
-
-flex
-justify-between
-
-">
+<div className="bg-white/90 dark:bg-slate-800 rounded-[35px] p-6 mt-6 shadow-xl flex justify-between">
 
 <div>
 
@@ -661,31 +767,15 @@ justify-between
 
 </section>
 
+</div>
 
 
-<nav className="
 
-fixed
-bottom-0
-left-0
+<nav className="fixed bottom-0 left-0 w-full bg-white dark:bg-slate-900 border-t flex justify-around py-4 z-30">
 
-w-full
+<Link href="/Dashboard">
 
-bg-white
-dark:bg-slate-900
-
-border-t
-
-flex
-justify-around
-
-py-4
-
-">
-
-<Link href="/Dashboard" className="text-blue-600">
-
-<BookOpen/>
+<Home className="text-blue-600"/>
 
 </Link>
 
@@ -703,13 +793,11 @@ py-4
 
 <Link href="/perfil">
 
-<ChevronRight className="text-gray-400"/>
+<User2Icon className="text-gray-400"/>
 
 </Link>
 
 </nav>
-
-</div>
 
 </main>
 

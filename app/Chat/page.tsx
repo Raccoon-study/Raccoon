@@ -50,7 +50,7 @@ export default function Chat() {
     setCargando(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/Api/Chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
