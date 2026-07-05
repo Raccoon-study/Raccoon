@@ -1,48 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useEffect,useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
-import {
+import{
 Menu,
 Bell,
 Sparkles,
 Brain,
 Home,
-Grid,
-HelpCircle,
+FileText,
 User2Icon,
 Play,
-FileText
-} from "lucide-react";
+X,
+LogOut,
+Settings
+}from "lucide-react";
 
 interface Material{
-
 id:string;
 nombre_archivo:string;
-
 }
 
 interface Quiz{
-
 id:number;
 titulo:string;
 preguntas:number;
 progreso:number;
-
 }
 
 export default function Quizzes(){
 
-const [materiales,setMateriales]=
-useState<Material[]>([]);
+const router=useRouter();
 
-const [quizzes,setQuizzes]=
-useState<Quiz[]>([]);
+const[
+materiales,
+setMateriales
+]=useState<Material[]>([]);
 
-const [loading,setLoading]=
-useState(false);
+const[
+quizzes,
+setQuizzes
+]=useState<Quiz[]>([]);
+
+const[
+loading,
+setLoading
+]=useState(false);
+
+const[
+menuAbierto,
+setMenuAbierto
+]=useState(false);
+
+const[
+nombreUsuario,
+setNombreUsuario
+]=useState("Usuario");
 
 useEffect(()=>{
 
@@ -50,18 +67,23 @@ cargarUsuario();
 
 },[]);
 
-
 async function cargarUsuario(){
 
-const {
-
+const{
 data:{user}
-
 }=await supabase.auth.getUser();
 
 if(!user)return;
 
-const {data}=await supabase
+setNombreUsuario(
+
+user.user_metadata?.nombre
+||
+"Usuario"
+
+);
+
+const{data}=await supabase
 .from("materiales")
 .select("*")
 .eq(
@@ -72,7 +94,8 @@ user.id
 "fecha_subida",
 {
 ascending:false
-});
+}
+);
 
 setMateriales(
 data||[]
@@ -80,12 +103,23 @@ data||[]
 
 }
 
+async function cerrarSesion(){
+
+await supabase.auth.signOut();
+
+router.push(
+"/login"
+);
+
+}
 
 async function generarQuiz(){
 
 setLoading(true);
 
-if(materiales.length===0){
+if(
+materiales.length===0
+){
 
 alert(
 "Sube material primero"
@@ -127,11 +161,10 @@ setLoading(false);
 
 }
 
-
-
 return(
 
-<div className="
+<div
+className="
 
 min-h-screen
 
@@ -146,9 +179,154 @@ dark:to-slate-950
 
 pb-32
 
-">
+transition-all
 
-<header className="
+"
+>
+
+{/* MENU LATERAL */}
+
+<div
+className={`
+
+fixed
+top-0
+left-0
+
+h-full
+w-[280px]
+
+bg-white
+dark:bg-slate-900
+
+z-50
+
+shadow-xl
+
+transform
+transition-all
+
+${
+menuAbierto
+?
+"translate-x-0"
+:
+"-translate-x-full"
+}
+
+`}
+>
+
+<div className="p-5">
+
+<div className="flex justify-between">
+
+<h2
+className="
+font-bold
+text-xl
+dark:text-white
+"
+>
+
+Menú
+
+</h2>
+
+<X
+onClick={()=>
+setMenuAbierto(false)
+}
+className="cursor-pointer"
+/>
+
+</div>
+
+<div className="mt-8">
+
+<div className="flex gap-3 items-center">
+
+<Image
+src="/raccoon.png"
+width={55}
+height={55}
+alt="raccoon"
+/>
+
+<div>
+
+<h3
+className="
+font-bold
+dark:text-white
+"
+>
+
+{nombreUsuario}
+
+</h3>
+
+<p
+className="
+text-gray-500
+text-sm
+"
+>
+
+Estudiante
+
+</p>
+
+</div>
+
+</div>
+
+<div className="space-y-4 mt-8">
+
+<Link
+href="/Dashboard"
+className="flex gap-3"
+>
+
+<Home/>
+Inicio
+
+</Link>
+
+<Link
+href="/configuracion"
+className="flex gap-3"
+>
+
+<Settings/>
+
+Configuración
+
+</Link>
+
+<button
+onClick={
+cerrarSesion
+}
+className="flex gap-3 text-red-500"
+>
+
+<LogOut/>
+
+Cerrar sesión
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<header
+className="
 
 flex
 justify-between
@@ -157,24 +335,28 @@ items-center
 px-5
 pt-6
 
-">
-
-<button>
+"
+>
 
 <Menu
-className="text-blue-600"
+className="
+text-blue-600
+cursor-pointer
+"
+onClick={()=>
+setMenuAbierto(
+true
+)
+}
 />
 
-</button>
-
-<h1 className="
-
+<h1
+className="
 font-bold
 text-xl
-
 dark:text-white
-
-">
+"
+>
 
 Raccoon
 
@@ -192,10 +374,17 @@ className="text-blue-600"
 
 </header>
 
+<main
+className="
+px-5
+mt-6
+max-w-6xl
+mx-auto
+"
+>
 
-<main className="px-5 mt-6 max-w-6xl mx-auto">
-
-<div className="
+<div
+className="
 
 bg-white
 dark:bg-slate-800
@@ -206,39 +395,43 @@ shadow-xl
 
 p-8
 
-">
+"
+>
 
 <div className="text-center">
 
-<div className="text-6xl">
+<Image
+src="/raccoon.png"
+width={140}
+height={140}
+alt="raccoon"
+className="
+mx-auto
+"
+/>
 
-🦝🧠
-
-</div>
-
-<h2 className="
-
+<h2
+className="
 font-bold
 text-3xl
 mt-4
-
 dark:text-white
+"
+>
 
-">
-
-Pon a prueba tu aprendizaje
+RaccoonStudy Quiz
 
 </h2>
 
-<p className="
-
+<p
+className="
 text-gray-500
 mt-4
-
-">
+"
+>
 
 La IA crea cuestionarios usando
-tu material subido
+tus materiales subidos
 
 </p>
 
@@ -251,8 +444,9 @@ className="
 mx-auto
 mt-6
 
-bg-blue-600
-hover:bg-blue-700
+bg-gradient-to-r
+from-blue-600
+to-cyan-400
 
 text-white
 
@@ -287,97 +481,22 @@ loading
 
 </div>
 
-
-
-<div className="mt-8">
-
-<h2 className="
-
-font-bold
-text-2xl
-
-dark:text-white
-
-">
-
-Material reciente
-
-</h2>
-
-
-<div className="space-y-4 mt-4">
-
-{
-
-materiales.slice(0,3).map(
-(material)=>(
-
-<div
-key={material.id}
-
-className="
-
-bg-white
-dark:bg-slate-800
-
-rounded-3xl
-
-shadow
-
-p-4
-
-flex
-items-center
-gap-3
-
-"
-
->
-
-<FileText
-className="
-text-blue-600
-"
-/>
-
-<div>
-
-<h3 className="dark:text-white">
-
-{material.nombre_archivo}
-
-</h3>
-
-</div>
-
-</div>
-
-))
-
-}
-
-</div>
-
-</div>
-
-
-
 <div className="mt-10">
 
-<h2 className="
-
+<h2
+className="
 font-bold
 text-2xl
-
 dark:text-white
-
-">
+"
+>
 
 Quizzes generados
 
 </h2>
 
-<div className="
+<div
+className="
 
 grid
 grid-cols-1
@@ -387,12 +506,13 @@ xl:grid-cols-3
 gap-5
 mt-5
 
-">
+"
+>
 
 {
 
 quizzes.map(
-(quiz)=>(
+quiz=>(
 
 <div
 
@@ -413,79 +533,37 @@ p-5
 
 >
 
-<div className="flex justify-between">
-
-<div className="text-4xl">
-
-🧠
-
-</div>
-
-<Brain
-className="
-text-blue-600
-"
+<Image
+src="/raccoon.png"
+width={60}
+height={60}
+alt="raccoon"
 />
 
-</div>
-
-<h3 className="
-
+<h3
+className="
 font-bold
 mt-4
-
 dark:text-white
-
-">
+"
+>
 
 {quiz.titulo}
 
 </h3>
 
-<p className="text-gray-500">
+<p
+className="
+text-gray-500
+"
+>
 
 {quiz.preguntas}
-preguntas
+ preguntas
 
 </p>
 
-<div className="
-
-bg-gray-200
-
-h-3
-
-rounded-full
-
-mt-4
-
-">
-
-<div
-
-className="
-
-bg-blue-600
-
-h-3
-
-rounded-full
-
-"
-
-style={{
-
-width:
-`${quiz.progreso}%`
-
-}}
-
-></div>
-
-</div>
-
 <button
-
 className="
 
 w-full
@@ -506,7 +584,6 @@ items-center
 gap-2
 
 "
-
 >
 
 <Play size={16}/>
@@ -527,12 +604,33 @@ Comenzar
 
 </main>
 
+<nav
+className="
 
-<nav className="fixed bottom-0 left-0 w-full bg-white dark:bg-slate-900 border-t flex justify-around py-4 z-30">
+fixed
+bottom-0
+left-0
+
+w-full
+
+bg-white
+dark:bg-slate-900
+
+border-t
+
+flex
+justify-around
+
+py-4
+
+z-30
+
+"
+>
 
 <Link href="/Dashboard">
 
-<Home className="text-blue-600"/>
+<Home className="text-gray-400"/>
 
 </Link>
 
@@ -544,7 +642,7 @@ Comenzar
 
 <Link href="/quizzes">
 
-<FileText className="text-gray-400"/>
+<FileText className="text-blue-600"/>
 
 </Link>
 
