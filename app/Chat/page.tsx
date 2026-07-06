@@ -86,7 +86,7 @@ setCargando(true);
 try{
 
 const res=
-await fetch("/Api/Chat",{
+await fetch("/api/chat",{
 
 method:"POST",
 
