@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   ArrowLeft,
   Crown,
@@ -30,60 +31,93 @@ export default function Page() {
       });
 
       const data = await res.json();
-      console.log("✅ Guardado:", data);
 
-      alert("Suscripción guardada ✅");
+      console.log(data);
 
-      // ✅ opcional: redirigir
-      router.push("/dashboard");
+      alert("Suscripción guardada");
+
+      router.push("/Dashboard");
 
     } catch (err) {
+
       console.error(err);
-      alert("Error ❌");
+
+      alert("Ocurrió un error");
+
     }
 
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex justify-center">
+    <main className="min-h-screen bg-gradient-to-b from-[#B9D1F8] via-[#DDEBFF] to-[#EEF5FF] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
 
-      {/* CONTENEDOR */}
-      <div className="w-full max-w-2xl px-4 sm:px-6 pb-24">
+      <div className="max-w-3xl mx-auto px-5 py-8">
 
-        {/* HEADER */}
-        <header className="flex items-center gap-4 py-6">
-          <ArrowLeft
-            className="cursor-pointer"
+        {/* Header */}
+
+        <div className="flex items-center gap-4">
+
+          <button
             onClick={() => router.back()}
-          />
+            className="p-2 rounded-full hover:bg-white/60 dark:hover:bg-slate-800 transition"
+          >
+            <ArrowLeft />
+          </button>
 
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              Suscribirse
-              <Crown className="text-yellow-500" size={18} />
-            </h1>
-            <p className="text-sm text-slate-400">
-              Elige el plan perfecto para ti
-            </p>
-          </div>
-        </header>
 
-        {/* PLANES */}
-        <div className="space-y-4">
+            <h1 className="text-3xl font-bold flex items-center gap-2 dark:text-white">
+
+              Freemium
+
+              <Crown
+                className="text-yellow-500"
+                size={24}
+              />
+
+            </h1>
+
+            <p className="text-slate-500 dark:text-slate-400">
+
+              Desbloquea todo el potencial de Raccoon Study
+
+            </p>
+
+          </div>
+
+        </div>
+
+        {/* Mascota */}
+
+        <div className="flex justify-center py-8">
+
+          <Image
+            src="/raccoon.png"
+            alt="Raccoon"
+            width={180}
+            height={180}
+            priority
+          />
+
+        </div>
+
+        {/* Planes */}
+
+        <div className="space-y-5">
 
           <PlanCard
             title="Premium Anual"
-            price="$9"
+            price="$69.99"
             extra="/año"
             selected={plan === "year"}
+            badge="🔥 Mejor oferta"
             onClick={() => setPlan("year")}
-            badge="Mejor valor"
           />
 
           <PlanCard
             title="Premium Mensual"
-            price="$0.99"
+            price="$5.99"
             extra="/mes"
             selected={plan === "month"}
             onClick={() => setPlan("month")}
@@ -94,40 +128,34 @@ export default function Page() {
             price="$0"
             extra="/mes"
             selected={plan === "free"}
-            onClick={() => setPlan("free")}
             muted
+            onClick={() => setPlan("free")}
           />
 
-          {/* BOTÓN */}
-          <button
-            onClick={handleSubscribe}
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold shadow transition"
-          >
-            {loading ? "Procesando..." : "Continuar"}
-          </button>
-
-          {/* RESTAURAR */}
-          <p className="text-center text-sm text-blue-600 cursor-pointer">
-            Restaurar compras
-          </p>
-
-          {/* IMAGEN */}
-          <div className="flex justify-center pt-8">
-            <img
-              src="/raccoon.png"
-              alt="Mascota"
-              className="w-56 h-56 object-contain"
-            />
-          </div>
-
         </div>
+
+        {/* Botón */}
+
+        <button
+          onClick={handleSubscribe}
+          disabled={loading}
+          className="mt-8 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:scale-[1.02] transition text-white font-bold py-4 shadow-xl disabled:opacity-70"
+        >
+          {loading ? "Procesando..." : "Continuar"}
+        </button>
+
+        <button className="mt-4 w-full text-blue-600 dark:text-cyan-400 font-medium">
+
+          Restaurar compras
+
+        </button>
+
       </div>
-    </div>
+
+    </main>
   );
 }
 
-/* ✅ CARD */
 function PlanCard({
   title,
   price,
@@ -137,65 +165,176 @@ function PlanCard({
   badge,
   muted,
 }: any) {
+
   return (
+
     <div
+
       onClick={onClick}
-      className={`p-4 rounded-2xl border cursor-pointer transition
-      ${selected ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}
+
+      className={`
+
+      rounded-3xl
+
+      p-6
+
+      cursor-pointer
+
+      transition-all
+
+      shadow-lg
+
+      border-2
+
+      ${
+        selected
+          ? "border-blue-500 bg-blue-50 dark:bg-slate-800 dark:border-cyan-400"
+          : "border-transparent bg-white dark:bg-slate-900"
+      }
+
+      hover:scale-[1.02]
+
       `}
+
     >
-      <div className="flex justify-between items-center">
+
+      <div className="flex justify-between items-start gap-4">
 
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">{title}</span>
+
+          <div className="flex items-center gap-3 flex-wrap">
+
+            <h2 className="text-xl font-bold dark:text-white">
+
+              {title}
+
+            </h2>
 
             {badge && (
-              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
+
+              <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-cyan-900 text-blue-700 dark:text-cyan-300 text-xs font-semibold">
+
                 {badge}
+
               </span>
+
             )}
+
           </div>
 
-          <ul
-            className={`mt-2 space-y-1 text-xs ${
-              muted ? "text-slate-400" : "text-slate-600"
-            }`}
-          >
-            <li className="flex items-center gap-2">
-              {muted ? (
-                <Circle size={14} />
-              ) : (
-                <CheckCircle2 size={14} className="text-green-500" />
-              )}
-              {muted ? "Acceso limitado" : "Acceso ilimitado"}
-            </li>
+          <div className="mt-5 space-y-3">
 
-            <li className="flex items-center gap-2">
-              {muted ? (
-                <Circle size={14} />
-              ) : (
-                <CheckCircle2 size={14} className="text-green-500" />
-              )}
-              {muted ? "Con anuncios" : "Sin anuncios"}
-            </li>
-          </ul>
+            <Feature
+              active={!muted}
+              text="Resúmenes ilimitados con IA"
+            />
+
+            <Feature
+              active={!muted}
+              text="Flashcards automáticas"
+            />
+
+            <Feature
+              active={!muted}
+              text="Quiz inteligentes"
+            />
+
+            <Feature
+              active={!muted}
+              text="Sin anuncios"
+            />
+
+            <Feature
+              active={!muted}
+              text="Soporte prioritario"
+            />
+
+          </div>
+
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <span className="font-bold">{price}</span>
-            <span className="text-xs text-slate-400 ml-1">{extra}</span>
+        <div className="text-right">
+
+          <h2 className="text-3xl font-bold dark:text-white">
+
+            {price}
+
+          </h2>
+
+          <p className="text-slate-500 dark:text-slate-400">
+
+            {extra}
+
+          </p>
+
+          <div className="mt-5">
+
+            {selected ? (
+
+              <CheckCircle2
+                className="text-blue-600"
+                size={28}
+              />
+
+            ) : (
+
+              <Circle
+                className="text-slate-300"
+                size={28}
+              />
+
+            )}
+
           </div>
 
-          {selected ? (
-            <CheckCircle2 className="text-blue-600" />
-          ) : (
-            <Circle className="text-slate-300" />
-          )}
         </div>
 
       </div>
+
     </div>
+
+  );
+}
+
+function Feature({
+  active,
+  text,
+}: {
+  active: boolean;
+  text: string;
+}) {
+
+  return (
+
+    <div className="flex items-center gap-3">
+
+      {active ? (
+
+        <CheckCircle2
+          className="text-green-500"
+          size={18}
+        />
+
+      ) : (
+
+        <Circle
+          className="text-slate-400"
+          size={18}
+        />
+
+      )}
+
+      <span
+        className={`${
+          active
+            ? "text-slate-700 dark:text-slate-300"
+            : "text-slate-400"
+        }`}
+      >
+        {text}
+      </span>
+
+    </div>
+
   );
 }
