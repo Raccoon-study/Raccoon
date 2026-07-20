@@ -3,13 +3,19 @@
 import type { ChangeEvent } from "react";
 import type { LucideIcon } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
   ArrowRight,
+  BadgeCheck,
   Bell,
   Bot,
   Brain,
@@ -23,6 +29,7 @@ import {
   FileText,
   Flame,
   Home,
+  Layers3,
   Library,
   LoaderCircle,
   LogOut,
@@ -48,6 +55,24 @@ import { supabase } from "../lib/supabase";
    TIPOS
 ===================================================== */
 
+type PlanType =
+  | "free"
+  | "month"
+  | "year";
+
+type AccionEstudio =
+  | "pomodoro"
+  | "resumen"
+  | "quiz"
+  | "flashcards";
+
+type TipoActividad =
+  | "revision"
+  | "pomodoro"
+  | "quiz"
+  | "flashcards"
+  | "resumen";
+
 interface Material {
   id: string;
   nombre_archivo: string;
@@ -71,10 +96,65 @@ interface ElementoMenu {
   activo?: boolean;
 }
 
-type AccionEstudio =
-  | "pomodoro"
-  | "resumen"
-  | "quiz";
+interface SesionEstudio {
+  id: string;
+  usuario_id: string;
+  material_id: string | null;
+  tipo: TipoActividad;
+  duracion_segundos: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+}
+
+interface QuizActividad {
+  id: string;
+  material_id: string | null;
+  estado: string;
+  preguntas_respondidas: number;
+  precision: number;
+  fecha_creacion: string;
+  fecha_completado: string | null;
+}
+
+interface ResumenActividad {
+  id: string;
+  material_id: string | null;
+  tiempo_lectura: string;
+  fecha_creacion: string;
+}
+
+interface FlashcardActividad {
+  id: string;
+  material_id: string | null;
+  estado: string;
+  tarjetas_estudiadas: number;
+  tarjetas_dominadas: number;
+  progreso: number;
+  fecha_creacion: string;
+  fecha_ultima_revision: string | null;
+}
+
+interface EventoActividad {
+  fecha: string;
+  duracion_segundos: number;
+  material_id: string | null;
+  tipo: TipoActividad;
+}
+
+interface MetricasEstudio {
+  total_segundos: number;
+  segundos_semana: number[];
+  fechas_actividad: string[];
+  quizzes_completados: number;
+  resumenes_creados: number;
+  mazos_revisados: number;
+  tarjetas_dominadas: number;
+}
+
+interface RevisionActiva {
+  material: Material;
+  inicio: number;
+}
 
 /* =====================================================
    MENÚ
@@ -114,9 +194,60 @@ const elementosMenu: ElementoMenu[] = [
   },
 ];
 
+const diasSemana = [
+  "L",
+  "M",
+  "X",
+  "J",
+  "V",
+  "S",
+  "D",
+];
+
 /* =====================================================
    FUNCIONES AUXILIARES
 ===================================================== */
+
+function esObjeto(
+  valor: unknown
+): valor is Record<string, unknown> {
+  return (
+    typeof valor === "object" &&
+    valor !== null
+  );
+}
+
+function numeroSeguro(
+  valor: unknown,
+  respaldo = 0
+): number {
+  const numero = Number(valor);
+
+  return Number.isFinite(numero)
+    ? numero
+    : respaldo;
+}
+
+function textoSeguro(
+  valor: unknown,
+  respaldo = ""
+): string {
+  return typeof valor === "string"
+    ? valor
+    : respaldo;
+}
+
+function limitarPorcentaje(
+  porcentaje: number
+): number {
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(porcentaje)
+    )
+  );
+}
 
 function normalizarMaterial(
   dato: Record<string, unknown>
@@ -125,7 +256,8 @@ function normalizarMaterial(
     id: String(dato.id || ""),
 
     nombre_archivo:
-      typeof dato.nombre_archivo === "string"
+      typeof dato.nombre_archivo ===
+      "string"
         ? dato.nombre_archivo
         : "Material sin nombre",
 
@@ -134,13 +266,13 @@ function normalizarMaterial(
         ? dato.url_archivo
         : "",
 
-    progreso:
-      typeof dato.progreso === "number"
-        ? dato.progreso
-        : Number(dato.progreso || 0),
+    progreso: limitarPorcentaje(
+      numeroSeguro(dato.progreso)
+    ),
 
     fecha_subida:
-      typeof dato.fecha_subida === "string"
+      typeof dato.fecha_subida ===
+      "string"
         ? dato.fecha_subida
         : new Date().toISOString(),
 
@@ -148,6 +280,165 @@ function normalizarMaterial(
       typeof dato.usuario_id === "string"
         ? dato.usuario_id
         : "",
+  };
+}
+
+function normalizarSesion(
+  dato: Record<string, unknown>
+): SesionEstudio {
+  const tipo = textoSeguro(
+    dato.tipo,
+    "revision"
+  );
+
+  const tipoValido: TipoActividad =
+    tipo === "pomodoro" ||
+    tipo === "quiz" ||
+    tipo === "flashcards" ||
+    tipo === "resumen"
+      ? tipo
+      : "revision";
+
+  return {
+    id: String(dato.id || ""),
+    usuario_id: String(
+      dato.usuario_id || ""
+    ),
+
+    material_id:
+      dato.material_id === null ||
+      dato.material_id === undefined
+        ? null
+        : String(dato.material_id),
+
+    tipo: tipoValido,
+
+    duracion_segundos: Math.max(
+      0,
+      numeroSeguro(
+        dato.duracion_segundos
+      )
+    ),
+
+    fecha_inicio: textoSeguro(
+      dato.fecha_inicio,
+      new Date().toISOString()
+    ),
+
+    fecha_fin: textoSeguro(
+      dato.fecha_fin,
+      textoSeguro(
+        dato.fecha_inicio,
+        new Date().toISOString()
+      )
+    ),
+  };
+}
+
+function normalizarQuizActividad(
+  dato: Record<string, unknown>
+): QuizActividad {
+  return {
+    id: String(dato.id || ""),
+
+    material_id:
+      dato.material_id === null ||
+      dato.material_id === undefined
+        ? null
+        : String(dato.material_id),
+
+    estado: textoSeguro(
+      dato.estado,
+      "creado"
+    ),
+
+    preguntas_respondidas:
+      numeroSeguro(
+        dato.preguntas_respondidas
+      ),
+
+    precision: numeroSeguro(
+      dato.precision
+    ),
+
+    fecha_creacion: textoSeguro(
+      dato.fecha_creacion,
+      new Date().toISOString()
+    ),
+
+    fecha_completado:
+      typeof dato.fecha_completado ===
+      "string"
+        ? dato.fecha_completado
+        : null,
+  };
+}
+
+function normalizarResumenActividad(
+  dato: Record<string, unknown>
+): ResumenActividad {
+  return {
+    id: String(dato.id || ""),
+
+    material_id:
+      dato.material_id === null ||
+      dato.material_id === undefined
+        ? null
+        : String(dato.material_id),
+
+    tiempo_lectura: textoSeguro(
+      dato.tiempo_lectura,
+      "5 min"
+    ),
+
+    fecha_creacion: textoSeguro(
+      dato.fecha_creacion,
+      new Date().toISOString()
+    ),
+  };
+}
+
+function normalizarFlashcardActividad(
+  dato: Record<string, unknown>
+): FlashcardActividad {
+  return {
+    id: String(dato.id || ""),
+
+    material_id:
+      dato.material_id === null ||
+      dato.material_id === undefined
+        ? null
+        : String(dato.material_id),
+
+    estado: textoSeguro(
+      dato.estado,
+      "creado"
+    ),
+
+    tarjetas_estudiadas:
+      numeroSeguro(
+        dato.tarjetas_estudiadas
+      ),
+
+    tarjetas_dominadas:
+      numeroSeguro(
+        dato.tarjetas_dominadas
+      ),
+
+    progreso: limitarPorcentaje(
+      numeroSeguro(dato.progreso)
+    ),
+
+    fecha_creacion: textoSeguro(
+      dato.fecha_creacion,
+      new Date().toISOString()
+    ),
+
+    fecha_ultima_revision:
+      typeof dato.fecha_ultima_revision ===
+      "string"
+        ? dato.fecha_ultima_revision
+        : null,
   };
 }
 
@@ -193,17 +484,18 @@ function normalizarChat(
       "Conversación con Raccoon IA"
     ),
 
-    ultimo_mensaje: obtenerTextoDeCampos(
-      dato,
-      [
-        "ultimo_mensaje",
-        "last_message",
-        "mensaje",
-        "contenido",
-        "descripcion",
-      ],
-      "Continúa conversando con tu tutor."
-    ),
+    ultimo_mensaje:
+      obtenerTextoDeCampos(
+        dato,
+        [
+          "ultimo_mensaje",
+          "last_message",
+          "mensaje",
+          "contenido",
+          "descripcion",
+        ],
+        "Continúa conversando con tu tutor."
+      ),
 
     fecha_actualizacion:
       obtenerTextoDeCampos(
@@ -230,13 +522,34 @@ function obtenerExtension(
   );
 }
 
+function esImagen(
+  extension: string
+): boolean {
+  return [
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "gif",
+  ].includes(extension);
+}
+
+function esDocumentoOffice(
+  extension: string
+): boolean {
+  return [
+    "doc",
+    "docx",
+    "ppt",
+    "pptx",
+    "xls",
+    "xlsx",
+  ].includes(extension);
+}
+
 function formatearFecha(
   fecha: string
 ): string {
-  if (!fecha) {
-    return "Reciente";
-  }
-
   const fechaObjeto = new Date(fecha);
 
   if (
@@ -272,17 +585,25 @@ function formatearFechaChat(
 
   const ahora = new Date();
 
-  const diferencia = Math.floor(
-    (ahora.getTime() -
-      fechaObjeto.getTime()) /
-      (1000 * 60 * 60 * 24)
-  );
+  const diferenciaDias =
+    Math.floor(
+      (
+        ahora.getTime() -
+        fechaObjeto.getTime()
+      ) /
+        (
+          1000 *
+          60 *
+          60 *
+          24
+        )
+    );
 
-  if (diferencia === 0) {
+  if (diferenciaDias === 0) {
     return "Hoy";
   }
 
-  if (diferencia === 1) {
+  if (diferenciaDias === 1) {
     return "Ayer";
   }
 
@@ -295,29 +616,230 @@ function formatearFechaChat(
   );
 }
 
-function esImagen(
-  extension: string
-): boolean {
-  return [
-    "png",
-    "jpg",
-    "jpeg",
-    "webp",
-    "gif",
-  ].includes(extension);
+function normalizarPlan(
+  valor: unknown,
+  premium = false
+): PlanType {
+  const texto = String(valor || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    texto === "year" ||
+    texto === "annual" ||
+    texto === "anual" ||
+    texto === "premium_year" ||
+    texto === "premium_anual"
+  ) {
+    return "year";
+  }
+
+  if (
+    texto === "month" ||
+    texto === "monthly" ||
+    texto === "mensual" ||
+    texto === "premium" ||
+    texto === "premium_month" ||
+    texto === "premium_mensual"
+  ) {
+    return "month";
+  }
+
+  return premium ? "month" : "free";
 }
 
-function esDocumentoOffice(
-  extension: string
-): boolean {
-  return [
-    "doc",
-    "docx",
-    "ppt",
-    "pptx",
-    "xls",
-    "xlsx",
-  ].includes(extension);
+function nombrePlan(
+  plan: PlanType
+): string {
+  if (plan === "year") {
+    return "Premium anual";
+  }
+
+  if (plan === "month") {
+    return "Premium mensual";
+  }
+
+  return "Plan gratuito";
+}
+
+function claveFechaLocal(
+  fecha: Date
+): string {
+  const año = fecha.getFullYear();
+
+  const mes = String(
+    fecha.getMonth() + 1
+  ).padStart(2, "0");
+
+  const dia = String(
+    fecha.getDate()
+  ).padStart(2, "0");
+
+  return `${año}-${mes}-${dia}`;
+}
+
+function fechaSinHora(
+  fecha: Date
+): Date {
+  return new Date(
+    fecha.getFullYear(),
+    fecha.getMonth(),
+    fecha.getDate()
+  );
+}
+
+function obtenerInicioSemana(
+  fecha: Date
+): Date {
+  const inicio =
+    fechaSinHora(fecha);
+
+  const dia = inicio.getDay();
+
+  const diferencia =
+    dia === 0
+      ? -6
+      : 1 - dia;
+
+  inicio.setDate(
+    inicio.getDate() +
+      diferencia
+  );
+
+  return inicio;
+}
+
+function indiceSemana(
+  fecha: Date,
+  inicioSemana: Date
+): number {
+  const fechaLimpia =
+    fechaSinHora(fecha);
+
+  return Math.floor(
+    (
+      fechaLimpia.getTime() -
+      inicioSemana.getTime()
+    ) /
+      (
+        1000 *
+        60 *
+        60 *
+        24
+      )
+  );
+}
+
+function calcularRacha(
+  fechas: string[]
+): number {
+  const dias = new Set<string>();
+
+  fechas.forEach((fecha) => {
+    const fechaObjeto =
+      new Date(fecha);
+
+    if (
+      !Number.isNaN(
+        fechaObjeto.getTime()
+      )
+    ) {
+      dias.add(
+        claveFechaLocal(
+          fechaObjeto
+        )
+      );
+    }
+  });
+
+  if (dias.size === 0) {
+    return 0;
+  }
+
+  const hoy =
+    fechaSinHora(new Date());
+
+  const ayer =
+    new Date(hoy);
+
+  ayer.setDate(
+    ayer.getDate() - 1
+  );
+
+  let cursor: Date;
+
+  if (
+    dias.has(
+      claveFechaLocal(hoy)
+    )
+  ) {
+    cursor = hoy;
+  } else if (
+    dias.has(
+      claveFechaLocal(ayer)
+    )
+  ) {
+    cursor = ayer;
+  } else {
+    return 0;
+  }
+
+  let racha = 0;
+
+  while (
+    dias.has(
+      claveFechaLocal(cursor)
+    )
+  ) {
+    racha++;
+
+    const anterior =
+      new Date(cursor);
+
+    anterior.setDate(
+      anterior.getDate() - 1
+    );
+
+    cursor = anterior;
+  }
+
+  return racha;
+}
+
+function minutosDesdeTexto(
+  texto: string
+): number {
+  const coincidencia =
+    texto.match(/\d+/);
+
+  if (!coincidencia) {
+    return 5;
+  }
+
+  return Math.max(
+    1,
+    Number(coincidencia[0])
+  );
+}
+
+function formatearTiempo(
+  segundos: number
+): string {
+  const minutos =
+    Math.round(
+      segundos / 60
+    );
+
+  if (minutos < 60) {
+    return `${minutos} min`;
+  }
+
+  const horas =
+    segundos / 3600;
+
+  return `${horas.toFixed(
+    horas >= 10 ? 0 : 1
+  )} h`;
 }
 
 /* =====================================================
@@ -327,36 +849,92 @@ function esDocumentoOffice(
 export default function Dashboard() {
   const router = useRouter();
 
-  /* USUARIO */
+  const revisionActivaRef =
+    useRef<RevisionActiva | null>(
+      null
+    );
+
+  /* USUARIO Y PLAN */
 
   const [
     nombreUsuario,
     setNombreUsuario,
   ] = useState("Usuario");
 
-  const [fotoPerfil, setFotoPerfil] =
-    useState("/raccoon.png");
+  const [
+    fotoPerfil,
+    setFotoPerfil,
+  ] = useState("/raccoon.png");
+
+  const [
+    planActual,
+    setPlanActual,
+  ] =
+    useState<PlanType>("free");
+
+  const [
+    cargandoPlan,
+    setCargandoPlan,
+  ] = useState(true);
+
+  const esPremium =
+    planActual === "month" ||
+    planActual === "year";
 
   /* MATERIALES */
 
-  const [materiales, setMateriales] =
-    useState<Material[]>([]);
+  const [
+    materiales,
+    setMateriales,
+  ] = useState<Material[]>([]);
 
   const [
     cargandoMateriales,
     setCargandoMateriales,
   ] = useState(true);
 
-  const [subiendo, setSubiendo] =
-    useState(false);
+  const [
+    subiendo,
+    setSubiendo,
+  ] = useState(false);
 
-  const [busqueda, setBusqueda] =
-    useState("");
+  const [
+    busqueda,
+    setBusqueda,
+  ] = useState("");
 
   const [
     mostrarTodos,
     setMostrarTodos,
   ] = useState(false);
+
+  /* ACTIVIDAD */
+
+  const [
+    metricas,
+    setMetricas,
+  ] = useState<MetricasEstudio>({
+    total_segundos: 0,
+    segundos_semana: [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+    ],
+    fechas_actividad: [],
+    quizzes_completados: 0,
+    resumenes_creados: 0,
+    mazos_revisados: 0,
+    tarjetas_dominadas: 0,
+  });
+
+  const [
+    cargandoActividad,
+    setCargandoActividad,
+  ] = useState(true);
 
   /* CHATS */
 
@@ -375,7 +953,9 @@ export default function Dashboard() {
   const [
     materialAbierto,
     setMaterialAbierto,
-  ] = useState<Material | null>(null);
+  ] = useState<Material | null>(
+    null
+  );
 
   const [
     textoArchivo,
@@ -387,15 +967,19 @@ export default function Dashboard() {
     setCargandoTexto,
   ] = useState(false);
 
-  const [errorVisor, setErrorVisor] =
-    useState("");
+  const [
+    errorVisor,
+    setErrorVisor,
+  ] = useState("");
 
-  /* OPCIONES DE ESTUDIO */
+  /* OPCIONES */
 
   const [
     materialParaAccion,
     setMaterialParaAccion,
-  ] = useState<Material | null>(null);
+  ] = useState<Material | null>(
+    null
+  );
 
   const [
     mostrarOpcionesEstudio,
@@ -424,8 +1008,6 @@ export default function Dashboard() {
     setNotificacion,
   ] = useState("");
 
-  const [horasEstudio] = useState(0);
-
   /* =====================================================
      INICIAR
   ===================================================== */
@@ -435,15 +1017,21 @@ export default function Dashboard() {
       async () => {
         inicializarTema();
 
-        const usuarioValido =
-          await obtenerUsuario();
+        const usuarioId =
+          await obtenerUsuarioYPlan();
 
-        if (usuarioValido) {
-          await Promise.all([
-            obtenerMateriales(),
-            obtenerChatsRecientes(),
-          ]);
+        if (!usuarioId) {
+          return;
         }
+
+        await Promise.all([
+          obtenerDatosEstudio(
+            usuarioId
+          ),
+          obtenerChatsRecientes(
+            usuarioId
+          ),
+        ]);
       };
 
     void iniciarDashboard();
@@ -477,46 +1065,51 @@ export default function Dashboard() {
     const controlador =
       new AbortController();
 
-    const cargarTexto = async () => {
-      try {
-        setCargandoTexto(true);
-        setErrorVisor("");
+    const cargarTexto =
+      async () => {
+        try {
+          setCargandoTexto(true);
+          setErrorVisor("");
 
-        const respuesta = await fetch(
-          materialAbierto.url_archivo,
-          {
-            signal:
-              controlador.signal,
+          const respuesta =
+            await fetch(
+              materialAbierto.url_archivo,
+              {
+                signal:
+                  controlador.signal,
+              }
+            );
+
+          if (!respuesta.ok) {
+            throw new Error(
+              "No se pudo leer el archivo."
+            );
           }
-        );
 
-        if (!respuesta.ok) {
-          throw new Error(
-            "No se pudo leer el archivo."
+          const contenido =
+            await respuesta.text();
+
+          setTextoArchivo(
+            contenido
           );
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.name ===
+              "AbortError"
+          ) {
+            return;
+          }
+
+          setErrorVisor(
+            error instanceof Error
+              ? error.message
+              : "No se pudo leer el archivo."
+          );
+        } finally {
+          setCargandoTexto(false);
         }
-
-        const contenido =
-          await respuesta.text();
-
-        setTextoArchivo(contenido);
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name === "AbortError"
-        ) {
-          return;
-        }
-
-        setErrorVisor(
-          error instanceof Error
-            ? error.message
-            : "No se pudo leer el archivo."
-        );
-      } finally {
-        setCargandoTexto(false);
-      }
-    };
+      };
 
     void cargarTexto();
 
@@ -526,7 +1119,7 @@ export default function Dashboard() {
   }, [materialAbierto]);
 
   /* =====================================================
-     TEMA CLARO Y OSCURO
+     TEMA
   ===================================================== */
 
   const inicializarTema = () => {
@@ -542,10 +1135,14 @@ export default function Dashboard() {
 
     const usarOscuro =
       temaGuardado === "dark" ||
-      (!temaGuardado &&
-        sistemaOscuro);
+      (
+        !temaGuardado &&
+        sistemaOscuro
+      );
 
-    setModoOscuro(usarOscuro);
+    setModoOscuro(
+      usarOscuro
+    );
 
     document.documentElement.classList.toggle(
       "dark",
@@ -589,7 +1186,7 @@ export default function Dashboard() {
   };
 
   /* =====================================================
-     NOTIFICACIONES
+     NOTIFICACIÓN
   ===================================================== */
 
   const mostrarNotificacion = (
@@ -599,47 +1196,133 @@ export default function Dashboard() {
 
     window.setTimeout(() => {
       setNotificacion("");
-    }, 4000);
+    }, 4500);
   };
 
   /* =====================================================
-     USUARIO
+     USUARIO Y PREMIUM
   ===================================================== */
 
-  const obtenerUsuario =
-    async () => {
+  const obtenerUsuarioYPlan =
+    async (): Promise<
+      string | null
+    > => {
       try {
+        setCargandoPlan(true);
+
         const {
           data: { user },
         } =
           await supabase.auth.getUser();
 
-        if (!user) {
+        const {
+          data: { session },
+        } =
+          await supabase.auth.getSession();
+
+        if (!user || !session) {
           router.replace("/Login");
-          return false;
+          return null;
         }
 
+        const metadata = {
+          ...(user.user_metadata ||
+            {}),
+          ...(user.app_metadata ||
+            {}),
+        };
+
         setNombreUsuario(
-          user.user_metadata
-            ?.nombre ||
-            user.user_metadata
-              ?.full_name ||
-            user.user_metadata?.name ||
-            user.email?.split("@")[0] ||
-            "Usuario"
+          String(
+            metadata.nombre ||
+              metadata.full_name ||
+              metadata.name ||
+              user.email?.split(
+                "@"
+              )[0] ||
+              "Usuario"
+          )
         );
 
         if (
-          user.user_metadata
-            ?.avatar_url
+          typeof metadata.avatar_url ===
+          "string"
         ) {
           setFotoPerfil(
-            user.user_metadata
-              .avatar_url
+            metadata.avatar_url
           );
         }
 
-        return true;
+        const premiumMetadata =
+          metadata.premium === true ||
+          metadata.is_premium ===
+            true ||
+          metadata.es_premium ===
+            true;
+
+        const planMetadata =
+          normalizarPlan(
+            metadata.plan ||
+              metadata.subscription ||
+              metadata.tipo_plan ||
+              metadata.subscription_plan,
+            premiumMetadata
+          );
+
+        setPlanActual(
+          planMetadata
+        );
+
+        try {
+          const respuesta =
+            await fetch(
+              "/api/suscripciones",
+              {
+                method: "GET",
+
+                headers: {
+                  Authorization:
+                    `Bearer ${session.access_token}`,
+                },
+
+                cache: "no-store",
+              }
+            );
+
+          if (respuesta.ok) {
+            const datos: unknown =
+              await respuesta.json();
+
+            if (esObjeto(datos)) {
+              const premiumServidor =
+                datos.premium ===
+                  true ||
+                datos.is_premium ===
+                  true ||
+                datos.es_premium ===
+                  true;
+
+              const planServidor =
+                normalizarPlan(
+                  datos.plan ||
+                    datos.subscription ||
+                    datos.tipo_plan,
+                  premiumServidor
+                );
+
+              setPlanActual(
+                planServidor
+              );
+            }
+          }
+        } catch (error) {
+          console.warn(
+            "No se pudo consultar el plan en el servidor:",
+            error
+          );
+        }
+
+        return user.id;
       } catch (error) {
         console.error(
           "Error obteniendo usuario:",
@@ -650,99 +1333,626 @@ export default function Dashboard() {
           "No se pudo cargar tu información."
         );
 
-        return false;
+        return null;
+      } finally {
+        setCargandoPlan(false);
       }
     };
 
   /* =====================================================
-     OBTENER MATERIALES
+     DATOS DE ESTUDIO
   ===================================================== */
 
-  const obtenerMateriales =
-    async () => {
+  const obtenerDatosEstudio =
+    async (
+      usuarioId: string
+    ) => {
       try {
         setCargandoMateriales(true);
+        setCargandoActividad(true);
 
-        const {
-          data: { user },
-        } =
-          await supabase.auth.getUser();
-
-        if (!user) {
-          router.replace("/Login");
-          return;
-        }
-
-        const { data, error } =
-          await supabase
+        const [
+          materialesRespuesta,
+          sesionesRespuesta,
+          quizzesRespuesta,
+          resumenesRespuesta,
+          flashcardsRespuesta,
+        ] = await Promise.all([
+          supabase
             .from("materiales")
             .select("*")
             .eq(
               "usuario_id",
-              user.id
+              usuarioId
             )
-            .order("fecha_subida", {
-              ascending: false,
-            });
+            .order(
+              "fecha_subida",
+              {
+                ascending: false,
+              }
+            ),
 
-        if (error) {
+          supabase
+            .from("study_sessions")
+            .select("*")
+            .eq(
+              "usuario_id",
+              usuarioId
+            )
+            .order(
+              "fecha_fin",
+              {
+                ascending: false,
+              }
+            ),
+
+          supabase
+            .from("quizzes")
+            .select(
+              "id, material_id, estado, preguntas_respondidas, precision, fecha_creacion, fecha_completado"
+            )
+            .eq(
+              "usuario_id",
+              usuarioId
+            ),
+
+          supabase
+            .from("resumenes")
+            .select(
+              "id, material_id, tiempo_lectura, fecha_creacion"
+            )
+            .eq(
+              "usuario_id",
+              usuarioId
+            ),
+
+          supabase
+            .from(
+              "flashcard_sets"
+            )
+            .select(
+              "id, material_id, estado, tarjetas_estudiadas, tarjetas_dominadas, progreso, fecha_creacion, fecha_ultima_revision"
+            )
+            .eq(
+              "usuario_id",
+              usuarioId
+            ),
+        ]);
+
+        if (
+          materialesRespuesta.error
+        ) {
           throw new Error(
-            error.message
+            materialesRespuesta.error.message
           );
         }
 
-        const lista = (
-          data || []
-        ).map((material) =>
-          normalizarMaterial(
-            material as Record<
-              string,
-              unknown
-            >
-          )
+        const listaMateriales =
+          (
+            materialesRespuesta.data ||
+            []
+          ).map((material) =>
+            normalizarMaterial(
+              material as Record<
+                string,
+                unknown
+              >
+            )
+          );
+
+        const sesiones =
+          sesionesRespuesta.error
+            ? []
+            : (
+                sesionesRespuesta.data ||
+                []
+              ).map((sesion) =>
+                normalizarSesion(
+                  sesion as Record<
+                    string,
+                    unknown
+                  >
+                )
+              );
+
+        if (
+          sesionesRespuesta.error
+        ) {
+          console.warn(
+            "No se cargaron sesiones:",
+            sesionesRespuesta.error
+              .message
+          );
+        }
+
+        const quizzes =
+          quizzesRespuesta.error
+            ? []
+            : (
+                quizzesRespuesta.data ||
+                []
+              ).map((quiz) =>
+                normalizarQuizActividad(
+                  quiz as Record<
+                    string,
+                    unknown
+                  >
+                )
+              );
+
+        const resumenes =
+          resumenesRespuesta.error
+            ? []
+            : (
+                resumenesRespuesta.data ||
+                []
+              ).map((resumen) =>
+                normalizarResumenActividad(
+                  resumen as Record<
+                    string,
+                    unknown
+                  >
+                )
+              );
+
+        const flashcards =
+          flashcardsRespuesta.error
+            ? []
+            : (
+                flashcardsRespuesta.data ||
+                []
+              ).map((mazo) =>
+                normalizarFlashcardActividad(
+                  mazo as Record<
+                    string,
+                    unknown
+                  >
+                )
+              );
+
+        const eventos:
+          EventoActividad[] = [];
+
+        sesiones.forEach(
+          (sesion) => {
+            if (
+              sesion.duracion_segundos >
+              0
+            ) {
+              eventos.push({
+                fecha:
+                  sesion.fecha_fin ||
+                  sesion.fecha_inicio,
+
+                duracion_segundos:
+                  sesion.duracion_segundos,
+
+                material_id:
+                  sesion.material_id,
+
+                tipo: sesion.tipo,
+              });
+            }
+          }
         );
 
-        setMateriales(lista);
+        quizzes.forEach((quiz) => {
+          if (
+            quiz.estado ===
+              "completado" ||
+            quiz.fecha_completado
+          ) {
+            eventos.push({
+              fecha:
+                quiz.fecha_completado ||
+                quiz.fecha_creacion,
+
+              duracion_segundos:
+                Math.max(
+                  120,
+                  quiz.preguntas_respondidas *
+                    60
+                ),
+
+              material_id:
+                quiz.material_id,
+
+              tipo: "quiz",
+            });
+          }
+        });
+
+        resumenes.forEach(
+          (resumen) => {
+            eventos.push({
+              fecha:
+                resumen.fecha_creacion,
+
+              duracion_segundos:
+                minutosDesdeTexto(
+                  resumen.tiempo_lectura
+                ) * 60,
+
+              material_id:
+                resumen.material_id,
+
+              tipo: "resumen",
+            });
+          }
+        );
+
+        flashcards.forEach(
+          (mazo) => {
+            if (
+              mazo.tarjetas_estudiadas >
+                0 ||
+              mazo.fecha_ultima_revision
+            ) {
+              eventos.push({
+                fecha:
+                  mazo.fecha_ultima_revision ||
+                  mazo.fecha_creacion,
+
+                duracion_segundos:
+                  Math.max(
+                    120,
+                    mazo.tarjetas_estudiadas *
+                      30
+                  ),
+
+                material_id:
+                  mazo.material_id,
+
+                tipo: "flashcards",
+              });
+            }
+          }
+        );
+
+        const inicioSemana =
+          obtenerInicioSemana(
+            new Date()
+          );
+
+        const segundosSemana = [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+        ];
+
+        eventos.forEach((evento) => {
+          const fechaEvento =
+            new Date(evento.fecha);
+
+          if (
+            Number.isNaN(
+              fechaEvento.getTime()
+            )
+          ) {
+            return;
+          }
+
+          const indice =
+            indiceSemana(
+              fechaEvento,
+              inicioSemana
+            );
+
+          if (
+            indice >= 0 &&
+            indice <= 6
+          ) {
+            segundosSemana[indice] +=
+              evento.duracion_segundos;
+          }
+        });
+
+        const sesionesPorMaterial =
+          new Map<string, number>();
+
+        sesiones.forEach(
+          (sesion) => {
+            if (
+              !sesion.material_id
+            ) {
+              return;
+            }
+
+            const actual =
+              sesionesPorMaterial.get(
+                sesion.material_id
+              ) || 0;
+
+            sesionesPorMaterial.set(
+              sesion.material_id,
+              actual +
+                sesion.duracion_segundos
+            );
+          }
+        );
+
+        const resumenesPorMaterial =
+          new Set<string>();
+
+        resumenes.forEach(
+          (resumen) => {
+            if (
+              resumen.material_id
+            ) {
+              resumenesPorMaterial.add(
+                resumen.material_id
+              );
+            }
+          }
+        );
+
+        const quizPorMaterial =
+          new Map<
+            string,
+            {
+              creado: boolean;
+              completado: boolean;
+            }
+          >();
+
+        quizzes.forEach((quiz) => {
+          if (!quiz.material_id) {
+            return;
+          }
+
+          const actual =
+            quizPorMaterial.get(
+              quiz.material_id
+            ) || {
+              creado: false,
+              completado: false,
+            };
+
+          actual.creado = true;
+
+          if (
+            quiz.estado ===
+              "completado" ||
+            quiz.fecha_completado
+          ) {
+            actual.completado =
+              true;
+          }
+
+          quizPorMaterial.set(
+            quiz.material_id,
+            actual
+          );
+        });
+
+        const flashcardsPorMaterial =
+          new Map<string, number>();
+
+        flashcards.forEach(
+          (mazo) => {
+            if (!mazo.material_id) {
+              return;
+            }
+
+            const actual =
+              flashcardsPorMaterial.get(
+                mazo.material_id
+              ) || 0;
+
+            flashcardsPorMaterial.set(
+              mazo.material_id,
+              Math.max(
+                actual,
+                mazo.progreso
+              )
+            );
+          }
+        );
+
+        const materialesActualizados =
+          listaMateriales.map(
+            (material) => {
+              let progresoCalculado = 0;
+
+              const segundosMaterial =
+                sesionesPorMaterial.get(
+                  material.id
+                ) || 0;
+
+              const minutosMaterial =
+                segundosMaterial / 60;
+
+              progresoCalculado +=
+                Math.min(
+                  25,
+                  (
+                    minutosMaterial /
+                    60
+                  ) * 25
+                );
+
+              if (
+                resumenesPorMaterial.has(
+                  material.id
+                )
+              ) {
+                progresoCalculado +=
+                  20;
+              }
+
+              const quiz =
+                quizPorMaterial.get(
+                  material.id
+                );
+
+              if (quiz?.completado) {
+                progresoCalculado +=
+                  30;
+              } else if (
+                quiz?.creado
+              ) {
+                progresoCalculado +=
+                  10;
+              }
+
+              const progresoFlashcards =
+                flashcardsPorMaterial.get(
+                  material.id
+                ) || 0;
+
+              progresoCalculado +=
+                (
+                  progresoFlashcards /
+                  100
+                ) * 25;
+
+              const progresoFinal =
+                limitarPorcentaje(
+                  Math.max(
+                    material.progreso,
+                    progresoCalculado
+                  )
+                );
+
+              return {
+                ...material,
+                progreso:
+                  progresoFinal,
+              };
+            }
+          );
+
+        setMateriales(
+          materialesActualizados
+        );
+
+        const actualizaciones =
+          materialesActualizados
+            .filter(
+              (
+                material,
+                indice
+              ) =>
+                material.progreso !==
+                listaMateriales[
+                  indice
+                ].progreso
+            )
+            .map((material) =>
+              supabase
+                .from("materiales")
+                .update({
+                  progreso:
+                    material.progreso,
+                })
+                .eq(
+                  "id",
+                  material.id
+                )
+                .eq(
+                  "usuario_id",
+                  usuarioId
+                )
+            );
+
+        if (
+          actualizaciones.length >
+          0
+        ) {
+          await Promise.all(
+            actualizaciones
+          );
+        }
+
+        const totalSegundos =
+          eventos.reduce(
+            (
+              total,
+              evento
+            ) =>
+              total +
+              evento.duracion_segundos,
+            0
+          );
+
+        setMetricas({
+          total_segundos:
+            totalSegundos,
+
+          segundos_semana:
+            segundosSemana,
+
+          fechas_actividad:
+            eventos.map(
+              (evento) =>
+                evento.fecha
+            ),
+
+          quizzes_completados:
+            quizzes.filter(
+              (quiz) =>
+                quiz.estado ===
+                  "completado" ||
+                Boolean(
+                  quiz.fecha_completado
+                )
+            ).length,
+
+          resumenes_creados:
+            resumenes.length,
+
+          mazos_revisados:
+            flashcards.filter(
+              (mazo) =>
+                mazo.tarjetas_estudiadas >
+                  0 ||
+                Boolean(
+                  mazo.fecha_ultima_revision
+                )
+            ).length,
+
+          tarjetas_dominadas:
+            flashcards.reduce(
+              (
+                total,
+                mazo
+              ) =>
+                total +
+                mazo.tarjetas_dominadas,
+              0
+            ),
+        });
       } catch (error) {
         console.error(
-          "Error cargando materiales:",
+          "Error cargando el Dashboard:",
           error
         );
 
         mostrarNotificacion(
           error instanceof Error
             ? error.message
-            : "No se pudieron cargar los materiales."
+            : "No se pudieron cargar los datos."
         );
       } finally {
         setCargandoMateriales(false);
+        setCargandoActividad(false);
       }
     };
 
   /* =====================================================
-     OBTENER CHATS RECIENTES
+     CHATS
   ===================================================== */
 
   const obtenerChatsRecientes =
-    async () => {
+    async (
+      usuarioId: string
+    ) => {
       try {
         setCargandoChats(true);
-
-        const {
-          data: { user },
-        } =
-          await supabase.auth.getUser();
-
-        if (!user) {
-          return;
-        }
-
-        /*
-          El código intenta encontrar chats
-          utilizando nombres comunes de tablas.
-          Si no existe una tabla, continúa sin
-          causar errores en el Dashboard.
-        */
 
         const consultas = [
           {
@@ -768,15 +1978,17 @@ export default function Dashboard() {
         ];
 
         for (const consulta of consultas) {
-          const { data, error } =
-            await supabase
-              .from(consulta.tabla)
-              .select("*")
-              .eq(
-                consulta.columnaUsuario,
-                user.id
-              )
-              .limit(10);
+          const {
+            data,
+            error,
+          } = await supabase
+            .from(consulta.tabla)
+            .select("*")
+            .eq(
+              consulta.columnaUsuario,
+              usuarioId
+            )
+            .limit(10);
 
           if (
             !error &&
@@ -799,7 +2011,10 @@ export default function Dashboard() {
                     )
                 )
                 .sort(
-                  (chatA, chatB) =>
+                  (
+                    chatA,
+                    chatB
+                  ) =>
                     new Date(
                       chatB.fecha_actualizacion
                     ).getTime() -
@@ -809,14 +2024,13 @@ export default function Dashboard() {
                 )
                 .slice(0, 3);
 
-            setChatsRecientes(chats);
+            setChatsRecientes(
+              chats
+            );
+
             return;
           }
         }
-
-        /*
-          Respaldo opcional desde localStorage.
-        */
 
         const clavesLocales = [
           "raccoon-chats-recientes",
@@ -850,9 +2064,9 @@ export default function Dashboard() {
                       string,
                       unknown
                     > =>
-                      typeof elemento ===
-                        "object" &&
-                      elemento !== null
+                      esObjeto(
+                        elemento
+                      )
                   )
                   .map(
                     (
@@ -872,6 +2086,7 @@ export default function Dashboard() {
                 setChatsRecientes(
                   chats
                 );
+
                 return;
               }
             }
@@ -903,12 +2118,17 @@ export default function Dashboard() {
     const archivo =
       evento.target.files?.[0];
 
-    if (!archivo || subiendo) {
+    if (
+      !archivo ||
+      subiendo
+    ) {
       return;
     }
 
     const extension =
-      obtenerExtension(archivo.name);
+      obtenerExtension(
+        archivo.name
+      );
 
     const extensionesPermitidas = [
       "pdf",
@@ -946,12 +2166,19 @@ export default function Dashboard() {
       return;
     }
 
+    const limiteBytes =
+      esPremium
+        ? 25 * 1024 * 1024
+        : 10 * 1024 * 1024;
+
     if (
       archivo.size >
-      20 * 1024 * 1024
+      limiteBytes
     ) {
       mostrarNotificacion(
-        "El archivo no puede superar los 20 MB."
+        esPremium
+          ? "El archivo no puede superar los 25 MB."
+          : "El plan gratuito permite archivos de hasta 10 MB."
       );
 
       evento.target.value = "";
@@ -992,7 +2219,8 @@ export default function Dashboard() {
           ? crypto.randomUUID()
           : Date.now().toString();
 
-      rutaStorage = `${user.id}/${identificador}-${nombreSeguro}`;
+      rutaStorage =
+        `${user.id}/${identificador}-${nombreSeguro}`;
 
       const {
         error: errorStorage,
@@ -1042,7 +2270,9 @@ export default function Dashboard() {
       if (errorBaseDatos) {
         await supabase.storage
           .from("materiales")
-          .remove([rutaStorage]);
+          .remove([
+            rutaStorage,
+          ]);
 
         throw new Error(
           `No se pudo guardar el material: ${errorBaseDatos.message}`
@@ -1099,108 +2329,237 @@ export default function Dashboard() {
   };
 
   /* =====================================================
+     REGISTRAR REVISIÓN
+  ===================================================== */
+
+  const guardarRevisionActual =
+    async () => {
+      const revision =
+        revisionActivaRef.current;
+
+      revisionActivaRef.current =
+        null;
+
+      if (!revision) {
+        return;
+      }
+
+      const fin = Date.now();
+
+      const segundos =
+        Math.floor(
+          (
+            fin -
+            revision.inicio
+          ) / 1000
+        );
+
+      /*
+        Evita registrar aperturas accidentales.
+      */
+
+      if (segundos < 10) {
+        return;
+      }
+
+      try {
+        const {
+          data: { user },
+        } =
+          await supabase.auth.getUser();
+
+        if (!user) {
+          return;
+        }
+
+        const {
+          error,
+        } = await supabase
+          .from("study_sessions")
+          .insert({
+            usuario_id:
+              user.id,
+
+            material_id:
+              revision.material.id,
+
+            tipo: "revision",
+
+            duracion_segundos:
+              segundos,
+
+            fecha_inicio:
+              new Date(
+                revision.inicio
+              ).toISOString(),
+
+            fecha_fin:
+              new Date(
+                fin
+              ).toISOString(),
+          });
+
+        if (error) {
+          console.warn(
+            "No se registró el tiempo:",
+            error.message
+          );
+
+          return;
+        }
+
+        await obtenerDatosEstudio(
+          user.id
+        );
+      } catch (error) {
+        console.warn(
+          "Error registrando revisión:",
+          error
+        );
+      }
+    };
+
+  /* =====================================================
      OPCIONES DE ESTUDIO
   ===================================================== */
 
-  const elegirAccionEstudio = (
-    accion: AccionEstudio,
-    material:
-      | Material
-      | null = materialParaAccion
-  ) => {
-    if (!material) {
-      mostrarNotificacion(
-        "Selecciona primero un material."
-      );
+  const elegirAccionEstudio =
+    async (
+      accion: AccionEstudio,
+      material:
+        | Material
+        | null =
+        materialParaAccion
+    ) => {
+      if (!material) {
+        mostrarNotificacion(
+          "Selecciona primero un material."
+        );
 
-      return;
-    }
+        return;
+      }
 
-    const informacionMaterial = {
-      id: material.id,
-
-      material_id: material.id,
-
-      titulo:
-        material.nombre_archivo,
-
-      nombre_archivo:
-        material.nombre_archivo,
-
-      url_archivo:
-        material.url_archivo,
-
-      progreso:
-        material.progreso,
-
-      fecha_subida:
-        material.fecha_subida,
-
-      origen: "dashboard",
-    };
-
-    localStorage.setItem(
-      "raccoon-material-seleccionado",
-      JSON.stringify(
-        informacionMaterial
-      )
-    );
-
-    setMostrarOpcionesEstudio(false);
-    setMaterialAbierto(null);
-
-    if (accion === "pomodoro") {
-      localStorage.setItem(
-        "pomodoro-material",
-        JSON.stringify(
-          informacionMaterial
-        )
-      );
-
-      router.push(
-        `/metodos/pomodoro?material=${encodeURIComponent(
-          material.id
-        )}`
-      );
-
-      return;
-    }
-
-    if (accion === "resumen") {
-      sessionStorage.setItem(
-        "resumen-material-pendiente",
-        JSON.stringify(
-          informacionMaterial
-        )
-      );
-
-      router.push(
-        `/metodos/resumenes?generar=1&material=${encodeURIComponent(
-          material.id
-        )}`
-      );
-
-      return;
-    }
-
-    localStorage.setItem(
-      "quiz-material",
-      JSON.stringify({
-        ...informacionMaterial,
-        materia: "General",
-        contenido: "",
-        ideas_principales: [],
-        conceptos_clave: [],
-        origen: "material",
-      })
-    );
-
-    router.push(
-      `/quizzes?crear=1&origen=material&material=${encodeURIComponent(
+      if (
+        materialAbierto?.id ===
         material.id
-      )}`
-    );
-  };
+      ) {
+        await guardarRevisionActual();
+      }
+
+      const informacionMaterial = {
+        id: material.id,
+
+        material_id:
+          material.id,
+
+        titulo:
+          material.nombre_archivo,
+
+        nombre_archivo:
+          material.nombre_archivo,
+
+        url_archivo:
+          material.url_archivo,
+
+        progreso:
+          material.progreso,
+
+        fecha_subida:
+          material.fecha_subida,
+
+        origen: "dashboard",
+      };
+
+      localStorage.setItem(
+        "raccoon-material-seleccionado",
+        JSON.stringify(
+          informacionMaterial
+        )
+      );
+
+      setMostrarOpcionesEstudio(
+        false
+      );
+
+      setMaterialAbierto(null);
+
+      if (
+        accion === "pomodoro"
+      ) {
+        localStorage.setItem(
+          "pomodoro-material",
+          JSON.stringify(
+            informacionMaterial
+          )
+        );
+
+        router.push(
+          `/metodos/pomodoro?material=${encodeURIComponent(
+            material.id
+          )}`
+        );
+
+        return;
+      }
+
+      if (
+        accion === "resumen"
+      ) {
+        sessionStorage.setItem(
+          "resumen-material-pendiente",
+          JSON.stringify(
+            informacionMaterial
+          )
+        );
+
+        router.push(
+          `/metodos/resumenes?generar=1&material=${encodeURIComponent(
+            material.id
+          )}`
+        );
+
+        return;
+      }
+
+      if (
+        accion === "flashcards"
+      ) {
+        localStorage.setItem(
+          "flashcard-material",
+          JSON.stringify({
+            ...informacionMaterial,
+            materia: "General",
+            contenido: "",
+          })
+        );
+
+        router.push(
+          `/metodos/flashcards?crear=1&origen=material&material=${encodeURIComponent(
+            material.id
+          )}`
+        );
+
+        return;
+      }
+
+      localStorage.setItem(
+        "quiz-material",
+        JSON.stringify({
+          ...informacionMaterial,
+          materia: "General",
+          contenido: "",
+          ideas_principales: [],
+          conceptos_clave: [],
+          origen: "material",
+        })
+      );
+
+      router.push(
+        `/quizzes?crear=1&origen=material&material=${encodeURIComponent(
+          material.id
+        )}`
+      );
+    };
 
   const abrirOpcionesMaterial = (
     material: Material
@@ -1215,7 +2574,7 @@ export default function Dashboard() {
   };
 
   /* =====================================================
-     VISOR INTERNO
+     VISOR
   ===================================================== */
 
   const abrirMaterial = (
@@ -1232,13 +2591,21 @@ export default function Dashboard() {
     setErrorVisor("");
     setTextoArchivo("");
     setMaterialAbierto(material);
+
+    revisionActivaRef.current = {
+      material,
+      inicio: Date.now(),
+    };
   };
 
-  const cerrarVisor = () => {
-    setMaterialAbierto(null);
-    setTextoArchivo("");
-    setErrorVisor("");
-  };
+  const cerrarVisor =
+    async () => {
+      await guardarRevisionActual();
+
+      setMaterialAbierto(null);
+      setTextoArchivo("");
+      setErrorVisor("");
+    };
 
   /* =====================================================
      CHAT
@@ -1260,124 +2627,25 @@ export default function Dashboard() {
   };
 
   /* =====================================================
-     CERRAR SESIÓN
+     SESIÓN
   ===================================================== */
 
   const cerrarSesion =
     async () => {
+      await guardarRevisionActual();
       await supabase.auth.signOut();
 
       router.push("/Login");
     };
 
   /* =====================================================
-     PROGRESO
+     MÉTRICAS
   ===================================================== */
 
-  const calcularRacha = () => {
-    if (
-      materiales.length === 0
-    ) {
-      return 0;
-    }
-
-    const fechasValidas =
-      materiales
-        .map((material) =>
-          new Date(
-            material.fecha_subida
-          )
-        )
-        .filter(
-          (fecha) =>
-            !Number.isNaN(
-              fecha.getTime()
-            )
-        )
-        .map((fecha) =>
-          fecha.toDateString()
-        );
-
-    const fechasUnicas = [
-      ...new Set(fechasValidas),
-    ];
-
-    if (
-      fechasUnicas.length === 0
-    ) {
-      return 0;
-    }
-
-    fechasUnicas.sort(
-      (fechaA, fechaB) =>
-        new Date(
-          fechaB
-        ).getTime() -
-        new Date(
-          fechaA
-        ).getTime()
+  const rachaActual =
+    calcularRacha(
+      metricas.fechas_actividad
     );
-
-    const hoy = new Date();
-
-    const ultimaFecha = new Date(
-      fechasUnicas[0]
-    );
-
-    const diferenciaInicial =
-      Math.floor(
-        (hoy.getTime() -
-          ultimaFecha.getTime()) /
-          (1000 * 60 * 60 * 24)
-      );
-
-    if (
-      diferenciaInicial > 1
-    ) {
-      return 0;
-    }
-
-    let racha = 1;
-
-    for (
-      let indice = 1;
-      indice <
-      fechasUnicas.length;
-      indice++
-    ) {
-      const fechaActual =
-        new Date(
-          fechasUnicas[
-            indice - 1
-          ]
-        );
-
-      const fechaAnterior =
-        new Date(
-          fechasUnicas[indice]
-        );
-
-      const diferenciaDias =
-        Math.round(
-          (fechaActual.getTime() -
-            fechaAnterior.getTime()) /
-            (1000 *
-              60 *
-              60 *
-              24)
-        );
-
-      if (
-        diferenciaDias === 1
-      ) {
-        racha++;
-      } else {
-        break;
-      }
-    }
-
-    return racha;
-  };
 
   const materialesCompletados =
     materiales.filter(
@@ -1385,28 +2653,64 @@ export default function Dashboard() {
         material.progreso >= 100
     ).length;
 
-  const xp =
-    materialesCompletados * 500;
+  const minutosTotales =
+    metricas.total_segundos /
+    60;
 
-  const xpMax = 2000;
+  const xpTotal =
+    Math.round(
+      minutosTotales * 3 +
+        metricas.quizzes_completados *
+          100 +
+        metricas.resumenes_creados *
+          75 +
+        metricas.mazos_revisados *
+          80 +
+        materialesCompletados *
+          200
+    );
 
-  const nivel = Math.min(
-    Math.floor(xp / xpMax) + 1,
-    10
-  );
+  const xpMax = 1000;
+
+  const nivel =
+    Math.floor(
+      xpTotal / xpMax
+    ) + 1;
 
   const xpNivel =
-    xp >= xpMax
-      ? xp % xpMax
-      : xp;
+    xpTotal % xpMax;
 
-  const porcentajeXp = Math.min(
-    (xpNivel / xpMax) * 100,
-    100
-  );
+  const porcentajeXp =
+    Math.min(
+      (
+        xpNivel /
+        xpMax
+      ) * 100,
+      100
+    );
 
-  const rachaActual =
-    calcularRacha();
+  const maximoSemana =
+    Math.max(
+      ...metricas.segundos_semana,
+      1
+    );
+
+  const alturasSemana =
+    metricas.segundos_semana.map(
+      (segundos) => {
+        if (segundos <= 0) {
+          return 4;
+        }
+
+        return Math.max(
+          12,
+          (
+            segundos /
+            maximoSemana
+          ) * 100
+        );
+      }
+    );
 
   /* =====================================================
      BÚSQUEDA
@@ -1418,10 +2722,13 @@ export default function Dashboard() {
       .toLowerCase();
 
   const materialesFiltrados =
-    materiales.filter((material) =>
-      material.nombre_archivo
-        .toLowerCase()
-        .includes(textoBusqueda)
+    materiales.filter(
+      (material) =>
+        material.nombre_archivo
+          .toLowerCase()
+          .includes(
+            textoBusqueda
+          )
     );
 
   const materialesVisibles =
@@ -1435,10 +2742,6 @@ export default function Dashboard() {
 
   const ultimoMaterial =
     materiales[0] || null;
-
-  /* =====================================================
-     VISOR
-  ===================================================== */
 
   const extensionAbierta =
     materialAbierto
@@ -1463,8 +2766,6 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-[#F5FAFF] text-[#10233F] transition-colors duration-500 dark:bg-[#101827] dark:text-white">
-      {/* OVERLAY MÓVIL */}
-
       {menuAbierto && (
         <div
           onClick={() =>
@@ -1478,21 +2779,10 @@ export default function Dashboard() {
 
       <aside
         className={`
-          fixed
-          left-0
-          top-0
-          z-50
-          flex
-          h-screen
-          w-[250px]
-          flex-col
-          border-r
-          border-[#DDEAF7]
-          bg-white
-          transition-transform
-          duration-300
-          dark:border-slate-700
-          dark:bg-[#151F30]
+          fixed left-0 top-0 z-50 flex h-screen w-[250px]
+          flex-col border-r border-[#DDEAF7] bg-white
+          transition-transform duration-300
+          dark:border-slate-700 dark:bg-[#151F30]
           ${
             menuAbierto
               ? "translate-x-0"
@@ -1520,6 +2810,7 @@ export default function Dashboard() {
           </div>
 
           <button
+            type="button"
             onClick={() =>
               setMenuAbierto(false)
             }
@@ -1545,14 +2836,7 @@ export default function Dashboard() {
                   setMenuAbierto(false)
                 }
                 className={`
-                  flex
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-4
-                  py-3
-                  text-sm
-                  transition
+                  flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition
                   ${
                     activo
                       ? "bg-[#E5F4FF] font-bold text-[#1687D9] dark:bg-[#1D3558]"
@@ -1569,6 +2853,7 @@ export default function Dashboard() {
 
         <div className="space-y-2 px-3 pb-5">
           <button
+            type="button"
             onClick={cambiarTema}
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[#253650] transition hover:bg-[#F0F8FF] dark:text-slate-200 dark:hover:bg-slate-800"
           >
@@ -1584,7 +2869,10 @@ export default function Dashboard() {
           </button>
 
           <button
-            onClick={cerrarSesion}
+            type="button"
+            onClick={() =>
+              void cerrarSesion()
+            }
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/30"
           >
             <LogOut size={19} />
@@ -1593,29 +2881,51 @@ export default function Dashboard() {
 
           <Link
             href="/suscripcion"
-            className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-[#64C7F2] via-[#55A8E8] to-[#7771E8] p-4 text-white shadow-lg shadow-[#55A8E8]/25 transition hover:-translate-y-1"
+            className={`
+              relative block overflow-hidden rounded-2xl p-4 text-white
+              shadow-lg transition hover:-translate-y-1
+              ${
+                esPremium
+                  ? "bg-gradient-to-br from-[#F2B93B] via-[#EBA900] to-[#7771E8] shadow-[#EBA900]/25"
+                  : "bg-gradient-to-br from-[#64C7F2] via-[#55A8E8] to-[#7771E8] shadow-[#55A8E8]/25"
+              }
+            `}
           >
             <div className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/20" />
 
             <div className="relative flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                <Crown size={22} />
+                {esPremium ? (
+                  <BadgeCheck size={22} />
+                ) : (
+                  <Crown size={22} />
+                )}
               </div>
 
               <div>
                 <p className="text-sm font-black">
-                  Raccoon Premium
+                  {esPremium
+                    ? "Premium activo"
+                    : "Raccoon Premium"}
                 </p>
 
                 <p className="mt-1 text-[11px] text-white/80">
-                  Lleva tu estudio al siguiente nivel
+                  {cargandoPlan
+                    ? "Comprobando plan..."
+                    : nombrePlan(
+                        planActual
+                      )}
                 </p>
               </div>
             </div>
 
             <div className="relative mt-3 flex items-center gap-1 text-xs font-bold">
               <Sparkles size={13} />
-              Descubrir Premium
+
+              {esPremium
+                ? "Todas tus funciones están activas"
+                : "Descubrir Premium"}
+
               <ArrowRight size={13} />
             </div>
           </Link>
@@ -1625,11 +2935,10 @@ export default function Dashboard() {
       {/* CONTENIDO */}
 
       <div className="lg:ml-[250px]">
-        {/* HEADER */}
-
         <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#DDEAF7] bg-white/90 px-4 backdrop-blur-xl dark:border-slate-700 dark:bg-[#151F30]/90 sm:px-6 lg:px-9">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() =>
                 setMenuAbierto(true)
               }
@@ -1651,8 +2960,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* BÚSQUEDA */}
-
             <div className="hidden items-center gap-3 rounded-full bg-[#F1F8FD] px-4 py-2.5 dark:bg-slate-800 md:flex">
               <Search
                 size={18}
@@ -1668,7 +2975,9 @@ export default function Dashboard() {
                   setBusqueda(valor);
 
                   if (valor.trim()) {
-                    setMostrarTodos(true);
+                    setMostrarTodos(
+                      true
+                    );
                   }
                 }}
                 placeholder="Buscar materiales..."
@@ -1677,6 +2986,7 @@ export default function Dashboard() {
 
               {busqueda && (
                 <button
+                  type="button"
                   onClick={() =>
                     setBusqueda("")
                   }
@@ -1690,9 +3000,8 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* TEMA */}
-
             <button
+              type="button"
               onClick={cambiarTema}
               className="flex h-10 w-10 items-center justify-center rounded-full text-[#55A8E8] transition hover:bg-[#EFF8FF] dark:hover:bg-slate-800"
               aria-label={
@@ -1709,6 +3018,7 @@ export default function Dashboard() {
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 mostrarNotificacion(
                   "No tienes notificaciones nuevas."
@@ -1720,10 +3030,9 @@ export default function Dashboard() {
               <Bell size={21} />
             </button>
 
-            {/* PERFIL */}
-
             <div className="relative">
               <button
+                type="button"
                 onClick={() =>
                   setPerfilAbierto(
                     !perfilAbierto
@@ -1756,6 +3065,12 @@ export default function Dashboard() {
                     {nombreUsuario}
                   </p>
 
+                  <p className="px-3 pb-2 text-xs font-semibold text-[#6085A5]">
+                    {nombrePlan(
+                      planActual
+                    )}
+                  </p>
+
                   <Link
                     href="/perfil"
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -1765,6 +3080,7 @@ export default function Dashboard() {
                   </Link>
 
                   <button
+                    type="button"
                     onClick={cambiarTema}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
                   >
@@ -1780,7 +3096,10 @@ export default function Dashboard() {
                   </button>
 
                   <button
-                    onClick={cerrarSesion}
+                    type="button"
+                    onClick={() =>
+                      void cerrarSesion()
+                    }
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
                   >
                     <LogOut size={17} />
@@ -1792,8 +3111,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* NOTIFICACIÓN */}
-
         {notificacion && (
           <div className="fixed left-1/2 top-5 z-[300] w-[calc(100%-32px)] max-w-md -translate-x-1/2 rounded-2xl bg-[#55A8E8] px-5 py-3 text-center text-sm font-bold text-white shadow-2xl">
             {notificacion}
@@ -1801,8 +3118,6 @@ export default function Dashboard() {
         )}
 
         <div className="mx-auto max-w-[1500px] px-4 py-6 pb-28 sm:px-6 lg:px-8">
-          {/* BÚSQUEDA MÓVIL */}
-
           <div className="mb-6 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-[#182437] md:hidden">
             <Search
               size={19}
@@ -1818,7 +3133,9 @@ export default function Dashboard() {
                 setBusqueda(valor);
 
                 if (valor.trim()) {
-                  setMostrarTodos(true);
+                  setMostrarTodos(
+                    true
+                  );
                 }
               }}
               placeholder="Buscar materiales..."
@@ -1827,6 +3144,7 @@ export default function Dashboard() {
 
             {busqueda && (
               <button
+                type="button"
                 onClick={() =>
                   setBusqueda("")
                 }
@@ -1841,16 +3159,32 @@ export default function Dashboard() {
             {/* COLUMNA PRINCIPAL */}
 
             <div className="space-y-7">
-              {/* BIENVENIDA */}
-
               <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF8FF] via-white to-[#F0ECFF] p-6 shadow-sm dark:from-[#1D3558] dark:via-[#182437] dark:to-[#28243E] sm:p-8">
                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#55A8E8]/10" />
 
                 <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
                   <div>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-[#1687D9] dark:bg-slate-800">
-                      <Sparkles size={16} />
-                      Tu espacio de estudio
+                    <span
+                      className={`
+                        inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold
+                        ${
+                          esPremium
+                            ? "bg-[#FFF1C9] text-[#A97900] dark:bg-[#4B3D1E] dark:text-yellow-200"
+                            : "bg-white/80 text-[#1687D9] dark:bg-slate-800"
+                        }
+                      `}
+                    >
+                      {esPremium ? (
+                        <Crown size={16} />
+                      ) : (
+                        <Sparkles size={16} />
+                      )}
+
+                      {cargandoPlan
+                        ? "Comprobando tu plan..."
+                        : esPremium
+                        ? "Tu espacio Premium"
+                        : "Tu espacio de estudio"}
                     </span>
 
                     <h2 className="mt-5 text-3xl font-black sm:text-4xl">
@@ -1872,7 +3206,7 @@ export default function Dashboard() {
                 </div>
               </section>
 
-              {/* CONTINUAR ESTUDIANDO ARRIBA DE SUBIR */}
+              {/* CONTINUAR ESTUDIANDO */}
 
               {ultimoMaterial && (
                 <section className="rounded-[28px] bg-white p-5 shadow-sm dark:bg-[#182437] sm:p-7">
@@ -1899,9 +3233,7 @@ export default function Dashboard() {
 
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate font-black">
-                        {
-                          ultimoMaterial.nombre_archivo
-                        }
+                        {ultimoMaterial.nombre_archivo}
                       </h3>
 
                       <p className="mt-2 text-sm text-[#6085A5] dark:text-slate-400">
@@ -1916,25 +3248,21 @@ export default function Dashboard() {
                           <div
                             className="h-full rounded-full bg-gradient-to-r from-[#55A8E8] to-[#7771E8]"
                             style={{
-                              width: `${Math.min(
-                                ultimoMaterial.progreso,
-                                100
-                              )}%`,
+                              width:
+                                `${ultimoMaterial.progreso}%`,
                             }}
                           />
                         </div>
 
                         <span className="text-sm font-black">
-                          {
-                            ultimoMaterial.progreso
-                          }
-                          %
+                          {ultimoMaterial.progreso}%
                         </span>
                       </div>
                     </div>
 
                     <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
                       <button
+                        type="button"
                         onClick={() =>
                           abrirMaterial(
                             ultimoMaterial
@@ -1947,6 +3275,7 @@ export default function Dashboard() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() =>
                           abrirOpcionesMaterial(
                             ultimoMaterial
@@ -1972,7 +3301,7 @@ export default function Dashboard() {
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-[#6085A5] dark:text-slate-400">
-                      Después de subirlo podrás elegir Pomodoro, Resumen o Quiz.
+                      Después de subirlo podrás elegir Pomodoro, Resumen, Quiz o Flashcards.
                     </p>
                   </div>
 
@@ -1987,19 +3316,9 @@ export default function Dashboard() {
                 <label
                   htmlFor="archivo-dashboard"
                   className={`
-                    mt-6
-                    flex
-                    min-h-[260px]
-                    flex-col
-                    items-center
-                    justify-center
-                    overflow-hidden
-                    rounded-[25px]
-                    border-2
-                    border-dashed
-                    p-6
-                    text-center
-                    transition
+                    mt-6 flex min-h-[260px] flex-col items-center justify-center
+                    overflow-hidden rounded-[25px] border-2 border-dashed
+                    p-6 text-center transition
                     ${
                       subiendo
                         ? "cursor-wait border-[#7771E8] bg-[#F2EEFF] dark:bg-[#28243E]"
@@ -2037,7 +3356,10 @@ export default function Dashboard() {
                       </h3>
 
                       <p className="mt-2 max-w-lg text-sm leading-6 text-[#6085A5] dark:text-slate-400">
-                        PDF, Word, PowerPoint, TXT o imágenes. Tamaño máximo: 20 MB.
+                        PDF, Word, PowerPoint, TXT o imágenes. Tamaño máximo:{" "}
+                        {esPremium
+                          ? "25 MB."
+                          : "10 MB en el plan gratuito."}
                       </p>
 
                       <div className="mt-5 flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] px-7 py-3 font-black text-white">
@@ -2075,6 +3397,7 @@ export default function Dashboard() {
                   {materiales.length > 3 &&
                     !busqueda && (
                       <button
+                        type="button"
                         onClick={() =>
                           setMostrarTodos(
                             !mostrarTodos
@@ -2100,8 +3423,7 @@ export default function Dashboard() {
                       Cargando materiales...
                     </p>
                   </div>
-                ) : materiales.length ===
-                  0 ? (
+                ) : materiales.length === 0 ? (
                   <div className="flex min-h-[300px] flex-col items-center justify-center rounded-[25px] bg-white p-7 text-center shadow-sm dark:bg-[#182437]">
                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#F0F8FD] dark:bg-slate-700">
                       <FilePlus2
@@ -2118,8 +3440,7 @@ export default function Dashboard() {
                       Utiliza el área de subida para comenzar a estudiar.
                     </p>
                   </div>
-                ) : materialesVisibles.length ===
-                  0 ? (
+                ) : materialesVisibles.length === 0 ? (
                   <div className="rounded-[25px] bg-white p-10 text-center shadow-sm dark:bg-[#182437]">
                     <Search
                       size={48}
@@ -2135,6 +3456,7 @@ export default function Dashboard() {
                     </p>
 
                     <button
+                      type="button"
                       onClick={() =>
                         setBusqueda("")
                       }
@@ -2157,20 +3479,11 @@ export default function Dashboard() {
                           <div className="flex items-start justify-between gap-3">
                             <div
                               className={`
-                                flex
-                                h-11
-                                w-11
-                                shrink-0
-                                items-center
-                                justify-center
-                                rounded-xl
+                                flex h-11 w-11 shrink-0 items-center justify-center rounded-xl
                                 ${
-                                  indice % 3 ===
-                                  0
+                                  indice % 3 === 0
                                     ? "bg-[#E9E2FF] text-[#7652D9]"
-                                    : indice %
-                                        3 ===
-                                      1
+                                    : indice % 3 === 1
                                     ? "bg-[#DDF3FF] text-[#1687D9]"
                                     : "bg-[#DDF7EA] text-[#26A66B]"
                                 }
@@ -2188,9 +3501,7 @@ export default function Dashboard() {
                           </div>
 
                           <h3 className="mt-4 line-clamp-2 min-h-[48px] font-black">
-                            {
-                              material.nombre_archivo
-                            }
+                            {material.nombre_archivo}
                           </h3>
 
                           <p className="mt-2 text-xs text-[#8AA4BE]">
@@ -2206,10 +3517,7 @@ export default function Dashboard() {
                               </span>
 
                               <span>
-                                {
-                                  material.progreso
-                                }
-                                %
+                                {material.progreso}%
                               </span>
                             </div>
 
@@ -2217,10 +3525,8 @@ export default function Dashboard() {
                               <div
                                 className="h-full rounded-full bg-gradient-to-r from-[#55A8E8] to-[#7771E8]"
                                 style={{
-                                  width: `${Math.min(
-                                    material.progreso,
-                                    100
-                                  )}%`,
+                                  width:
+                                    `${material.progreso}%`,
                                 }}
                               />
                             </div>
@@ -2228,6 +3534,7 @@ export default function Dashboard() {
 
                           <div className="mt-5 grid grid-cols-2 gap-2">
                             <button
+                              type="button"
                               onClick={() =>
                                 abrirMaterial(
                                   material
@@ -2240,6 +3547,7 @@ export default function Dashboard() {
                             </button>
 
                             <button
+                              type="button"
                               onClick={() =>
                                 abrirOpcionesMaterial(
                                   material
@@ -2248,9 +3556,7 @@ export default function Dashboard() {
                               className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] py-3 text-sm font-black text-white"
                             >
                               Estudiar
-                              <ArrowRight
-                                size={17}
-                              />
+                              <ArrowRight size={17} />
                             </button>
                           </div>
                         </article>
@@ -2267,76 +3573,46 @@ export default function Dashboard() {
                   ¿Qué puedes hacer?
                 </h2>
 
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  <Link
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+                  <AccionRapida
                     href="/metodos/pomodoro"
-                    className="rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFE6E8] text-[#EE5A68]">
-                      <Timer size={24} />
-                    </div>
+                    icono={Timer}
+                    titulo="Pomodoro"
+                    descripcion="Estudia en sesiones de concentración."
+                    estiloIcono="bg-[#FFE6E8] text-[#EE5A68]"
+                  />
 
-                    <h3 className="mt-5 font-black">
-                      Pomodoro
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-relaxed text-[#6085A5] dark:text-slate-400">
-                      Estudia en sesiones de concentración.
-                    </p>
-                  </Link>
-
-                  <Link
+                  <AccionRapida
                     href="/metodos/resumenes"
-                    className="rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E9E2FF] text-[#7652D9]">
-                      <FileText size={24} />
-                    </div>
+                    icono={FileText}
+                    titulo="Crear resumen"
+                    descripcion="Convierte materiales en guías."
+                    estiloIcono="bg-[#E9E2FF] text-[#7652D9]"
+                  />
 
-                    <h3 className="mt-5 font-black">
-                      Crear resumen
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-relaxed text-[#6085A5] dark:text-slate-400">
-                      Convierte materiales en guías de estudio.
-                    </p>
-                  </Link>
-
-                  <Link
+                  <AccionRapida
                     href="/quizzes"
-                    className="rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#DDF7EA] text-[#26A66B]">
-                      <ClipboardCheck
-                        size={24}
-                      />
-                    </div>
+                    icono={ClipboardCheck}
+                    titulo="Crear quiz"
+                    descripcion="Evalúa lo que aprendiste."
+                    estiloIcono="bg-[#DDF7EA] text-[#26A66B]"
+                  />
 
-                    <h3 className="mt-5 font-black">
-                      Crear quiz
-                    </h3>
+                  <AccionRapida
+                    href="/metodos/flashcards"
+                    icono={Layers3}
+                    titulo="Flashcards"
+                    descripcion="Memoriza con tarjetas."
+                    estiloIcono="bg-[#DDF3FF] text-[#1687D9]"
+                  />
 
-                    <p className="mt-2 text-sm leading-relaxed text-[#6085A5] dark:text-slate-400">
-                      Evalúa lo que aprendiste.
-                    </p>
-                  </Link>
-
-                  <Link
+                  <AccionRapida
                     href="/perfil"
-                    className="rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFF1C9] text-[#EBA900]">
-                      <Trophy size={24} />
-                    </div>
-
-                    <h3 className="mt-5 font-black">
-                      Ver progreso
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-relaxed text-[#6085A5] dark:text-slate-400">
-                      Revisa tu nivel, racha y experiencia.
-                    </p>
-                  </Link>
+                    icono={Trophy}
+                    titulo="Ver progreso"
+                    descripcion="Revisa tu nivel y experiencia."
+                    estiloIcono="bg-[#FFF1C9] text-[#EBA900]"
+                  />
                 </div>
               </section>
             </div>
@@ -2344,12 +3620,21 @@ export default function Dashboard() {
             {/* COLUMNA DERECHA */}
 
             <aside className="space-y-7">
-              {/* TU PROGRESO */}
+              {/* PROGRESO */}
 
               <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
-                <h2 className="text-xl font-black">
-                  Tu Progreso
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black">
+                    Tu Progreso
+                  </h2>
+
+                  {cargandoActividad && (
+                    <LoaderCircle
+                      size={18}
+                      className="animate-spin text-[#55A8E8]"
+                    />
+                  )}
+                </div>
 
                 <div className="mt-6 flex items-center justify-between">
                   <Image
@@ -2371,7 +3656,10 @@ export default function Dashboard() {
                       </p>
 
                       <p className="font-black">
-                        {rachaActual} días
+                        {rachaActual}{" "}
+                        {rachaActual === 1
+                          ? "día"
+                          : "días"}
                       </p>
                     </div>
                   </div>
@@ -2394,7 +3682,8 @@ export default function Dashboard() {
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-[#55A8E8] to-[#7771E8]"
                     style={{
-                      width: `${porcentajeXp}%`,
+                      width:
+                        `${porcentajeXp}%`,
                     }}
                   />
                 </div>
@@ -2404,7 +3693,7 @@ export default function Dashboard() {
                 </p>
               </section>
 
-              {/* RACCOON IA DEBAJO DE PROGRESO */}
+              {/* IA */}
 
               <section className="relative overflow-hidden rounded-[25px] bg-gradient-to-br from-[#F1EDFF] via-[#F7F4FF] to-[#EEF8FF] p-7 dark:from-[#28243E] dark:via-[#24263F] dark:to-[#1C304D]">
                 <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[#7652D9]/10" />
@@ -2455,7 +3744,7 @@ export default function Dashboard() {
                 </Link>
               </section>
 
-              {/* CHATS RECIENTES */}
+              {/* CHATS */}
 
               <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
                 <div className="flex items-center justify-between gap-3">
@@ -2488,22 +3777,20 @@ export default function Dashboard() {
                       Cargando chats...
                     </p>
                   </div>
-                ) : chatsRecientes.length >
-                  0 ? (
+                ) : chatsRecientes.length > 0 ? (
                   <div className="mt-5 space-y-3">
                     {chatsRecientes.map(
                       (chat) => (
                         <button
                           key={chat.id}
+                          type="button"
                           onClick={() =>
                             abrirChat(chat)
                           }
                           className="flex w-full items-center gap-3 rounded-2xl border border-[#E7EDF5] p-3 text-left transition hover:border-[#55A8E8] hover:bg-[#F4FAFF] dark:border-slate-700 dark:hover:bg-slate-800"
                         >
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E2FF] text-[#7652D9]">
-                            <MessageCircle
-                              size={20}
-                            />
+                            <MessageCircle size={20} />
                           </div>
 
                           <div className="min-w-0 flex-1">
@@ -2512,9 +3799,7 @@ export default function Dashboard() {
                             </p>
 
                             <p className="mt-1 truncate text-xs text-[#6085A5] dark:text-slate-400">
-                              {
-                                chat.ultimo_mensaje
-                              }
+                              {chat.ultimo_mensaje}
                             </p>
                           </div>
 
@@ -2555,9 +3840,7 @@ export default function Dashboard() {
                       href="/Chat"
                       className="mt-4 flex items-center gap-2 rounded-xl bg-[#EAF1FF] px-5 py-3 text-sm font-bold text-[#1769E0] dark:bg-[#1D3558]"
                     >
-                      <MessageCircle
-                        size={17}
-                      />
+                      <MessageCircle size={17} />
                       Iniciar chat
                     </Link>
                   </div>
@@ -2572,85 +3855,95 @@ export default function Dashboard() {
                 </h2>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-[#F1F8FD] p-4 dark:bg-slate-700">
-                    <FileText
-                      size={22}
-                      className="text-[#1687D9]"
-                    />
+                  <ActividadCard
+                    icono={FileText}
+                    valor={materiales.length}
+                    nombre="Materiales"
+                    estilo="bg-[#F1F8FD] text-[#1687D9]"
+                  />
 
-                    <p className="mt-3 text-2xl font-black">
-                      {materiales.length}
-                    </p>
+                  <ActividadCard
+                    icono={CheckCircle2}
+                    valor={materialesCompletados}
+                    nombre="Completados"
+                    estilo="bg-[#F3EDFF] text-[#7652D9]"
+                  />
 
-                    <p className="mt-1 text-xs text-[#6085A5] dark:text-slate-300">
-                      Materiales
-                    </p>
-                  </div>
+                  <ActividadCard
+                    icono={ClipboardCheck}
+                    valor={metricas.quizzes_completados}
+                    nombre="Quizzes"
+                    estilo="bg-[#DDF7EA] text-[#26A66B]"
+                  />
 
-                  <div className="rounded-2xl bg-[#F3EDFF] p-4 dark:bg-slate-700">
-                    <CheckCircle2
-                      size={22}
-                      className="text-[#7652D9]"
-                    />
-
-                    <p className="mt-3 text-2xl font-black">
-                      {
-                        materialesCompletados
-                      }
-                    </p>
-
-                    <p className="mt-1 text-xs text-[#6085A5] dark:text-slate-300">
-                      Completados
-                    </p>
-                  </div>
+                  <ActividadCard
+                    icono={Layers3}
+                    valor={metricas.tarjetas_dominadas}
+                    nombre="Dominadas"
+                    estilo="bg-[#FFF1C9] text-[#D89A00]"
+                  />
                 </div>
               </section>
 
               {/* TIEMPO */}
 
               <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-black">
-                    Tiempo de Estudio
-                  </h2>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-black">
+                      Tiempo de Estudio
+                    </h2>
 
-                  <span className="font-semibold text-[#6085A5]">
-                    {horasEstudio}h
-                  </span>
+                    <p className="mt-1 text-xs text-[#6085A5]">
+                      Actividad de esta semana
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 rounded-xl bg-[#EAF1FF] px-3 py-2 font-black text-[#1769E0] dark:bg-[#1D3558]">
+                    <Clock3 size={17} />
+
+                    {formatearTiempo(
+                      metricas.total_segundos
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-7 flex h-32 items-end justify-between gap-3">
-                  {[
-                    15, 35, 25, 50, 30,
-                    60, 40,
-                  ].map(
+                  {alturasSemana.map(
                     (
                       altura,
                       indice
                     ) => (
                       <div
-                        key={indice}
+                        key={
+                          diasSemana[indice]
+                        }
                         className="flex flex-1 flex-col items-center gap-2"
                       >
                         <div
-                          className="w-full rounded-t-md bg-gradient-to-t from-[#55A8E8] to-[#7771E8]"
+                          title={`${Math.round(
+                            metricas.segundos_semana[
+                              indice
+                            ] / 60
+                          )} minutos`}
+                          className={`
+                            w-full rounded-t-md bg-gradient-to-t from-[#55A8E8] to-[#7771E8] transition-all
+                            ${
+                              metricas.segundos_semana[
+                                indice
+                              ] === 0
+                                ? "opacity-20"
+                                : "opacity-100"
+                            }
+                          `}
                           style={{
-                            height: `${altura}%`,
+                            height:
+                              `${altura}%`,
                           }}
                         />
 
                         <span className="text-xs text-[#6085A5]">
-                          {
-                            [
-                              "L",
-                              "M",
-                              "X",
-                              "J",
-                              "V",
-                              "S",
-                              "D",
-                            ][indice]
-                          }
+                          {diasSemana[indice]}
                         </span>
                       </div>
                     )
@@ -2662,13 +3955,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* MODAL OPCIONES DE ESTUDIO */}
+      {/* MODAL OPCIONES */}
 
       {mostrarOpcionesEstudio &&
         materialParaAccion && (
           <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-            <div className="relative w-full max-w-3xl rounded-[30px] bg-white p-6 shadow-2xl dark:bg-[#182437] sm:p-8">
+            <div className="relative w-full max-w-5xl rounded-[30px] bg-white p-6 shadow-2xl dark:bg-[#182437] sm:p-8">
               <button
+                type="button"
                 onClick={() =>
                   setMostrarOpcionesEstudio(
                     false
@@ -2682,9 +3976,7 @@ export default function Dashboard() {
 
               <div className="pr-12">
                 <span className="inline-flex items-center gap-2 rounded-full bg-[#DDF7EA] px-4 py-2 text-sm font-black text-[#258A5B]">
-                  <CheckCircle2
-                    size={17}
-                  />
+                  <CheckCircle2 size={17} />
                   Material listo
                 </span>
 
@@ -2693,105 +3985,75 @@ export default function Dashboard() {
                 </h2>
 
                 <p className="mt-2 line-clamp-2 text-[#6085A5] dark:text-slate-300">
-                  {
-                    materialParaAccion.nombre_archivo
-                  }
+                  {materialParaAccion.nombre_archivo}
                 </p>
               </div>
 
-              <div className="mt-7 grid gap-4 md:grid-cols-3">
-                <button
+              <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <OpcionEstudio
+                  icono={Timer}
+                  titulo="Pomodoro"
+                  descripcion="Lee el material en sesiones de enfoque y descanso."
+                  accion="Comenzar"
+                  estiloTarjeta="border-[#FFE1E4] bg-[#FFF6F7] hover:border-[#EE5A68] dark:bg-[#2A1B22]"
+                  estiloIcono="bg-[#FFE1E4] text-[#EE5A68]"
+                  estiloAccion="text-[#EE5A68]"
                   onClick={() =>
-                    elegirAccionEstudio(
+                    void elegirAccionEstudio(
                       "pomodoro"
                     )
                   }
-                  className="group rounded-[22px] border border-[#FFE1E4] bg-[#FFF6F7] p-5 text-left transition hover:-translate-y-1 hover:border-[#EE5A68] hover:shadow-lg dark:border-slate-700 dark:bg-[#2A1B22]"
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFE1E4] text-[#EE5A68]">
-                    <Timer size={28} />
-                  </div>
+                />
 
-                  <h3 className="mt-5 text-xl font-black">
-                    Pomodoro
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
-                    Lee el material en sesiones de enfoque y descanso.
-                  </p>
-
-                  <div className="mt-5 flex items-center gap-2 font-black text-[#EE5A68]">
-                    Comenzar
-                    <ArrowRight
-                      size={17}
-                      className="transition group-hover:translate-x-1"
-                    />
-                  </div>
-                </button>
-
-                <button
+                <OpcionEstudio
+                  icono={FileText}
+                  titulo="Generar resumen"
+                  descripcion="Convierte el contenido en una guía organizada."
+                  accion="Crear resumen"
+                  estiloTarjeta="border-[#DFD7FF] bg-[#F8F5FF] hover:border-[#7652D9] dark:bg-[#28243E]"
+                  estiloIcono="bg-[#E9E2FF] text-[#7652D9]"
+                  estiloAccion="text-[#7652D9]"
                   onClick={() =>
-                    elegirAccionEstudio(
+                    void elegirAccionEstudio(
                       "resumen"
                     )
                   }
-                  className="group rounded-[22px] border border-[#DFD7FF] bg-[#F8F5FF] p-5 text-left transition hover:-translate-y-1 hover:border-[#7652D9] hover:shadow-lg dark:border-slate-700 dark:bg-[#28243E]"
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E9E2FF] text-[#7652D9]">
-                    <FileText size={28} />
-                  </div>
+                />
 
-                  <h3 className="mt-5 text-xl font-black">
-                    Generar resumen
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
-                    Convierte el contenido en una guía organizada.
-                  </p>
-
-                  <div className="mt-5 flex items-center gap-2 font-black text-[#7652D9]">
-                    Crear resumen
-                    <ArrowRight
-                      size={17}
-                      className="transition group-hover:translate-x-1"
-                    />
-                  </div>
-                </button>
-
-                <button
+                <OpcionEstudio
+                  icono={ClipboardCheck}
+                  titulo="Crear quiz"
+                  descripcion="Evalúa tus conocimientos con preguntas."
+                  accion="Crear quiz"
+                  estiloTarjeta="border-[#CFEEDD] bg-[#F2FBF6] hover:border-[#26A66B] dark:bg-[#193028]"
+                  estiloIcono="bg-[#DDF7EA] text-[#26A66B]"
+                  estiloAccion="text-[#26A66B]"
                   onClick={() =>
-                    elegirAccionEstudio(
+                    void elegirAccionEstudio(
                       "quiz"
                     )
                   }
-                  className="group rounded-[22px] border border-[#CFEEDD] bg-[#F2FBF6] p-5 text-left transition hover:-translate-y-1 hover:border-[#26A66B] hover:shadow-lg dark:border-slate-700 dark:bg-[#193028]"
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#DDF7EA] text-[#26A66B]">
-                    <ClipboardCheck
-                      size={28}
-                    />
-                  </div>
+                />
 
-                  <h3 className="mt-5 text-xl font-black">
-                    Crear quiz
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
-                    Evalúa tus conocimientos con preguntas.
-                  </p>
-
-                  <div className="mt-5 flex items-center gap-2 font-black text-[#26A66B]">
-                    Crear quiz
-                    <ArrowRight
-                      size={17}
-                      className="transition group-hover:translate-x-1"
-                    />
-                  </div>
-                </button>
+                <OpcionEstudio
+                  icono={Layers3}
+                  titulo="Flashcards"
+                  descripcion="Convierte el material en tarjetas para memorizar."
+                  accion="Crear tarjetas"
+                  estiloTarjeta="border-[#D7E3FF] bg-[#F5F8FF] hover:border-[#55A8E8] dark:bg-[#1C2A42]"
+                  estiloIcono="bg-[#DDF3FF] text-[#1687D9]"
+                  estiloAccion="text-[#1687D9]"
+                  onClick={() =>
+                    void elegirAccionEstudio(
+                      "flashcards"
+                    )
+                  }
+                />
               </div>
 
               <div className="mt-6 flex flex-col gap-3 border-t border-[#E7EDF5] pt-5 sm:flex-row sm:justify-between dark:border-slate-700">
                 <button
+                  type="button"
                   onClick={() => {
                     setMostrarOpcionesEstudio(
                       false
@@ -2808,6 +4070,7 @@ export default function Dashboard() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
                     setMostrarOpcionesEstudio(
                       false
@@ -2828,30 +4091,28 @@ export default function Dashboard() {
         <div className="fixed inset-0 z-[230] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5">
           <div className="flex h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-[26px] bg-white shadow-2xl dark:bg-[#182437]">
             <div className="flex flex-col gap-4 border-b border-[#DDEAF7] px-5 py-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E2FF] text-[#7652D9]">
-                    <FileText size={22} />
-                  </div>
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E2FF] text-[#7652D9]">
+                  <FileText size={22} />
+                </div>
 
-                  <div className="min-w-0">
-                    <h2 className="truncate font-black">
-                      {
-                        materialAbierto.nombre_archivo
-                      }
-                    </h2>
+                <div className="min-w-0">
+                  <h2 className="truncate font-black">
+                    {materialAbierto.nombre_archivo}
+                  </h2>
 
-                    <p className="mt-1 text-xs text-[#6085A5] dark:text-slate-400">
-                      Revisando dentro de Raccoon Study
-                    </p>
-                  </div>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-[#6085A5] dark:text-slate-400">
+                    <Clock3 size={13} />
+                    El tiempo de revisión se guarda automáticamente
+                  </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <button
+                  type="button"
                   onClick={() =>
-                    elegirAccionEstudio(
+                    void elegirAccionEstudio(
                       "pomodoro",
                       materialAbierto
                     )
@@ -2863,8 +4124,9 @@ export default function Dashboard() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
-                    elegirAccionEstudio(
+                    void elegirAccionEstudio(
                       "resumen",
                       materialAbierto
                     )
@@ -2876,22 +4138,38 @@ export default function Dashboard() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() =>
-                    elegirAccionEstudio(
+                    void elegirAccionEstudio(
                       "quiz",
                       materialAbierto
                     )
                   }
                   className="flex items-center gap-2 rounded-xl bg-[#EDF9F2] px-3 py-2 text-sm font-bold text-[#26A66B] dark:bg-[#193028]"
                 >
-                  <ClipboardCheck
-                    size={17}
-                  />
+                  <ClipboardCheck size={17} />
                   Quiz
                 </button>
 
                 <button
-                  onClick={cerrarVisor}
+                  type="button"
+                  onClick={() =>
+                    void elegirAccionEstudio(
+                      "flashcards",
+                      materialAbierto
+                    )
+                  }
+                  className="flex items-center gap-2 rounded-xl bg-[#EAF5FF] px-3 py-2 text-sm font-bold text-[#1687D9] dark:bg-[#1D3558]"
+                >
+                  <Layers3 size={17} />
+                  Flashcards
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void cerrarVisor()
+                  }
                   className="flex h-10 w-10 items-center justify-center rounded-full text-[#6085A5] transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
                   aria-label="Cerrar visor"
                 >
@@ -2938,8 +4216,7 @@ export default function Dashboard() {
                 </div>
               ) : extensionAbierta ===
                   "txt" ||
-                extensionAbierta ===
-                  "md" ? (
+                extensionAbierta === "md" ? (
                 <div className="h-full overflow-y-auto p-5 sm:p-8">
                   {cargandoTexto ? (
                     <div className="flex h-full flex-col items-center justify-center">
@@ -2955,9 +4232,7 @@ export default function Dashboard() {
                   ) : (
                     <article className="mx-auto min-h-full max-w-4xl rounded-2xl bg-white p-6 shadow-sm dark:bg-[#182437] sm:p-10">
                       <h1 className="border-b border-[#E7EDF5] pb-5 text-2xl font-black dark:border-slate-700">
-                        {
-                          materialAbierto.nombre_archivo
-                        }
+                        {materialAbierto.nombre_archivo}
                       </h1>
 
                       <pre className="mt-6 whitespace-pre-wrap break-words font-sans text-base leading-8 text-[#405E7A] dark:text-slate-300">
@@ -3037,5 +4312,123 @@ export default function Dashboard() {
         </Link>
       </nav>
     </main>
+  );
+}
+
+/* =====================================================
+   COMPONENTES
+===================================================== */
+
+function AccionRapida({
+  href,
+  icono: Icono,
+  titulo,
+  descripcion,
+  estiloIcono,
+}: {
+  href: string;
+  icono: LucideIcon;
+  titulo: string;
+  descripcion: string;
+  estiloIcono: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
+    >
+      <div
+        className={`flex h-12 w-12 items-center justify-center rounded-xl ${estiloIcono}`}
+      >
+        <Icono size={24} />
+      </div>
+
+      <h3 className="mt-5 font-black">
+        {titulo}
+      </h3>
+
+      <p className="mt-2 text-sm leading-relaxed text-[#6085A5] dark:text-slate-400">
+        {descripcion}
+      </p>
+    </Link>
+  );
+}
+
+function ActividadCard({
+  icono: Icono,
+  valor,
+  nombre,
+  estilo,
+}: {
+  icono: LucideIcon;
+  valor: number;
+  nombre: string;
+  estilo: string;
+}) {
+  return (
+    <div className={`rounded-2xl p-4 ${estilo}`}>
+      <Icono size={22} />
+
+      <p className="mt-3 text-2xl font-black text-[#10233F] dark:text-white">
+        {valor}
+      </p>
+
+      <p className="mt-1 text-xs text-[#6085A5] dark:text-slate-300">
+        {nombre}
+      </p>
+    </div>
+  );
+}
+
+function OpcionEstudio({
+  icono: Icono,
+  titulo,
+  descripcion,
+  accion,
+  estiloTarjeta,
+  estiloIcono,
+  estiloAccion,
+  onClick,
+}: {
+  icono: LucideIcon;
+  titulo: string;
+  descripcion: string;
+  accion: string;
+  estiloTarjeta: string;
+  estiloIcono: string;
+  estiloAccion: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group rounded-[22px] border p-5 text-left transition hover:-translate-y-1 hover:shadow-lg dark:border-slate-700 ${estiloTarjeta}`}
+    >
+      <div
+        className={`flex h-14 w-14 items-center justify-center rounded-2xl ${estiloIcono}`}
+      >
+        <Icono size={28} />
+      </div>
+
+      <h3 className="mt-5 text-xl font-black">
+        {titulo}
+      </h3>
+
+      <p className="mt-2 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
+        {descripcion}
+      </p>
+
+      <div
+        className={`mt-5 flex items-center gap-2 font-black ${estiloAccion}`}
+      >
+        {accion}
+
+        <ArrowRight
+          size={17}
+          className="transition group-hover:translate-x-1"
+        />
+      </div>
+    </button>
   );
 }

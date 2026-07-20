@@ -2002,7 +2002,7 @@ export default function ResumenesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-black">
-                      Jamendo Relax
+                     Música
                     </h3>
 
                     <p className="text-sm font-bold text-green-600">
@@ -2101,7 +2101,7 @@ export default function ResumenesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-black">
-                      Deezer Playlist
+                      Playlist
                     </h3>
 
                     <p className="text-sm font-bold text-[#7652D9]">
