@@ -1,7 +1,18 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (window.location.hash.includes("access_token")) {
+      router.push(`/reestablecerpsw${window.location.hash}`);
+    }
+  }, [router]);
+
   return (
     <main
       className="
