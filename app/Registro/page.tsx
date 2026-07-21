@@ -18,96 +18,94 @@ import {
 
 export default function Registro() {
 
-const router=useRouter();
+const router = useRouter();
 
-const [nombre,setNombre]=useState("");
-const [correo,setCorreo]=useState("");
-const [password,setPassword]=useState("");
-const [confirmarPassword,setConfirmarPassword]=useState("");
+const [nombre, setNombre] = useState("");
+const [correo, setCorreo] = useState("");
+const [password, setPassword] = useState("");
+const [confirmarPassword, setConfirmarPassword] = useState("");
 
-const [mostrarPassword,setMostrarPassword]=useState(false);
-const [mostrarConfirmar,setMostrarConfirmar]=useState(false);
+const [mostrarPassword, setMostrarPassword] = useState(false);
+const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
 
-const [loading,setLoading]=useState(false);
+const [loading, setLoading] = useState(false);
 
 
 async function handleRegister(){
 
-if(
-!nombre||
-!correo||
-!password||
-!confirmarPassword
-){
-alert("Completa todos los campos");
-return;
-}
+  if(
+    !nombre ||
+    !correo ||
+    !password ||
+    !confirmarPassword
+  ){
+    alert("Completa todos los campos");
+    return;
+  }
 
-if(password!==confirmarPassword){
-alert("Las contraseñas no coinciden");
-return;
-}
+  if(password !== confirmarPassword){
+    alert("Las contraseñas no coinciden");
+    return;
+  }
 
-try{
+  try{
 
-setLoading(true);
+    setLoading(true);
 
-const {data,error}=await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
+      email: correo,
+      password,
+      options: {
+        // Redirige a tu nueva página de verificado con el mapache
+        emailRedirectTo: `${window.location.origin}/verificado`,
+        data: {
+          nombre
+        }
+      }
+    });
 
-email:correo,
-password,
+    if(error) throw error;
 
-options:{
-data:{
-nombre
-}
-}
+    if(data.user){
 
-});
+      await supabase
+        .from("usuarios")
+        .insert([{
+          id: data.user.id,
+          nombre,
+          email: correo,
+          racha: 0,
+          avatar: "raccoon"
+        }]);
 
-if(error) throw error;
+    }
 
-if(data.user){
+    alert("¡Registro exitoso! Por favor revisa tu correo para verificar tu cuenta.");
+    router.push("/Login");
 
-await supabase
-.from("usuarios")
-.insert([{
+  }catch(error: any){
 
-id:data.user.id,
-nombre,
-email:correo,
-racha:0,
-avatar:"raccoon"
+    alert(error.message);
 
-}]);
-
-}
-
-router.push("/Dashboard");
-
-}catch(error:any){
-
-alert(error.message);
-
-}
-
-setLoading(false);
+  } finally {
+    setLoading(false);
+  }
 
 }
 
 async function loginGoogle(){
 
-await supabase.auth.signInWithOAuth({
-provider:"google"
-});
+  await supabase.auth.signInWithOAuth({
+    provider: "google"
+  });
 
 }
 
 async function loginMicrosoft(){
 
-await supabase.auth.signInWithOAuth({
-provider:"azure"
-});
+  await supabase.auth.signInWithOAuth({
+    provider: "azure"
+  });
 
 }
 
@@ -195,7 +193,7 @@ placeholder="Nombre completo"
 
 value={nombre}
 
-onChange={(e:any)=>setNombre(e.target.value)}
+onChange={(e: any) => setNombre(e.target.value)}
 />
 
 
@@ -209,7 +207,7 @@ placeholder="Correo"
 
 value={correo}
 
-onChange={(e:any)=>setCorreo(e.target.value)}
+onChange={(e: any) => setCorreo(e.target.value)}
 />
 
 
@@ -222,16 +220,17 @@ icon={<Lock size={24}/>}
 
 placeholder="Contraseña"
 
-type={mostrarPassword?"text":"password"}
+type={mostrarPassword ? "text" : "password"}
 
 value={password}
 
-onChange={(e:any)=>setPassword(e.target.value)}
+onChange={(e: any) => setPassword(e.target.value)}
 
 rightIcon={
 
 <button
-onClick={()=>setMostrarPassword(!mostrarPassword)}
+type="button"
+onClick={() => setMostrarPassword(!mostrarPassword)}
 >
 
 {
@@ -257,11 +256,11 @@ icon={<Lock size={24}/>}
 
 placeholder="Confirmar contraseña"
 
-type={mostrarConfirmar?"text":"password"}
+type={mostrarConfirmar ? "text" : "password"}
 
 value={confirmarPassword}
 
-onChange={(e:any)=>
+onChange={(e: any) =>
 
 setConfirmarPassword(
 e.target.value
@@ -272,7 +271,8 @@ e.target.value
 rightIcon={
 
 <button
-onClick={()=>setMostrarConfirmar(!mostrarConfirmar)}
+type="button"
+onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
 >
 
 {
@@ -297,6 +297,7 @@ mostrarConfirmar
 <button
 
 onClick={handleRegister}
+disabled={loading}
 
 className="
 
@@ -344,6 +345,7 @@ loading
 <div className="flex justify-center gap-6 mt-8">
 
 <button
+type="button"
 onClick={loginGoogle}
 
 className="
@@ -375,6 +377,7 @@ height={30}
 
 
 <button
+type="button"
 onClick={loginMicrosoft}
 
 className="
@@ -441,7 +444,7 @@ icon,
 rightIcon,
 ...props
 
-}:any){
+}: any){
 
 return(
 

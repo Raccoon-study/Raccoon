@@ -20,24 +20,36 @@ export default function Login() {
   const [mostrar, setMostrar] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Nueva función para recuperar contraseña
-  async function handleForgotPassword() {
+  // Función corregida recibiendo el evento (e) para evitar recargas o bloqueos
+  async function handleForgotPassword(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+
     if (!email) {
       alert("Por favor, ingresa tu correo para recuperar la contraseña");
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'http://localhost:3000/restablecer-password',
-    });
+    
+    try {
+      const redirectUrl = `${window.location.origin}/restablecer-password`;
 
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        throw error;
+      }
+
       alert("Revisa tu correo para restablecer la contraseña");
+    } catch (error: any) {
+      console.error("Error detallado:", error);
+      const mensajeError = error?.message || error?.error_description || JSON.stringify(error, null, 2);
+      alert("No se pudo enviar el correo: " + mensajeError);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function iniciarSesion() {
@@ -109,7 +121,7 @@ export default function Login() {
               value={password}
               onChange={(e: any) => setPassword(e.target.value)}
               rightIcon={
-                <button onClick={() => setMostrar(!mostrar)}>
+                <button type="button" onClick={() => setMostrar(!mostrar)}>
                   {mostrar ? <EyeOff size={24} /> : <Eye size={24} />}
                 </button>
               }
@@ -123,8 +135,9 @@ export default function Login() {
             {loading ? "Iniciando..." : "Iniciar sesión"}
           </button>
 
-          {/* NUEVO BOTÓN DE RECUPERAR CONTRASEÑA */}
+          {/* BOTÓN DE RECUPERAR CONTRASEÑA */}
           <button
+            type="button"
             onClick={handleForgotPassword}
             className="w-full mt-4 text-sm md:text-base text-blue-500 font-medium hover:underline transition"
           >
@@ -132,10 +145,10 @@ export default function Login() {
           </button>
 
           <div className="flex justify-center gap-6 mt-8">
-            <button onClick={loginGoogle} className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full shadow-md flex items-center justify-center">
+            <button type="button" onClick={loginGoogle} className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full shadow-md flex items-center justify-center">
               <Image src="/google.png" alt="google" width={30} height={30} />
             </button>
-            <button onClick={loginMicrosoft} className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full shadow-md flex items-center justify-center">
+            <button type="button" onClick={loginMicrosoft} className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full shadow-md flex items-center justify-center">
               <Image src="/microsoft.png" alt="microsoft" width={30} height={30} />
             </button>
           </div>

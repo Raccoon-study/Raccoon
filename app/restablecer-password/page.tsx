@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -8,6 +8,15 @@ export default function RestablecerPassword() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Opcional: Asegura que Supabase procese el token de la URL al cargar la página
+  useEffect(() => {
+    supabase.auth.onAuthStateChange(async (event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // El usuario ha entrado mediante el enlace de recuperación con éxito
+      }
+    });
+  }, []);
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
@@ -22,7 +31,8 @@ export default function RestablecerPassword() {
     const { error } = await supabase.auth.updateUser({ password: password });
 
     if (error) {
-      alert("Error: " + error.message);
+      console.error("Error completo de Supabase:", error);
+      alert("Error: " + (error.message || JSON.stringify(error)));
     } else {
       alert("¡Contraseña actualizada con éxito!");
       router.push("/Login"); 
