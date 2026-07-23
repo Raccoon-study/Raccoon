@@ -368,6 +368,13 @@ export default function PomodoroPage() {
             <Library size={19} />
             Biblioteca
           </Link>
+           <Link
+            href="/lugares"
+            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[#253650] transition hover:bg-[#F0F8FF] hover:text-[#1687D9] dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <MapPin size={19} />
+            Lugares
+          </Link>
 
           <Link
             href="/perfil"
@@ -377,13 +384,7 @@ export default function PomodoroPage() {
             Perfil
           </Link>
 
-          <Link
-            href="/lugares"
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[#253650] transition hover:bg-[#F0F8FF] hover:text-[#1687D9] dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <MapPin size={19} />
-            Lugares
-          </Link>
+         
         </nav>
 
         <div className="space-y-2 px-3 pb-5">
