@@ -167,16 +167,17 @@ const elementosMenu: ElementoMenu[] = [
     href: "/biblioteca",
     icono: Library,
   },
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 /* =====================================================
@@ -1905,10 +1906,10 @@ export default function ResumenesPage() {
               </div>
 
               <Image
-                src="/raccoon.png"
+                src="/resumenes.png"
                 alt="Raccoon"
-                width={220}
-                height={220}
+                width={380}
+                height={380}
               />
             </div>
           </section>

@@ -111,10 +111,16 @@ interface Lugar {
 
   direccion: string;
 
-  latitud: number | null;
-  longitud: number | null;
+  latitud:
+    | number
+    | null;
+
+  longitud:
+    | number
+    | null;
 
   calificacion: number;
+
   cantidadResenas: number;
 
   categoria: CategoriaLugar;
@@ -122,6 +128,7 @@ interface Lugar {
   tipo: string;
 
   foto: string;
+
   fotos: string[];
 
   fotoAtribucion: string;
@@ -144,7 +151,8 @@ interface Lugar {
 
   estado: string;
 
-  resenasGoogle: ResenaGoogle[];
+  resenasGoogle:
+    ResenaGoogle[];
 }
 
 interface Categoria {
@@ -166,69 +174,137 @@ interface MenuItem {
 
 const MENU: MenuItem[] = [
   {
-    nombre: "Inicio",
-    href: "/Dashboard",
-    icono: Home,
+    nombre:
+      "Inicio",
+
+    href:
+      "/Dashboard",
+
+    icono:
+      Home,
   },
+
   {
-    nombre: "Métodos de estudio",
-    href: "/metodos",
-    icono: Brain,
+    nombre:
+      "Métodos de estudio",
+
+    href:
+      "/metodos",
+
+    icono:
+      Brain,
   },
+
   {
-    nombre: "Quizzes",
-    href: "/quizzes",
-    icono: ClipboardCheck,
+    nombre:
+      "Quizzes",
+
+    href:
+      "/quizzes",
+
+    icono:
+      ClipboardCheck,
   },
+
   {
-    nombre: "Biblioteca",
-    href: "/biblioteca",
-    icono: Library,
+    nombre:
+      "Biblioteca",
+
+    href:
+      "/biblioteca",
+
+    icono:
+      Library,
   },
+   {
+    nombre:
+      "Lugares",
+
+    href:
+      "/lugares",
+
+    icono:
+      MapPin,
+
+    activo:
+      true,
+  },
+
   {
-    nombre: "Perfil",
-    href: "/perfil",
-    icono: User,
+    nombre:
+      "Perfil",
+
+    href:
+      "/perfil",
+
+    icono:
+      User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-    activo: true,
-  },
+
+ 
 ];
 
 /* =====================================================
    CATEGORÍAS
 ===================================================== */
 
-const CATEGORIAS: Categoria[] = [
-  {
-    id: "todos",
-    nombre: "Todos",
-    icono: MapPin,
-  },
-  {
-    id: "cafeterias",
-    nombre: "Cafeterías",
-    icono: Coffee,
-  },
-  {
-    id: "bibliotecas",
-    nombre: "Bibliotecas",
-    icono: BookOpen,
-  },
-  {
-    id: "parques",
-    nombre: "Parques",
-    icono: Trees,
-  },
-  {
-    id: "universidades",
-    nombre: "Universidades",
-    icono: GraduationCap,
-  },
-];
+const CATEGORIAS:
+  Categoria[] = [
+    {
+      id:
+        "todos",
+
+      nombre:
+        "Todos",
+
+      icono:
+        MapPin,
+    },
+
+    {
+      id:
+        "cafeterias",
+
+      nombre:
+        "Cafeterías",
+
+      icono:
+        Coffee,
+    },
+
+    {
+      id:
+        "bibliotecas",
+
+      nombre:
+        "Bibliotecas",
+
+      icono:
+        BookOpen,
+    },
+
+    {
+      id:
+        "parques",
+
+      nombre:
+        "Parques",
+
+      icono:
+        Trees,
+    },
+
+    {
+      id:
+        "universidades",
+
+      nombre:
+        "Universidades",
+
+      icono:
+        GraduationCap,
+    },
+  ];
 
 /* =====================================================
    HELPERS
@@ -241,7 +317,8 @@ function esObjeto(
   unknown
 > {
   return (
-    typeof valor === "object" &&
+    typeof valor ===
+      "object" &&
     valor !== null
   );
 }
@@ -250,9 +327,12 @@ function numeroSeguro(
   valor: unknown,
   respaldo = 0
 ): number {
-  const numero = Number(valor);
+  const numero =
+    Number(valor);
 
-  return Number.isFinite(numero)
+  return Number.isFinite(
+    numero
+  )
     ? numero
     : respaldo;
 }
@@ -260,7 +340,11 @@ function numeroSeguro(
 function arregloString(
   valor: unknown
 ): string[] {
-  if (!Array.isArray(valor)) {
+  if (
+    !Array.isArray(
+      valor
+    )
+  ) {
     return [];
   }
 
@@ -268,7 +352,8 @@ function arregloString(
     (
       item
     ): item is string =>
-      typeof item === "string"
+      typeof item ===
+      "string"
   );
 }
 
@@ -276,29 +361,41 @@ function normalizarPlan(
   valor: unknown,
   premium = false
 ): PlanType {
-  const texto = String(
-    valor || ""
-  )
-    .trim()
-    .toLowerCase();
+  const texto =
+    String(
+      valor || ""
+    )
+      .trim()
+      .toLowerCase();
 
   if (
-    texto === "year" ||
-    texto === "annual" ||
-    texto === "anual" ||
-    texto === "premium_year" ||
-    texto === "premium_anual"
+    texto ===
+      "year" ||
+    texto ===
+      "annual" ||
+    texto ===
+      "anual" ||
+    texto ===
+      "premium_year" ||
+    texto ===
+      "premium_anual"
   ) {
     return "year";
   }
 
   if (
-    texto === "month" ||
-    texto === "monthly" ||
-    texto === "mensual" ||
-    texto === "premium" ||
-    texto === "premium_month" ||
-    texto === "premium_mensual"
+    texto ===
+      "month" ||
+    texto ===
+      "monthly" ||
+    texto ===
+      "mensual" ||
+    texto ===
+      "premium" ||
+    texto ===
+      "premium_month" ||
+    texto ===
+      "premium_mensual"
   ) {
     return "month";
   }
@@ -311,11 +408,15 @@ function normalizarPlan(
 function nombrePlan(
   plan: PlanType
 ): string {
-  if (plan === "year") {
+  if (
+    plan === "year"
+  ) {
     return "Premium anual";
   }
 
-  if (plan === "month") {
+  if (
+    plan === "month"
+  ) {
     return "Premium mensual";
   }
 
@@ -326,11 +427,16 @@ function categoriaSegura(
   valor: unknown
 ): CategoriaLugar {
   if (
-    valor === "cafeterias" ||
-    valor === "bibliotecas" ||
-    valor === "parques" ||
-    valor === "universidades" ||
-    valor === "otros"
+    valor ===
+      "cafeterias" ||
+    valor ===
+      "bibliotecas" ||
+    valor ===
+      "parques" ||
+    valor ===
+      "universidades" ||
+    valor ===
+      "otros"
   ) {
     return valor;
   }
@@ -338,104 +444,185 @@ function categoriaSegura(
   return "otros";
 }
 
+/* =====================================================
+   RESEÑAS GOOGLE
+===================================================== */
+
 function normalizarResenasGoogle(
   valor: unknown
 ): ResenaGoogle[] {
-  if (!Array.isArray(valor)) {
+  if (
+    !Array.isArray(
+      valor
+    )
+  ) {
     return [];
   }
 
   return valor
-    .filter(esObjeto)
+    .filter(
+      esObjeto
+    )
     .map(
       (
         item,
         indice
       ): ResenaGoogle => ({
-        id: String(
-          item.id ||
-            `google-${indice}`
-        ),
+        id:
+          String(
+            item.id ||
+              `google-${indice}`
+          ),
 
-        autor: String(
-          item.autor ||
-            "Usuario de Google"
-        ),
+        autor:
+          String(
+            item.autor ||
+              "Usuario de Google"
+          ),
 
         fotoAutor:
-          typeof item.fotoAutor ===
+          typeof item
+            .fotoAutor ===
           "string"
-            ? item.fotoAutor
+            ? item
+                .fotoAutor
             : "",
 
         calificacion:
           numeroSeguro(
-            item.calificacion
+            item
+              .calificacion
           ),
 
         comentario:
-          typeof item.comentario ===
+          typeof item
+            .comentario ===
           "string"
-            ? item.comentario
+            ? item
+                .comentario
             : "",
 
         fecha:
-          typeof item.fecha ===
+          typeof item
+            .fecha ===
           "string"
             ? item.fecha
             : "",
 
         enlaceAutor:
-          typeof item.enlaceAutor ===
+          typeof item
+            .enlaceAutor ===
           "string"
-            ? item.enlaceAutor
+            ? item
+                .enlaceAutor
             : "",
       })
     )
     .filter(
       (resena) =>
-        resena.comentario
+        resena
+          .comentario
           .trim()
           .length > 0
     );
 }
 
+/* =====================================================
+   NORMALIZAR LUGAR
+===================================================== */
+
 function normalizarLugar(
   valor: unknown
 ): Lugar | null {
-  if (!esObjeto(valor)) {
+  if (
+    !esObjeto(
+      valor
+    )
+  ) {
     return null;
   }
 
-  const id = String(
-    valor.id || ""
-  ).trim();
+  const id =
+    String(
+      valor.id || ""
+    ).trim();
 
-  const nombre = String(
-    valor.nombre || ""
-  ).trim();
+  const nombreOriginal =
+    String(
+      valor.nombre || ""
+    ).trim();
 
-  if (!id || !nombre) {
+  if (
+    !id ||
+    !nombreOriginal
+  ) {
     return null;
   }
+
+  const categoria =
+    categoriaSegura(
+      valor.categoria
+    );
+
+  /* =================================================
+     CORREGIR ISAE
+  ================================================= */
+
+  const nombre =
+    categoria ===
+      "universidades" &&
+    nombreOriginal ===
+      "1"
+      ? "ISAE Universidad"
+      : nombreOriginal;
+
+  /* =================================================
+     FOTO
+  ================================================= */
 
   const foto =
     typeof valor.foto ===
-    "string"
-      ? valor.foto
+      "string"
+      ? valor.foto.trim()
       : "";
 
   let fotos =
     arregloString(
       valor.fotos
-    );
+    )
+      .map(
+        (item) =>
+          item.trim()
+      )
+      .filter(
+        Boolean
+      );
+
+  /*
+    Asegurar que la principal
+    también forme parte de fotos.
+  */
 
   if (
-    fotos.length === 0 &&
-    foto
+    foto &&
+    !fotos.includes(
+      foto
+    )
   ) {
-    fotos = [foto];
+    fotos.unshift(
+      foto
+    );
   }
+
+  /*
+    Eliminar duplicados.
+  */
+
+  fotos = [
+    ...new Set(
+      fotos
+    ),
+  ];
 
   return {
     id,
@@ -443,37 +630,42 @@ function normalizarLugar(
     nombre,
 
     direccion:
-      typeof valor.direccion ===
+      typeof valor
+        .direccion ===
       "string"
-        ? valor.direccion
+        ? valor
+            .direccion
         : "Santiago de Veraguas, Panamá",
 
     latitud:
-      typeof valor.latitud ===
+      typeof valor
+        .latitud ===
       "number"
-        ? valor.latitud
+        ? valor
+            .latitud
         : null,
 
     longitud:
-      typeof valor.longitud ===
+      typeof valor
+        .longitud ===
       "number"
-        ? valor.longitud
+        ? valor
+            .longitud
         : null,
 
     calificacion:
       numeroSeguro(
-        valor.calificacion
+        valor
+          .calificacion
       ),
 
     cantidadResenas:
       numeroSeguro(
-        valor.cantidadResenas
+        valor
+          .cantidadResenas
       ),
 
-    categoria:
-      categoriaSegura(
-        valor.categoria
-      ),
+    categoria,
 
     tipo:
       typeof valor.tipo ===
@@ -486,15 +678,19 @@ function normalizarLugar(
     fotos,
 
     fotoAtribucion:
-      typeof valor.fotoAtribucion ===
+      typeof valor
+        .fotoAtribucion ===
       "string"
-        ? valor.fotoAtribucion
+        ? valor
+            .fotoAtribucion
         : "",
 
     abiertoAhora:
-      typeof valor.abiertoAhora ===
+      typeof valor
+        .abiertoAhora ===
       "boolean"
-        ? valor.abiertoAhora
+        ? valor
+            .abiertoAhora
         : null,
 
     horario:
@@ -503,9 +699,11 @@ function normalizarLugar(
       ),
 
     mapaUrl:
-      typeof valor.mapaUrl ===
+      typeof valor
+        .mapaUrl ===
       "string"
-        ? valor.mapaUrl
+        ? valor
+            .mapaUrl
         : "",
 
     web:
@@ -515,53 +713,100 @@ function normalizarLugar(
         : "",
 
     telefono:
-      typeof valor.telefono ===
+      typeof valor
+        .telefono ===
       "string"
-        ? valor.telefono
+        ? valor
+            .telefono
         : "",
 
     descripcion:
-      typeof valor.descripcion ===
+      typeof valor
+        .descripcion ===
       "string"
-        ? valor.descripcion
+        ? valor
+            .descripcion
         : `${nombre} es un lugar ubicado en Santiago de Veraguas.`,
 
     caracteristicas:
       arregloString(
-        valor.caracteristicas
+        valor
+          .caracteristicas
       ),
 
     estado:
-      typeof valor.estado ===
+      typeof valor
+        .estado ===
       "string"
         ? valor.estado
         : "",
 
     resenasGoogle:
       normalizarResenasGoogle(
-        valor.resenasGoogle
+        valor
+          .resenasGoogle
       ),
   };
 }
+
+/* =====================================================
+   OBTENER ERROR DE API
+===================================================== */
 
 function obtenerError(
   valor: unknown
 ): string {
   if (
-    esObjeto(valor) &&
-    typeof valor.error ===
-      "string"
+    !esObjeto(
+      valor
+    )
+  ) {
+    return "La API de lugares no respondió correctamente.";
+  }
+
+  if (
+    typeof valor
+      .error ===
+      "string" &&
+    valor.error.trim()
   ) {
     return valor.error;
+  }
+
+  /*
+    También soportamos:
+
+    {
+      error: {
+        message: "..."
+      }
+    }
+  */
+
+  if (
+    esObjeto(
+      valor.error
+    ) &&
+    typeof valor
+      .error
+      .message ===
+      "string"
+  ) {
+    return valor
+      .error
+      .message;
   }
 
   return "No se pudieron cargar los lugares.";
 }
 
 function iconoCategoria(
-  categoria: CategoriaLugar
+  categoria:
+    CategoriaLugar
 ): LucideIcon {
-  switch (categoria) {
+  switch (
+    categoria
+  ) {
     case "cafeterias":
       return Coffee;
 
@@ -583,7 +828,9 @@ function formatearFecha(
   fecha: string
 ): string {
   const valor =
-    new Date(fecha);
+    new Date(
+      fecha
+    );
 
   if (
     Number.isNaN(
@@ -593,14 +840,20 @@ function formatearFecha(
     return fecha;
   }
 
-  return valor.toLocaleDateString(
-    "es-PA",
-    {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }
-  );
+  return valor
+    .toLocaleDateString(
+      "es-PA",
+      {
+        day:
+          "numeric",
+
+        month:
+          "short",
+
+        year:
+          "numeric",
+      }
+    );
 }
 
 function fechaInput(
@@ -611,7 +864,8 @@ function fechaInput(
 
   const month =
     String(
-      fecha.getMonth() + 1
+      fecha.getMonth() +
+        1
     ).padStart(
       2,
       "0"
@@ -634,10 +888,13 @@ function obtenerFechaManana():
     new Date();
 
   fecha.setDate(
-    fecha.getDate() + 1
+    fecha.getDate() +
+      1
   );
 
-  return fechaInput(fecha);
+  return fechaInput(
+    fecha
+  );
 }
 
 function prepararNumeroWhatsApp(
@@ -653,16 +910,12 @@ function prepararNumeroWhatsApp(
     return "";
   }
 
-  /*
-    Los teléfonos locales de Panamá
-    normalmente vienen sin +507.
-  */
-
   if (
     !numero.startsWith(
       "507"
     ) &&
-    numero.length <= 8
+    numero.length <=
+      8
   ) {
     numero =
       `507${numero}`;
@@ -682,7 +935,9 @@ export default function LugaresPage() {
   const timeoutRef =
     useRef<ReturnType<
       typeof setTimeout
-    > | null>(null);
+    > | null>(
+      null
+    );
 
   /* =====================================================
      USUARIO
@@ -718,7 +973,9 @@ export default function LugaresPage() {
   const [
     cargandoPlan,
     setCargandoPlan,
-  ] = useState(true);
+  ] = useState(
+    true
+  );
 
   const esPremium =
     plan !== "free";
@@ -730,17 +987,23 @@ export default function LugaresPage() {
   const [
     menuAbierto,
     setMenuAbierto,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     perfilAbierto,
     setPerfilAbierto,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     modoOscuro,
     setModoOscuro,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     mensaje,
@@ -754,9 +1017,10 @@ export default function LugaresPage() {
   const [
     lugares,
     setLugares,
-  ] = useState<Lugar[]>(
-    []
-  );
+  ] =
+    useState<Lugar[]>(
+      []
+    );
 
   const [
     lugarSeleccionado,
@@ -769,12 +1033,16 @@ export default function LugaresPage() {
   const [
     cargandoLugares,
     setCargandoLugares,
-  ] = useState(true);
+  ] = useState(
+    true
+  );
 
   const [
     cargandoDetalle,
     setCargandoDetalle,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     busqueda,
@@ -796,31 +1064,41 @@ export default function LugaresPage() {
   const [
     mostrarFiltros,
     setMostrarFiltros,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     soloAbiertos,
     setSoloAbiertos,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     calificacionMinima,
     setCalificacionMinima,
-  ] = useState(0);
+  ] = useState(
+    0
+  );
 
   /* =====================================================
-     GALERÍA Y MAPA
+     GALERÍA
   ===================================================== */
 
   const [
     indiceFoto,
     setIndiceFoto,
-  ] = useState(0);
+  ] = useState(
+    0
+  );
 
   const [
     mostrarMapa,
     setMostrarMapa,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   /* =====================================================
      FAVORITOS
@@ -829,9 +1107,10 @@ export default function LugaresPage() {
   const [
     favoritos,
     setFavoritos,
-  ] = useState<string[]>(
-    []
-  );
+  ] =
+    useState<string[]>(
+      []
+    );
 
   const [
     guardandoFavorito,
@@ -853,12 +1132,16 @@ export default function LugaresPage() {
   const [
     modalResena,
     setModalResena,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     calificacionResena,
     setCalificacionResena,
-  ] = useState(5);
+  ] = useState(
+    5
+  );
 
   const [
     comentarioResena,
@@ -868,16 +1151,20 @@ export default function LugaresPage() {
   const [
     guardandoResena,
     setGuardandoResena,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   /* =====================================================
-     RESERVA PREMIUM
+     RESERVA
   ===================================================== */
 
   const [
     modalReserva,
     setModalReserva,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     fechaReserva,
@@ -896,7 +1183,9 @@ export default function LugaresPage() {
   const [
     personasReserva,
     setPersonasReserva,
-  ] = useState(1);
+  ] = useState(
+    1
+  );
 
   const [
     notaReserva,
@@ -908,34 +1197,38 @@ export default function LugaresPage() {
   ===================================================== */
 
   const lugaresFiltrados =
-    useMemo(() => {
-      return lugares.filter(
-        (lugar) => {
-          if (
-            soloAbiertos &&
-            lugar.abiertoAhora !==
-              true
-          ) {
-            return false;
-          }
+    useMemo(
+      () =>
+        lugares.filter(
+          (lugar) => {
+            if (
+              soloAbiertos &&
+              lugar
+                .abiertoAhora !==
+                true
+            ) {
+              return false;
+            }
 
-          if (
-            calificacionMinima >
-              0 &&
-            lugar.calificacion <
-              calificacionMinima
-          ) {
-            return false;
-          }
+            if (
+              calificacionMinima >
+                0 &&
+              lugar
+                .calificacion <
+                calificacionMinima
+            ) {
+              return false;
+            }
 
-          return true;
-        }
-      );
-    }, [
-      lugares,
-      soloAbiertos,
-      calificacionMinima,
-    ]);
+            return true;
+          }
+        ),
+      [
+        lugares,
+        soloAbiertos,
+        calificacionMinima,
+      ]
+    );
 
   /* =====================================================
      FOTOS
@@ -955,19 +1248,24 @@ export default function LugaresPage() {
       ];
 
       if (
-        lugarSeleccionado.foto &&
+        lugarSeleccionado
+          .foto &&
         !todas.includes(
-          lugarSeleccionado.foto
+          lugarSeleccionado
+            .foto
         )
       ) {
         todas.unshift(
-          lugarSeleccionado.foto
+          lugarSeleccionado
+            .foto
         );
       }
 
       return [
         ...new Set(
-          todas.filter(Boolean)
+          todas.filter(
+            Boolean
+          )
         ),
       ];
     }, [
@@ -986,12 +1284,15 @@ export default function LugaresPage() {
         return "";
       }
 
-      let consulta = "";
+      let consulta =
+        "";
 
       if (
-        lugarSeleccionado.latitud !==
+        lugarSeleccionado
+          .latitud !==
           null &&
-        lugarSeleccionado.longitud !==
+        lugarSeleccionado
+          .longitud !==
           null
       ) {
         consulta =
@@ -1038,28 +1339,34 @@ export default function LugaresPage() {
                 .nombre_usuario,
 
             fotoAutor:
-              resena.avatar_url,
+              resena
+                .avatar_url,
 
             calificacion:
-              resena.calificacion,
+              resena
+                .calificacion,
 
             comentario:
-              resena.comentario,
+              resena
+                .comentario,
 
             fecha:
               formatearFecha(
-                resena.created_at
+                resena
+                  .created_at
               ),
 
             esPropia:
-              resena.user_id ===
+              resena
+                .user_id ===
               usuarioId,
           })
         );
 
       const google =
         lugarSeleccionado
-          .resenasGoogle.map(
+          .resenasGoogle
+          .map(
             (
               resena
             ): ResenaVisible => ({
@@ -1067,16 +1374,20 @@ export default function LugaresPage() {
                 `google-${resena.id}`,
 
               autor:
-                resena.autor,
+                resena
+                  .autor,
 
               fotoAutor:
-                resena.fotoAutor,
+                resena
+                  .fotoAutor,
 
               calificacion:
-                resena.calificacion,
+                resena
+                  .calificacion,
 
               comentario:
-                resena.comentario,
+                resena
+                  .comentario,
 
               fecha:
                 resena.fecha,
@@ -1111,12 +1422,17 @@ export default function LugaresPage() {
       );
     }
 
-    setMensaje(texto);
+    setMensaje(
+      texto
+    );
 
     timeoutRef.current =
-      setTimeout(() => {
-        setMensaje("");
-      }, 4200);
+      setTimeout(
+        () => {
+          setMensaje("");
+        },
+        5000
+      );
   }
 
   /* =====================================================
@@ -1180,7 +1496,9 @@ export default function LugaresPage() {
   ===================================================== */
 
   async function cargarUsuario():
-    Promise<string | null> {
+    Promise<
+      string | null
+    > {
     try {
       setCargandoPlan(
         true
@@ -1222,49 +1540,60 @@ export default function LugaresPage() {
       );
 
       const metadata = {
-        ...(user.user_metadata ||
+        ...(user
+          .user_metadata ||
           {}),
 
-        ...(user.app_metadata ||
+        ...(user
+          .app_metadata ||
           {}),
       };
 
       setNombreUsuario(
         String(
           metadata.nombre ||
-            metadata.full_name ||
+            metadata
+              .full_name ||
             metadata.name ||
-            user.email?.split(
-              "@"
-            )[0] ||
+            user.email
+              ?.split(
+                "@"
+              )[0] ||
             "Usuario"
         )
       );
 
       if (
-        typeof metadata.avatar_url ===
+        typeof metadata
+          .avatar_url ===
           "string" &&
-        metadata.avatar_url
+        metadata
+          .avatar_url
           .trim()
       ) {
         setFotoPerfil(
-          metadata.avatar_url
+          metadata
+            .avatar_url
         );
       }
 
       const premiumMetadata =
         metadata.premium ===
           true ||
-        metadata.is_premium ===
+        metadata
+          .is_premium ===
           true ||
-        metadata.es_premium ===
+        metadata
+          .es_premium ===
           true;
 
       let planDetectado =
         normalizarPlan(
           metadata.plan ||
-            metadata.tipo_plan ||
-            metadata.subscription,
+            metadata
+              .tipo_plan ||
+            metadata
+              .subscription,
 
           premiumMetadata
         );
@@ -1289,41 +1618,52 @@ export default function LugaresPage() {
         ) {
           const datos:
             unknown =
-            await respuesta.json();
+            await respuesta
+              .json();
 
           if (
-            esObjeto(datos)
+            esObjeto(
+              datos
+            )
           ) {
             const premium =
               datos.premium ===
                 true ||
-              datos.is_premium ===
+              datos
+                .is_premium ===
                 true ||
-              datos.es_premium ===
+              datos
+                .es_premium ===
                 true;
 
             let planServidor:
               unknown =
               datos.plan ||
-              datos.tipo_plan;
+              datos
+                .tipo_plan;
 
             if (
-              typeof datos.subscription ===
+              typeof datos
+                .subscription ===
               "string"
             ) {
               planServidor =
-                datos.subscription;
+                datos
+                  .subscription;
             }
 
             if (
               esObjeto(
-                datos.subscription
+                datos
+                  .subscription
               )
             ) {
               planServidor =
-                datos.subscription
+                datos
+                  .subscription
                   .plan ||
-                datos.subscription
+                datos
+                  .subscription
                   .tipo_plan ||
                 planServidor;
             }
@@ -1335,9 +1675,11 @@ export default function LugaresPage() {
               );
           }
         }
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.warn(
-          "Plan:",
+          "No se pudo comprobar el plan:",
           error
         );
       }
@@ -1347,9 +1689,11 @@ export default function LugaresPage() {
       );
 
       return user.id;
-    } catch (error) {
-      console.error(
-        "Usuario:",
+    } catch (
+      error
+    ) {
+      console.warn(
+        "No se pudo cargar el usuario:",
         error
       );
 
@@ -1390,23 +1734,31 @@ export default function LugaresPage() {
       }
 
       setFavoritos(
-        (data || []).map(
+        (
+          data ||
+          []
+        ).map(
           (item) =>
             String(
-              item.lugar_id
+              item
+                .lugar_id
             )
         )
       );
     } catch {
-      // La pantalla sigue
-      // funcionando sin favoritos.
+      /*
+        La pantalla sigue funcionando
+        aunque la tabla no exista.
+      */
     }
   }
 
   async function cambiarFavorito(
     lugar: Lugar
   ) {
-    if (!usuarioId) {
+    if (
+      !usuarioId
+    ) {
       return;
     }
 
@@ -1418,7 +1770,8 @@ export default function LugaresPage() {
     if (
       !existe &&
       !esPremium &&
-      favoritos.length >= 5
+      favoritos.length >=
+        5
     ) {
       mostrarMensaje(
         "El plan gratuito permite guardar hasta 5 lugares."
@@ -1432,7 +1785,9 @@ export default function LugaresPage() {
         lugar.id
       );
 
-      if (existe) {
+      if (
+        existe
+      ) {
         const {
           error,
         } =
@@ -1450,7 +1805,9 @@ export default function LugaresPage() {
               lugar.id
             );
 
-        if (error) {
+        if (
+          error
+        ) {
           throw error;
         }
 
@@ -1458,7 +1815,8 @@ export default function LugaresPage() {
           (actuales) =>
             actuales.filter(
               (id) =>
-                id !== lugar.id
+                id !==
+                lugar.id
             )
         );
 
@@ -1482,7 +1840,9 @@ export default function LugaresPage() {
             lugar,
           });
 
-      if (error) {
+      if (
+        error
+      ) {
         throw error;
       }
 
@@ -1492,8 +1852,11 @@ export default function LugaresPage() {
           lugar.id,
         ]
       );
-    } catch (error) {
-      console.error(
+    } catch (
+      error
+    ) {
+      console.warn(
+        "Favorito:",
         error
       );
 
@@ -1550,41 +1913,146 @@ export default function LugaresPage() {
         await fetch(
           `/api/lugares?${params.toString()}`,
           {
-            method: "GET",
+            method:
+              "GET",
 
             cache:
               "no-store",
           }
         );
 
-      const datos:
-        unknown =
+      /*
+        IMPORTANTE:
+
+        Ya NO usamos directamente
+        respuesta.json() + throw.
+
+        Esto permite manejar incluso
+        una respuesta HTML/500 sin
+        lanzar el overlay rojo de Next.
+      */
+
+      const contenido =
         await respuesta
-          .json()
-          .catch(
-            () => null
-          );
+          .text();
+
+      let datos:
+        unknown =
+        null;
+
+      try {
+        datos =
+          contenido
+            ? JSON.parse(
+                contenido
+              )
+            : null;
+      } catch {
+        datos =
+          null;
+      }
+
+      /* =================================================
+         API DEVOLVIÓ ERROR
+      ================================================= */
 
       if (
         !respuesta.ok
       ) {
-        throw new Error(
+        const mensajeError =
+          obtenerError(
+            datos
+          );
+
+        console.warn(
+          "API lugares:",
+          respuesta.status,
+          mensajeError
+        );
+
+        setLugares(
+          []
+        );
+
+        setLugarSeleccionado(
+          null
+        );
+
+        mostrarMensaje(
+          mensajeError
+        );
+
+        return;
+      }
+
+      /* =================================================
+         VALIDAR JSON
+      ================================================= */
+
+      if (
+        !esObjeto(
+          datos
+        )
+      ) {
+        setLugares(
+          []
+        );
+
+        setLugarSeleccionado(
+          null
+        );
+
+        mostrarMensaje(
+          "La API de lugares devolvió una respuesta inválida."
+        );
+
+        return;
+      }
+
+      if (
+        datos.success ===
+          false
+      ) {
+        setLugares(
+          []
+        );
+
+        setLugarSeleccionado(
+          null
+        );
+
+        mostrarMensaje(
           obtenerError(
             datos
           )
         );
+
+        return;
       }
 
       if (
-        !esObjeto(datos) ||
         !Array.isArray(
           datos.lugares
         )
       ) {
-        throw new Error(
-          "La API devolvió datos incorrectos."
+        setLugares(
+          []
         );
+
+        setLugarSeleccionado(
+          null
+        );
+
+        mostrarMensaje(
+          "No se recibió una lista válida de lugares."
+        );
+
+        return;
       }
+
+      /* =================================================
+         NORMALIZAR
+      ================================================= */
 
       const lista =
         datos.lugares
@@ -1595,12 +2063,17 @@ export default function LugaresPage() {
             (
               lugar
             ): lugar is Lugar =>
-              lugar !== null
+              lugar !==
+              null
           );
 
       setLugares(
         lista
       );
+
+      /* =================================================
+         PRIMER LUGAR
+      ================================================= */
 
       if (
         lista.length >
@@ -1609,15 +2082,30 @@ export default function LugaresPage() {
         void seleccionarLugar(
           lista[0]
         );
+      } else {
+        setLugarSeleccionado(
+          null
+        );
       }
-    } catch (error) {
-      console.error(
-        "Lugares:",
+    } catch (
+      error
+    ) {
+      /*
+        Solo errores inesperados
+        de red/navegador llegan aquí.
+      */
+
+      console.warn(
+        "No se pudieron cargar los lugares:",
         error
       );
 
       setLugares(
         []
+      );
+
+      setLugarSeleccionado(
+        null
       );
 
       mostrarMensaje(
@@ -1672,17 +2160,31 @@ export default function LugaresPage() {
           }
         );
 
-      const datos:
-        unknown =
+      const contenido =
         await respuesta
-          .json()
-          .catch(
-            () => null
-          );
+          .text();
+
+      let datos:
+        unknown =
+        null;
+
+      try {
+        datos =
+          contenido
+            ? JSON.parse(
+                contenido
+              )
+            : null;
+      } catch {
+        datos =
+          null;
+      }
 
       if (
         !respuesta.ok ||
-        !esObjeto(datos)
+        !esObjeto(
+          datos
+        )
       ) {
         return;
       }
@@ -1692,7 +2194,9 @@ export default function LugaresPage() {
           datos.lugar
         );
 
-      if (!detalle) {
+      if (
+        !detalle
+      ) {
         return;
       }
 
@@ -1700,10 +2204,36 @@ export default function LugaresPage() {
         detalle
       );
 
+      /*
+        Actualizamos también
+        la tarjeta de la izquierda.
+
+        Así, si la búsqueda inicial
+        tenía poca información, la
+        foto obtenida en Details
+        también aparece allí.
+      */
+
+      setLugares(
+        (actuales) =>
+          actuales.map(
+            (item) =>
+              item.id ===
+              detalle.id
+                ? {
+                    ...item,
+                    ...detalle,
+                  }
+                : item
+          )
+      );
+
       setIndiceFoto(
         0
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.warn(
         "Detalle:",
         error
@@ -1716,7 +2246,7 @@ export default function LugaresPage() {
   }
 
   /* =====================================================
-     RESEÑAS
+     RESEÑAS USUARIO
   ===================================================== */
 
   async function cargarResenasUsuario(
@@ -1746,12 +2276,9 @@ export default function LugaresPage() {
             }
           );
 
-      if (error) {
-        console.warn(
-          "Reseñas:",
-          error.message
-        );
-
+      if (
+        error
+      ) {
         setResenasUsuarios(
           []
         );
@@ -1760,8 +2287,11 @@ export default function LugaresPage() {
       }
 
       setResenasUsuarios(
-        (data ||
-          []) as ResenaUsuario[]
+        (
+          data ||
+          []
+        ) as
+          ResenaUsuario[]
       );
     } catch {
       setResenasUsuarios(
@@ -1780,17 +2310,22 @@ export default function LugaresPage() {
     const mia =
       resenasUsuarios.find(
         (resena) =>
-          resena.user_id ===
+          resena
+            .user_id ===
           usuarioId
       );
 
-    if (mia) {
+    if (
+      mia
+    ) {
       setCalificacionResena(
-        mia.calificacion
+        mia
+          .calificacion
       );
 
       setComentarioResena(
-        mia.comentario
+        mia
+          .comentario
       );
     } else {
       setCalificacionResena(
@@ -1809,7 +2344,9 @@ export default function LugaresPage() {
 
   async function guardarResena(
     evento:
-      FormEvent<HTMLFormElement>
+      FormEvent<
+        HTMLFormElement
+      >
   ) {
     evento.preventDefault();
 
@@ -1822,7 +2359,8 @@ export default function LugaresPage() {
     }
 
     const comentario =
-      comentarioResena.trim();
+      comentarioResena
+        .trim();
 
     if (
       comentario.length <
@@ -1853,7 +2391,8 @@ export default function LugaresPage() {
                 usuarioId,
 
               lugar_id:
-                lugarSeleccionado.id,
+                lugarSeleccionado
+                  .id,
 
               calificacion:
                 calificacionResena,
@@ -1872,12 +2411,15 @@ export default function LugaresPage() {
             }
           );
 
-      if (error) {
+      if (
+        error
+      ) {
         throw error;
       }
 
       await cargarResenasUsuario(
-        lugarSeleccionado.id
+        lugarSeleccionado
+          .id
       );
 
       setModalResena(
@@ -1887,8 +2429,10 @@ export default function LugaresPage() {
       mostrarMensaje(
         "Tu reseña fue guardada correctamente."
       );
-    } catch (error) {
-      console.error(
+    } catch (
+      error
+    ) {
+      console.warn(
         "Guardar reseña:",
         error
       );
@@ -1907,7 +2451,7 @@ export default function LugaresPage() {
   }
 
   /* =====================================================
-     RESERVAR POR WHATSAPP
+     RESERVA WHATSAPP
   ===================================================== */
 
   function abrirReserva() {
@@ -1917,7 +2461,9 @@ export default function LugaresPage() {
       return;
     }
 
-    if (!esPremium) {
+    if (
+      !esPremium
+    ) {
       mostrarMensaje(
         "Las reservas por WhatsApp son una función exclusiva de Premium."
       );
@@ -1925,16 +2471,19 @@ export default function LugaresPage() {
       return;
     }
 
-  const numeroWhatsApp =
-  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+    const numeroWhatsApp =
+      process.env
+        .NEXT_PUBLIC_WHATSAPP_NUMBER;
 
-if (!numeroWhatsApp) {
-  mostrarMensaje(
-    "El número de WhatsApp de Raccoon Study no está configurado."
-  );
+    if (
+      !numeroWhatsApp
+    ) {
+      mostrarMensaje(
+        "El número de WhatsApp de Raccoon Study no está configurado."
+      );
 
-  return;
-}
+      return;
+    }
 
     setFechaReserva(
       obtenerFechaManana()
@@ -1959,7 +2508,9 @@ if (!numeroWhatsApp) {
 
   function enviarReservaWhatsApp(
     evento:
-      FormEvent<HTMLFormElement>
+      FormEvent<
+        HTMLFormElement
+      >
   ) {
     evento.preventDefault();
 
@@ -1971,14 +2522,17 @@ if (!numeroWhatsApp) {
     }
 
     const numero =
-  prepararNumeroWhatsApp(
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ||
-      ""
-  );
+      prepararNumeroWhatsApp(
+        process.env
+          .NEXT_PUBLIC_WHATSAPP_NUMBER ||
+          ""
+      );
 
-    if (!numero) {
+    if (
+      !numero
+    ) {
       mostrarMensaje(
-        "No pudimos obtener el número del establecimiento."
+        "El número de WhatsApp de Raccoon Study no está configurado."
       );
 
       return;
@@ -2001,21 +2555,28 @@ if (!numeroWhatsApp) {
       ).toLocaleDateString(
         "es-PA",
         {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
+          day:
+            "numeric",
+
+          month:
+            "long",
+
+          year:
+            "numeric",
         }
       );
 
     const personasTexto =
-      personasReserva === 1
+      personasReserva ===
+      1
         ? "1 persona"
         : `${personasReserva} personas`;
 
     let texto =
-      `Hola 👋 Soy ${nombreUsuario}. ` +
-      `Encontré *${lugarSeleccionado.nombre}* en Raccoon Study 🦝.\n\n` +
-      `Me gustaría consultar disponibilidad para reservar un espacio para estudiar.\n\n` +
+      `Hola 👋 Soy ${nombreUsuario}.\n\n` +
+      `Estoy realizando una solicitud de reserva desde Raccoon Study 🦝.\n\n` +
+      `📍 Lugar: ${lugarSeleccionado.nombre}\n` +
+      `📌 Dirección: ${lugarSeleccionado.direccion}\n` +
       `📅 Fecha: ${fecha}\n` +
       `🕐 Hora: ${horaReserva}\n` +
       `👥 Personas: ${personasTexto}`;
@@ -2028,7 +2589,7 @@ if (!numeroWhatsApp) {
     }
 
     texto +=
-      "\n\n¿Tienen disponibilidad? Muchas gracias.";
+      "\n\nQuisiera solicitar información sobre la disponibilidad para esta reserva.";
 
     const url =
       `https://wa.me/${numero}?text=${encodeURIComponent(
@@ -2047,12 +2608,14 @@ if (!numeroWhatsApp) {
   }
 
   /* =====================================================
-     BUSCAR
+     BÚSQUEDA
   ===================================================== */
 
   function buscar(
     evento:
-      FormEvent<HTMLFormElement>
+      FormEvent<
+        HTMLFormElement
+      >
   ) {
     evento.preventDefault();
 
@@ -2094,7 +2657,8 @@ if (!numeroWhatsApp) {
 
   function fotoAnterior() {
     if (
-      fotos.length <= 1
+      fotos.length <=
+      1
     ) {
       return;
     }
@@ -2102,14 +2666,17 @@ if (!numeroWhatsApp) {
     setIndiceFoto(
       (actual) =>
         actual === 0
-          ? fotos.length - 1
-          : actual - 1
+          ? fotos.length -
+            1
+          : actual -
+            1
     );
   }
 
   function fotoSiguiente() {
     if (
-      fotos.length <= 1
+      fotos.length <=
+      1
     ) {
       return;
     }
@@ -2117,14 +2684,16 @@ if (!numeroWhatsApp) {
     setIndiceFoto(
       (actual) =>
         actual >=
-        fotos.length - 1
+        fotos.length -
+          1
           ? 0
-          : actual + 1
+          : actual +
+            1
     );
   }
 
   /* =====================================================
-     SESIÓN
+     CERRAR SESIÓN
   ===================================================== */
 
   async function cerrarSesion() {
@@ -2147,7 +2716,9 @@ if (!numeroWhatsApp) {
       const id =
         await cargarUsuario();
 
-      if (!id) {
+      if (
+        !id
+      ) {
         return;
       }
 
@@ -2249,7 +2820,9 @@ if (!numeroWhatsApp) {
             }
             className="lg:hidden"
           >
-            <X size={20} />
+            <X
+              size={20}
+            />
           </button>
         </div>
 
@@ -2290,6 +2863,8 @@ if (!numeroWhatsApp) {
             )
           )}
         </nav>
+
+        {/* PREMIUM */}
 
         <div className="px-3 pb-3">
           <Link
@@ -2341,9 +2916,13 @@ if (!numeroWhatsApp) {
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold hover:bg-[#F2F5FD] dark:hover:bg-slate-800"
           >
             {modoOscuro ? (
-              <Sun size={19} />
+              <Sun
+                size={19}
+              />
             ) : (
-              <Moon size={19} />
+              <Moon
+                size={19}
+              />
             )}
 
             {modoOscuro
@@ -2416,8 +2995,12 @@ if (!numeroWhatsApp) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={fotoPerfil}
-                alt={nombreUsuario}
+                src={
+                  fotoPerfil
+                }
+                alt={
+                  nombreUsuario
+                }
                 className="h-10 w-10 rounded-full border-2 border-[#E6EAFF] object-cover"
                 onError={(
                   evento
@@ -2462,7 +3045,7 @@ if (!numeroWhatsApp) {
           </div>
         </header>
 
-        {/* MENSAJE */}
+        {/* MENSAJES */}
 
         {mensaje && (
           <div className="fixed left-1/2 top-5 z-[900] w-[calc(100%-32px)] max-w-lg -translate-x-1/2 rounded-2xl bg-[#5A47FF] px-5 py-3 text-center text-sm font-black text-white shadow-2xl">
@@ -2501,7 +3084,9 @@ if (!numeroWhatsApp) {
             {/* BUSCADOR */}
 
             <form
-              onSubmit={buscar}
+              onSubmit={
+                buscar
+              }
               className="mt-6 flex gap-3"
             >
               <div className="flex flex-1 items-center gap-3 rounded-xl border border-[#DDE4F2] bg-white px-4 shadow-sm focus-within:border-[#6D55FF] dark:border-slate-700 dark:bg-[#182437]">
@@ -2511,7 +3096,9 @@ if (!numeroWhatsApp) {
                 />
 
                 <input
-                  value={busqueda}
+                  value={
+                    busqueda
+                  }
                   onChange={(
                     evento
                   ) =>
@@ -2715,7 +3302,8 @@ if (!numeroWhatsApp) {
             <div className="mt-4 space-y-3">
               {cargandoLugares ? (
                 Array.from({
-                  length: 5,
+                  length:
+                    5,
                 }).map(
                   (
                     _,
@@ -2740,6 +3328,10 @@ if (!numeroWhatsApp) {
                   <h2 className="mt-4 text-xl font-black">
                     No encontramos lugares
                   </h2>
+
+                  <p className="mt-2 text-sm text-[#7C8CA5]">
+                    Prueba otra categoría o búsqueda.
+                  </p>
                 </div>
               ) : (
                 lugaresFiltrados.map(
@@ -2754,7 +3346,8 @@ if (!numeroWhatsApp) {
                         lugar
                       }
                       seleccionado={
-                        lugarSeleccionado?.id ===
+                        lugarSeleccionado
+                          ?.id ===
                         lugar.id
                       }
                       onClick={() =>
@@ -2811,13 +3404,16 @@ if (!numeroWhatsApp) {
                       fotos[
                         indiceFoto
                       ] ||
-                      lugarSeleccionado.foto
+                      lugarSeleccionado
+                        .foto
                     }
                     nombre={
-                      lugarSeleccionado.nombre
+                      lugarSeleccionado
+                        .nombre
                     }
                     categoria={
-                      lugarSeleccionado.categoria
+                      lugarSeleccionado
+                        .categoria
                     }
                   />
 
@@ -2861,7 +3457,8 @@ if (!numeroWhatsApp) {
                     }
                     disabled={
                       guardandoFavorito ===
-                      lugarSeleccionado.id
+                      lugarSeleccionado
+                        .id
                     }
                     className={`
                       absolute right-5 top-5
@@ -2912,8 +3509,6 @@ if (!numeroWhatsApp) {
                     </div>
                   )}
 
-                  {/* TÍTULO + MAPA */}
-
                   <div className="flex flex-col gap-4">
                     <div>
                       <h2 className="text-2xl font-black">
@@ -2926,7 +3521,7 @@ if (!numeroWhatsApp) {
 
                       <div className="mt-3 flex flex-wrap items-center gap-3">
                         {lugarSeleccionado.calificacion >
-                        0 && (
+                          0 && (
                           <span className="flex items-center gap-1">
                             <Star
                               size={18}
@@ -2971,7 +3566,7 @@ if (!numeroWhatsApp) {
                       </div>
                     </div>
 
-                    {/* ACCIONES MÁS PEQUEÑAS */}
+                    {/* BOTONES */}
 
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -2981,20 +3576,7 @@ if (!numeroWhatsApp) {
                             !mostrarMapa
                           )
                         }
-                        className="
-                          inline-flex h-11
-                          items-center gap-2
-                          self-start
-                          rounded-xl
-                          bg-[#5A47FF]
-                          px-4
-                          text-sm
-                          font-black
-                          text-white
-                          shadow-md
-                          transition
-                          hover:bg-[#4936E8]
-                        "
+                        className="inline-flex h-11 items-center gap-2 self-start rounded-xl bg-[#5A47FF] px-4 text-sm font-black text-white shadow-md transition hover:bg-[#4936E8]"
                       >
                         <Navigation
                           size={16}
@@ -3010,22 +3592,7 @@ if (!numeroWhatsApp) {
                         onClick={
                           abrirResena
                         }
-                        className="
-                          inline-flex h-11
-                          items-center gap-2
-                          rounded-xl
-                          border
-                          border-[#D8D2FF]
-                          bg-[#F3F0FF]
-                          px-4
-                          text-sm
-                          font-black
-                          text-[#5A47FF]
-                          transition
-                          hover:bg-[#EAE5FF]
-                          dark:border-[#4C4381]
-                          dark:bg-[#302B58]
-                        "
+                        className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#D8D2FF] bg-[#F3F0FF] px-4 text-sm font-black text-[#5A47FF] transition hover:bg-[#EAE5FF] dark:border-[#4C4381] dark:bg-[#302B58]"
                       >
                         <Star
                           size={16}
@@ -3042,10 +3609,8 @@ if (!numeroWhatsApp) {
                         className={`
                           inline-flex h-11
                           items-center gap-2
-                          rounded-xl
-                          px-4
-                          text-sm
-                          font-black
+                          rounded-xl px-4
+                          text-sm font-black
                           transition
                           ${
                             esPremium
@@ -3075,18 +3640,18 @@ if (!numeroWhatsApp) {
 
                   {mostrarMapa &&
                     mapaEmbed && (
-                      <div className="mt-5 overflow-hidden rounded-2xl border border-[#E1E7F5] shadow-sm dark:border-slate-700">
-                        <iframe
-                          src={
-                            mapaEmbed
-                          }
-                          title={`Mapa de ${lugarSeleccionado.nombre}`}
-                          className="h-[310px] w-full border-0"
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
-                        />
-                      </div>
-                    )}
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-[#E1E7F5] shadow-sm dark:border-slate-700">
+                      <iframe
+                        src={
+                          mapaEmbed
+                        }
+                        title={`Mapa de ${lugarSeleccionado.nombre}`}
+                        className="h-[310px] w-full border-0"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                  )}
 
                   {/* CARACTERÍSTICAS */}
 
@@ -3117,13 +3682,11 @@ if (!numeroWhatsApp) {
                     </div>
                   )}
 
-                  {/* RESERVA PREMIUM BANNER */}
+                  {/* PREMIUM */}
 
                   <div
                     className={`
-                      mt-6
-                      rounded-2xl
-                      border p-5
+                      mt-6 rounded-2xl border p-5
                       ${
                         esPremium
                           ? "border-green-200 bg-gradient-to-r from-[#F0FFF7] to-[#F6FFFB] dark:border-green-900/60 dark:from-green-950/20 dark:to-slate-900"
@@ -3164,8 +3727,8 @@ if (!numeroWhatsApp) {
 
                         <p className="mt-1 text-sm leading-6 text-[#637590] dark:text-slate-300">
                           {esPremium
-                            ? "Selecciona fecha, hora y cantidad de personas. Raccoon preparará el mensaje para enviarlo al establecimiento por WhatsApp."
-                            : "Con Premium puedes contactar al establecimiento directamente para solicitar una reserva."}
+                            ? "Selecciona fecha, hora y cantidad de personas. Raccoon preparará el mensaje para enviarlo por WhatsApp."
+                            : "Con Premium puedes solicitar una reserva desde Raccoon Study."}
                         </p>
 
                         <button
@@ -3301,9 +3864,7 @@ if (!numeroWhatsApp) {
                     )}
                   </div>
 
-                  {/* =================================================
-                      RESEÑAS
-                  ================================================= */}
+                  {/* RESEÑAS */}
 
                   <div className="mt-7 border-t border-[#E8ECF5] pt-6 dark:border-slate-700">
                     <div className="flex items-center justify-between gap-3">
@@ -3412,7 +3973,8 @@ if (!numeroWhatsApp) {
 
                                     <div className="mt-1 flex gap-0.5 text-[#FFB629]">
                                       {Array.from({
-                                        length: 5,
+                                        length:
+                                          5,
                                       }).map(
                                         (
                                           _,
@@ -3514,14 +4076,16 @@ if (!numeroWhatsApp) {
 
                 <div className="mt-3 flex gap-2">
                   {Array.from({
-                    length: 5,
+                    length:
+                      5,
                   }).map(
                     (
                       _,
                       indice
                     ) => {
                       const valor =
-                        indice + 1;
+                        indice +
+                        1;
 
                       return (
                         <button
@@ -3575,9 +4139,7 @@ if (!numeroWhatsApp) {
                   />
 
                   <p className="mt-1 text-right text-xs text-[#8997AC]">
-                    {
-                      comentarioResena.length
-                    }
+                    {comentarioResena.length}
                     /600
                   </p>
                 </label>
@@ -3614,7 +4176,7 @@ if (!numeroWhatsApp) {
         )}
 
       {/* =====================================================
-          MODAL RESERVA PREMIUM
+          MODAL RESERVA
       ===================================================== */}
 
       {modalReserva &&
@@ -3663,11 +4225,9 @@ if (!numeroWhatsApp) {
               </div>
 
               <p className="mt-2 text-sm leading-6 text-[#667995] dark:text-slate-300">
-                Completa los detalles y abriremos WhatsApp con el mensaje listo para{" "}
+                Completa los detalles y abriremos WhatsApp con el mensaje listo para solicitar una reserva en{" "}
                 <strong>
-                  {
-                    lugarSeleccionado.nombre
-                  }
+                  {lugarSeleccionado.nombre}
                 </strong>
                 .
               </p>
@@ -3768,14 +4328,16 @@ if (!numeroWhatsApp) {
                       className="h-12 w-full bg-transparent text-sm outline-none"
                     >
                       {Array.from({
-                        length: 10,
+                        length:
+                          10,
                       }).map(
                         (
                           _,
                           indice
                         ) => {
                           const numero =
-                            indice + 1;
+                            indice +
+                            1;
 
                           return (
                             <option
@@ -3825,7 +4387,7 @@ if (!numeroWhatsApp) {
 
                 <div className="mt-5 rounded-xl bg-[#F2FFF8] p-4 dark:bg-green-950/20">
                   <p className="text-xs leading-5 text-[#547464] dark:text-green-200">
-                    La reserva no se confirma automáticamente. Raccoon Study abrirá WhatsApp para que el establecimiento confirme disponibilidad contigo.
+                    La reserva no se confirma automáticamente. Raccoon Study abrirá WhatsApp con la solicitud preparada.
                   </p>
                 </div>
 
@@ -3999,12 +4561,15 @@ function FotoLugar({
 }: {
   src: string;
   nombre: string;
-  categoria: CategoriaLugar;
+  categoria:
+    CategoriaLugar;
 }) {
   const [
     error,
     setError,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     cargando,
@@ -4013,8 +4578,30 @@ function FotoLugar({
     Boolean(src)
   );
 
+  const [
+    intento,
+    setIntento,
+  ] = useState(
+    0
+  );
+
+  const Icono =
+    iconoCategoria(
+      categoria
+    );
+
+  /* =====================================================
+     REINICIAR AL CAMBIAR FOTO
+  ===================================================== */
+
   useEffect(() => {
-    setError(false);
+    setError(
+      false
+    );
+
+    setIntento(
+      0
+    );
 
     setCargando(
       Boolean(src)
@@ -4023,13 +4610,56 @@ function FotoLugar({
     src,
   ]);
 
-  const Icono =
-    iconoCategoria(
-      categoria
-    );
+  /* =====================================================
+     URL ACTUAL
+  ===================================================== */
+
+  const srcActual =
+    useMemo(() => {
+      const limpia =
+        src.trim();
+
+      if (
+        !limpia
+      ) {
+        return "";
+      }
+
+      if (
+        intento ===
+        0
+      ) {
+        return limpia;
+      }
+
+      /*
+        Segundo intento sin reutilizar
+        una respuesta fallida anterior.
+      */
+
+      const separador =
+        limpia.includes(
+          "?"
+        )
+          ? "&"
+          : "?";
+
+      return (
+        `${limpia}` +
+        `${separador}` +
+        `retry=${intento}`
+      );
+    }, [
+      src,
+      intento,
+    ]);
+
+  /* =====================================================
+     PLACEHOLDER
+  ===================================================== */
 
   if (
-    !src ||
+    !srcActual ||
     error
   ) {
     return (
@@ -4047,6 +4677,10 @@ function FotoLugar({
     );
   }
 
+  /* =====================================================
+     FOTO REAL
+  ===================================================== */
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       {cargando && (
@@ -4059,18 +4693,53 @@ function FotoLugar({
       )}
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
+
       <img
-        src={src}
+        key={
+          srcActual
+        }
+        src={
+          srcActual
+        }
         alt={`Foto de ${nombre}`}
         className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
         loading="lazy"
         decoding="async"
-        onLoad={() =>
+        onLoad={() => {
           setCargando(
             false
-          )
-        }
+          );
+
+          setError(
+            false
+          );
+        }}
         onError={() => {
+          /*
+            PRIMER ERROR:
+            volvemos a intentar una vez.
+          */
+
+          if (
+            intento ===
+            0
+          ) {
+            setIntento(
+              1
+            );
+
+            setCargando(
+              true
+            );
+
+            return;
+          }
+
+          /*
+            SEGUNDO ERROR:
+            usamos el placeholder.
+          */
+
           setCargando(
             false
           );

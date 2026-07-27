@@ -1,81 +1,154 @@
-import {
+import type {
   NextRequest,
+} from "next/server";
+
+import {
   NextResponse,
 } from "next/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime =
+  "nodejs";
+
+export const dynamic =
+  "force-dynamic";
 
 /* =====================================================
-   TIPOS
+   DIMENSIONES
 ===================================================== */
 
-interface RespuestaFotoGoogle {
-  name?: string;
-
-  photoUri?: string;
-
-  error?: {
-    code?: number;
-    message?: string;
-    status?: string;
-  };
-}
-
-/* =====================================================
-   FUNCIONES
-===================================================== */
-
-function limitarAncho(
-  valor: string | null
+function limitarDimension(
+  valor: string | null,
+  respaldo: number
 ): number {
   const numero =
     Number(valor);
 
   if (
-    !Number.isFinite(
-      numero
-    )
+    !Number.isFinite(numero)
   ) {
-    return 1200;
+    return respaldo;
   }
 
-  return Math.min(
-    4800,
-    Math.max(
-      1,
+  return Math.max(
+    1,
+    Math.min(
+      4800,
       Math.floor(numero)
     )
   );
 }
 
-function limpiarNombre(
+/* =====================================================
+   NORMALIZAR NOMBRE
+===================================================== */
+
+function normalizarNombre(
   valor: string
 ): string {
-  return valor
-    .trim()
-    .replace(
-      /\/media$/i,
+  let nombre =
+    valor.trim();
+
+  if (!nombre) {
+    return "";
+  }
+
+  /*
+    URLSearchParams normalmente
+    ya decodifica %2F.
+
+    Esto cubre una doble codificación.
+  */
+
+  try {
+    if (
+      nombre.includes("%2F") ||
+      nombre.includes("%2f")
+    ) {
+      nombre =
+        decodeURIComponent(
+          nombre
+        );
+    }
+  } catch {
+    // Continuamos.
+  }
+
+  /*
+    Soportar URL completa accidental.
+  */
+
+  nombre =
+    nombre.replace(
+      /^https:\/\/places\.googleapis\.com\/v1\//i,
       ""
     );
+
+  nombre =
+    nombre.replace(
+      /^\/?v1\//i,
+      ""
+    );
+
+  nombre =
+    nombre.replace(
+      /^\/+/,
+      ""
+    );
+
+  /*
+    photos[].name viene SIN /media.
+  */
+
+  nombre =
+    nombre.replace(
+      /\/media\/?$/i,
+      ""
+    );
+
+  nombre =
+    nombre.split("?")[0];
+
+  return nombre;
 }
+
+/* =====================================================
+   VALIDAR
+===================================================== */
 
 function nombreValido(
   nombre: string
 ): boolean {
-  /*
-    Formato esperado:
-
-    places/PLACE_ID/photos/PHOTO_REFERENCE
-  */
-
-  return /^places\/[^/]+\/photos\/[^/]+$/.test(
+  return /^places\/[^/?#]+\/photos\/[^/?#]+$/.test(
     nombre
   );
 }
 
 /* =====================================================
-   GET /api/lugares/foto
+   ERROR
+===================================================== */
+
+function respuestaError(
+  mensaje: string,
+  status: number
+): NextResponse {
+  return NextResponse.json(
+    {
+      success: false,
+      error: mensaje,
+    },
+    {
+      status,
+
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    }
+  );
+}
+
+/* =====================================================
+   GET PLACE PHOTO
 ===================================================== */
 
 export async function GET(
@@ -84,179 +157,101 @@ export async function GET(
   try {
     const apiKey =
       process.env
-        .GOOGLE_PLACES_API_KEY;
+        .GOOGLE_PLACES_API_KEY
+        ?.trim();
 
     if (!apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-
-          error:
-            "Falta GOOGLE_PLACES_API_KEY en .env.local.",
-        },
-        {
-          status: 500,
-        }
+      return respuestaError(
+        "GOOGLE_PLACES_API_KEY no está configurada.",
+        500
       );
     }
 
     const referencia =
-      request.nextUrl.searchParams
-        .get("name") || "";
+      request.nextUrl
+        .searchParams
+        .get("name") ||
+      "";
 
     const nombre =
-      limpiarNombre(
+      normalizarNombre(
         referencia
       );
 
-    const ancho =
-      limitarAncho(
-        request.nextUrl.searchParams
-          .get("width")
+    const width =
+      limitarDimension(
+        request.nextUrl
+          .searchParams
+          .get("width"),
+        1400
+      );
+
+    const height =
+      limitarDimension(
+        request.nextUrl
+          .searchParams
+          .get("height"),
+        1000
       );
 
     if (!nombre) {
-      return NextResponse.json(
-        {
-          success: false,
-
-          error:
-            "No se recibió la referencia de la fotografía.",
-        },
-        {
-          status: 400,
-        }
+      return respuestaError(
+        "No se recibió el nombre de la fotografía.",
+        400
       );
     }
 
     if (
-      !nombreValido(
-        nombre
-      )
+      !nombreValido(nombre)
     ) {
-      return NextResponse.json(
-        {
-          success: false,
+      console.warn(
+        "Nombre de fotografía inválido:",
+        nombre
+      );
 
-          error:
-            "La referencia de la fotografía no tiene un formato válido.",
-        },
-        {
-          status: 400,
-        }
+      return respuestaError(
+        "La referencia de fotografía no es válida.",
+        400
       );
     }
 
     /*
-      Google espera:
+      FORMATO OFICIAL:
 
-      places/PLACE_ID/photos/PHOTO_REFERENCE/media
+      https://places.googleapis.com/v1/
+      places/PLACE_ID/photos/PHOTO_RESOURCE/media
     */
 
-    const url =
+    const googleUrl =
       new URL(
         `https://places.googleapis.com/v1/${nombre}/media`
       );
 
-    url.searchParams.set(
+    googleUrl.searchParams.set(
+      "key",
+      apiKey
+    );
+
+    googleUrl.searchParams.set(
       "maxWidthPx",
-      String(ancho)
+      String(width)
+    );
+
+    googleUrl.searchParams.set(
+      "maxHeightPx",
+      String(height)
     );
 
     /*
-      CON TRUE:
-      Google responde JSON:
-      {
-        name: "...",
-        photoUri: "..."
-      }
-    */
+      No usamos skipHttpRedirect.
 
-    url.searchParams.set(
-      "skipHttpRedirect",
-      "true"
-    );
+      Google redirige a la imagen real
+      y nuestro servidor sigue la redirección.
+    */
 
     const respuestaGoogle =
       await fetch(
-        url.toString(),
-        {
-          method: "GET",
-
-          headers: {
-            "X-Goog-Api-Key":
-              apiKey,
-
-            Accept:
-              "application/json",
-          },
-
-          cache:
-            "no-store",
-        }
-      );
-
-    const datos =
-      (await respuestaGoogle
-        .json()
-        .catch(
-          () => null
-        )) as
-        | RespuestaFotoGoogle
-        | null;
-
-    if (
-      !respuestaGoogle.ok
-    ) {
-      console.error(
-        "Error Google Photos:",
-        respuestaGoogle.status,
-        datos
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-
-          error:
-            datos?.error?.message ||
-            `Google Places devolvió ${respuestaGoogle.status}.`,
-        },
-        {
-          status:
-            respuestaGoogle.status,
-        }
-      );
-    }
-
-    const photoUri =
-      datos?.photoUri;
-
-    if (
-      typeof photoUri !==
-        "string" ||
-      !photoUri.trim()
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-
-          error:
-            "Google Places no devolvió la URL de la fotografía.",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
-
-    /*
-      DESCARGAMOS LA FOTO REAL
-    */
-
-    const respuestaImagen =
-      await fetch(
-        photoUri,
+        googleUrl.toString(),
         {
           method: "GET",
 
@@ -265,76 +260,93 @@ export async function GET(
 
           cache:
             "no-store",
+
+          headers: {
+            Accept:
+              "image/avif,image/webp,image/jpeg,image/png,image/*,*/*;q=0.8",
+          },
         }
       );
 
     if (
-      !respuestaImagen.ok
+      !respuestaGoogle.ok
     ) {
-      return NextResponse.json(
-        {
-          success: false,
+      const tipo =
+        respuestaGoogle.headers.get(
+          "content-type"
+        ) || "";
 
-          error:
-            `No se pudo descargar la fotografía (${respuestaImagen.status}).`,
-        },
-        {
-          status:
-            respuestaImagen.status,
-        }
+      let detalle = "";
+
+      if (
+        tipo.includes(
+          "application/json"
+        )
+      ) {
+        detalle =
+          JSON.stringify(
+            await respuestaGoogle
+              .json()
+              .catch(
+                () => null
+              )
+          );
+      } else {
+        detalle =
+          await respuestaGoogle
+            .text()
+            .catch(
+              () => ""
+            );
+      }
+
+      console.warn(
+        "Google Place Photos:",
+        respuestaGoogle.status,
+        detalle.slice(0, 500)
+      );
+
+      return respuestaError(
+        `Google Place Photos devolvió ${respuestaGoogle.status}.`,
+        respuestaGoogle.status
       );
     }
 
     const contentType =
-      respuestaImagen.headers
-        .get(
-          "content-type"
-        ) ||
+      respuestaGoogle.headers.get(
+        "content-type"
+      ) ||
       "image/jpeg";
 
     if (
-      !contentType.startsWith(
-        "image/"
-      )
+      !contentType
+        .toLowerCase()
+        .startsWith("image/")
     ) {
-      return NextResponse.json(
-        {
-          success: false,
+      console.warn(
+        "Place Photos no devolvió imagen:",
+        contentType
+      );
 
-          error:
-            "El contenido recibido no es una imagen.",
-        },
-        {
-          status: 502,
-        }
+      return respuestaError(
+        "Google Places no devolvió una imagen válida.",
+        502
       );
     }
 
     const imagen =
-      await respuestaImagen
+      await respuestaGoogle
         .arrayBuffer();
 
     if (
       imagen.byteLength ===
       0
     ) {
-      return NextResponse.json(
-        {
-          success: false,
-
-          error:
-            "La fotografía está vacía.",
-        },
-        {
-          status: 502,
-        }
+      return respuestaError(
+        "Google devolvió una fotografía vacía.",
+        502
       );
     }
-
-    /*
-      DEVOLVEMOS LA IMAGEN DIRECTAMENTE
-      A <img src="/api/lugares/foto?...">
-    */
 
     return new NextResponse(
       imagen,
@@ -345,8 +357,13 @@ export async function GET(
           "Content-Type":
             contentType,
 
+          /*
+            Los nombres de las fotos
+            pueden expirar.
+          */
+
           "Cache-Control":
-            "private, max-age=1800",
+            "private, max-age=300",
 
           "X-Content-Type-Options":
             "nosniff",
@@ -354,23 +371,16 @@ export async function GET(
       }
     );
   } catch (error) {
-    console.error(
+    console.warn(
       "Error /api/lugares/foto:",
       error
     );
 
-    return NextResponse.json(
-      {
-        success: false,
-
-        error:
-          error instanceof Error
-            ? error.message
-            : "No se pudo cargar la fotografía.",
-      },
-      {
-        status: 500,
-      }
+    return respuestaError(
+      error instanceof Error
+        ? error.message
+        : "No se pudo cargar la fotografía.",
+      500
     );
   }
 }

@@ -292,30 +292,7 @@ export default function MetodosPage() {
             Biblioteca
           </Link>
 
-          <Link
-            href="/perfil"
-            onClick={() => setMenuAbierto(false)}
-            className="
-              flex
-              items-center
-              gap-3
-              rounded-xl
-              px-4
-              py-3
-              text-sm
-              font-semibold
-              text-[#253650]
-              transition
-              hover:bg-[#F0F8FF]
-              hover:text-[#1687D9]
-              dark:text-slate-200
-              dark:hover:bg-slate-800
-            "
-          >
-            <User size={19} />
-            Perfil
-          </Link>
-
+         
           <Link
             href="/lugares"
             onClick={() => setMenuAbierto(false)}
@@ -339,6 +316,31 @@ export default function MetodosPage() {
             <MapPin size={19} />
             Lugares
           </Link>
+
+           <Link
+            href="/perfil"
+            onClick={() => setMenuAbierto(false)}
+            className="
+              flex
+              items-center
+              gap-3
+              rounded-xl
+              px-4
+              py-3
+              text-sm
+              font-semibold
+              text-[#253650]
+              transition
+              hover:bg-[#F0F8FF]
+              hover:text-[#1687D9]
+              dark:text-slate-200
+              dark:hover:bg-slate-800
+            "
+          >
+            <User size={19} />
+            Perfil
+          </Link>
+
         </nav>
 
         <div className="space-y-2 px-3 pb-5">
@@ -460,12 +462,10 @@ export default function MetodosPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-full bg-[#F1F6FC] px-4 py-2 text-sm font-semibold text-[#52709B] dark:bg-slate-800 md:block">
-              Hola, {perfil.nombre} ✨
-            </div>
+            
 
             <Image
-              src="/raccoon.png"
+              src="/mapache.png"
               alt="Perfil"
               width={42}
               height={42}
@@ -514,10 +514,10 @@ export default function MetodosPage() {
 
               <div className="flex justify-center lg:justify-end">
                 <Image
-                  src="/raccoon.png"
+                  src="/mapache.png"
                   alt="Raccoon estudiando"
-                  width={270}
-                  height={270}
+                  width={470}
+                  height={470}
                   className="drop-shadow-xl"
                 />
               </div>

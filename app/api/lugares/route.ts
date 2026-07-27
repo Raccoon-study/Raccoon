@@ -1,7 +1,5 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +29,7 @@ interface UbicacionGoogle {
   longitude?: number;
 }
 
-interface AtribucionGoogle {
+interface AutorFotoGoogle {
   displayName?: string;
   uri?: string;
   photoUri?: string;
@@ -41,7 +39,7 @@ interface FotoGoogle {
   name?: string;
   widthPx?: number;
   heightPx?: number;
-  authorAttributions?: AtribucionGoogle[];
+  authorAttributions?: AutorFotoGoogle[];
 }
 
 interface HorarioGoogle {
@@ -52,11 +50,11 @@ interface HorarioGoogle {
 interface ResenaGoogle {
   name?: string;
   rating?: number;
+
   text?: TextoGoogle;
   originalText?: TextoGoogle;
 
   relativePublishTimeDescription?: string;
-
   publishTime?: string;
 
   authorAttribution?: {
@@ -68,6 +66,7 @@ interface ResenaGoogle {
 
 interface LugarGoogle {
   id?: string;
+  name?: string;
 
   displayName?: TextoGoogle;
 
@@ -76,11 +75,9 @@ interface LugarGoogle {
   location?: UbicacionGoogle;
 
   rating?: number;
-
   userRatingCount?: number;
 
   primaryType?: string;
-
   primaryTypeDisplayName?: TextoGoogle;
 
   types?: string[];
@@ -90,13 +87,11 @@ interface LugarGoogle {
   googleMapsUri?: string;
 
   websiteUri?: string;
-
   nationalPhoneNumber?: string;
 
   businessStatus?: string;
 
   regularOpeningHours?: HorarioGoogle;
-
   currentOpeningHours?: HorarioGoogle;
 
   reviews?: ResenaGoogle[];
@@ -104,11 +99,8 @@ interface LugarGoogle {
   editorialSummary?: TextoGoogle;
 
   servesCoffee?: boolean;
-
   outdoorSeating?: boolean;
-
   restroom?: boolean;
-
   goodForGroups?: boolean;
 
   accessibilityOptions?: {
@@ -121,15 +113,18 @@ interface LugarGoogle {
   parkingOptions?: {
     freeParkingLot?: boolean;
     paidParkingLot?: boolean;
+
     freeStreetParking?: boolean;
     paidStreetParking?: boolean;
+
     valetParking?: boolean;
+
     freeGarageParking?: boolean;
     paidGarageParking?: boolean;
   };
 }
 
-interface RespuestaBusqueda {
+interface RespuestaBusquedaGoogle {
   places?: LugarGoogle[];
 
   error?: {
@@ -139,8 +134,16 @@ interface RespuestaBusqueda {
   };
 }
 
+interface ErrorGoogle {
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+  };
+}
+
 /* =====================================================
-   CONFIGURACIÓN
+   SANTIAGO DE VERAGUAS
 ===================================================== */
 
 const CENTRO_SANTIAGO = {
@@ -153,7 +156,7 @@ const CONSULTAS: Record<
   string
 > = {
   todos:
-    "cafeterías bibliotecas universidades parques lugares para estudiar en Santiago de Veraguas Panamá",
+    "lugares para estudiar en Santiago de Veraguas Panamá",
 
   cafeterias:
     "cafeterías en Santiago de Veraguas Panamá",
@@ -168,21 +171,12 @@ const CONSULTAS: Record<
     "universidades en Santiago de Veraguas Panamá",
 
   otros:
-    "lugares educativos para estudiar en Santiago de Veraguas Panamá",
+    "lugares educativos en Santiago de Veraguas Panamá",
 };
 
 /* =====================================================
-   FUNCIONES AUXILIARES
+   HELPERS
 ===================================================== */
-
-function esObjeto(
-  valor: unknown
-): valor is Record<string, unknown> {
-  return (
-    typeof valor === "object" &&
-    valor !== null
-  );
-}
 
 function numeroSeguro(
   valor: unknown,
@@ -195,7 +189,7 @@ function numeroSeguro(
     : respaldo;
 }
 
-function normalizarCategoria(
+function categoriaPermitida(
   valor: string | null
 ): CategoriaBusqueda {
   const categorias: CategoriaBusqueda[] = [
@@ -218,6 +212,10 @@ function normalizarCategoria(
   return "todos";
 }
 
+/* =====================================================
+   CATEGORÍA
+===================================================== */
+
 function obtenerCategoria(
   tipos: string[]
 ): CategoriaLugar {
@@ -230,7 +228,8 @@ function obtenerCategoria(
   if (
     tipos.includes("cafe") ||
     tipos.includes("coffee_shop") ||
-    tipos.includes("bakery")
+    tipos.includes("bakery") ||
+    tipos.includes("restaurant")
   ) {
     return "cafeterias";
   }
@@ -254,35 +253,88 @@ function obtenerCategoria(
 }
 
 /* =====================================================
+   CORREGIR NOMBRE ISAE
+===================================================== */
+
+function corregirNombre(
+  nombre: string,
+  categoria: CategoriaLugar
+): string {
+  const limpio =
+    nombre.trim();
+
+  if (
+    categoria === "universidades" &&
+    limpio === "1"
+  ) {
+    return "ISAE Universidad";
+  }
+
+  return limpio;
+}
+
+/* =====================================================
    FOTOS
 ===================================================== */
 
 function crearFotos(
-  fotos: FotoGoogle[] | undefined
+  fotos:
+    | FotoGoogle[]
+    | undefined
 ): string[] {
-  if (!Array.isArray(fotos)) {
+  if (
+    !Array.isArray(fotos)
+  ) {
     return [];
   }
 
   return fotos
-    .filter(
-      (foto) =>
-        typeof foto.name === "string" &&
-        foto.name.trim().length > 0
-    )
-    .slice(0, 8)
-    .map(
-      (foto) =>
-        `/api/lugares/foto?name=${encodeURIComponent(
-          String(foto.name)
-        )}&width=1400`
-    );
+    .filter((foto) => {
+      return (
+        typeof foto.name ===
+          "string" &&
+        foto.name.trim().length >
+          0
+      );
+    })
+    .slice(0, 10)
+    .map((foto) => {
+      const params =
+        new URLSearchParams();
+
+      params.set(
+        "name",
+        String(foto.name).trim()
+      );
+
+      params.set(
+        "width",
+        "1400"
+      );
+
+      params.set(
+        "height",
+        "1000"
+      );
+
+      return (
+        `/api/lugares/foto?` +
+        params.toString()
+      );
+    });
 }
 
+/* =====================================================
+   ATRIBUCIÓN FOTO
+===================================================== */
+
 function obtenerAtribucionFoto(
-  fotos: FotoGoogle[] | undefined
+  fotos:
+    | FotoGoogle[]
+    | undefined
 ): string {
-  const foto = fotos?.[0];
+  const foto =
+    fotos?.[0];
 
   if (
     !foto ||
@@ -302,10 +354,210 @@ function obtenerAtribucionFoto(
       (
         nombre
       ): nombre is string =>
-        typeof nombre === "string" &&
-        nombre.trim().length > 0
+        typeof nombre ===
+          "string" &&
+        nombre.trim().length >
+          0
     )
     .join(", ");
+}
+
+/* =====================================================
+   PLACE DETAILS:
+   BUSCAR FOTOS DE UN LUGAR
+===================================================== */
+
+async function obtenerFotosDesdeDetalles(
+  apiKey: string,
+  placeId: string
+): Promise<FotoGoogle[]> {
+  if (!placeId) {
+    return [];
+  }
+
+  try {
+    const url =
+      new URL(
+        `https://places.googleapis.com/v1/places/${encodeURIComponent(
+          placeId
+        )}`
+      );
+
+    /*
+      IMPORTANTE:
+
+      Pedimos solamente:
+      - id
+      - photos
+
+      Google clasifica photos como
+      Place Details Essentials IDs Only.
+    */
+
+    const respuesta =
+      await fetch(
+        url.toString(),
+        {
+          method: "GET",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            "X-Goog-Api-Key":
+              apiKey,
+
+            "X-Goog-FieldMask":
+              "id,photos",
+          },
+
+          cache:
+            "no-store",
+        }
+      );
+
+    const datos =
+      (await respuesta
+        .json()
+        .catch(
+          () => null
+        )) as
+        | LugarGoogle
+        | ErrorGoogle
+        | null;
+
+    if (
+      !respuesta.ok
+    ) {
+      console.warn(
+        "Place Details Photos:",
+        placeId,
+        respuesta.status,
+        datos
+      );
+
+      return [];
+    }
+
+    const lugar =
+      datos as LugarGoogle;
+
+    if (
+      !Array.isArray(
+        lugar.photos
+      )
+    ) {
+      console.warn(
+        "Google no devolvió photos para:",
+        placeId
+      );
+
+      return [];
+    }
+
+    return lugar.photos.filter(
+      (foto) =>
+        typeof foto.name ===
+          "string" &&
+        foto.name.trim().length >
+          0
+    );
+  } catch (error) {
+    console.warn(
+      "Error obteniendo fotos:",
+      placeId,
+      error
+    );
+
+    return [];
+  }
+}
+
+/* =====================================================
+   COMPLETAR FOTOS FALTANTES
+
+   ESTE ES EL ARREGLO QUE FALTABA.
+===================================================== */
+
+async function completarFotos(
+  apiKey: string,
+  lugares: LugarGoogle[]
+): Promise<LugarGoogle[]> {
+  const resultado:
+    LugarGoogle[] = [];
+
+  /*
+    Procesamos solo 4 simultáneamente.
+  */
+
+  const tamanoLote = 4;
+
+  for (
+    let inicio = 0;
+    inicio < lugares.length;
+    inicio += tamanoLote
+  ) {
+    const lote =
+      lugares.slice(
+        inicio,
+        inicio + tamanoLote
+      );
+
+    const completados =
+      await Promise.all(
+        lote.map(
+          async (
+            lugar
+          ): Promise<LugarGoogle> => {
+            /*
+              Text Search ya mandó fotos.
+            */
+
+            if (
+              Array.isArray(
+                lugar.photos
+              ) &&
+              lugar.photos.length >
+                0
+            ) {
+              return lugar;
+            }
+
+            /*
+              Text Search NO mandó fotos.
+              Hacemos Place Details.
+            */
+
+            const id =
+              String(
+                lugar.id || ""
+              ).trim();
+
+            if (!id) {
+              return lugar;
+            }
+
+            const fotos =
+              await obtenerFotosDesdeDetalles(
+                apiKey,
+                id
+              );
+
+            return {
+              ...lugar,
+
+              photos: fotos,
+            };
+          }
+        )
+      );
+
+    resultado.push(
+      ...completados
+    );
+  }
+
+  return resultado;
 }
 
 /* =====================================================
@@ -318,10 +570,10 @@ function crearDescripcion(
 ): string {
   switch (categoria) {
     case "cafeterias":
-      return `${nombre} es una cafetería ubicada en Santiago de Veraguas. Revisa su calificación, horario y características para decidir si es adecuada para estudiar.`;
+      return `${nombre} es una cafetería ubicada en Santiago de Veraguas. Puede ser una buena opción para estudiar, trabajar o reunirse.`;
 
     case "bibliotecas":
-      return `${nombre} es un espacio que puede ser utilizado para leer, investigar, realizar tareas y desarrollar actividades académicas.`;
+      return `${nombre} es un espacio de lectura, investigación y estudio ubicado en Santiago de Veraguas.`;
 
     case "parques":
       return `${nombre} ofrece un espacio al aire libre en Santiago de Veraguas para leer, descansar o estudiar.`;
@@ -330,7 +582,7 @@ function crearDescripcion(
       return `${nombre} es un espacio académico ubicado en Santiago de Veraguas.`;
 
     default:
-      return `${nombre} es un lugar ubicado en Santiago de Veraguas que puede resultar útil para estudiar o realizar actividades académicas.`;
+      return `${nombre} es un lugar ubicado en Santiago de Veraguas.`;
   }
 }
 
@@ -340,20 +592,22 @@ function crearDescripcion(
 
 function obtenerCaracteristicas(
   lugar: LugarGoogle,
-  categoria: CategoriaLugar
+  categoria:
+    CategoriaLugar
 ): string[] {
-  const caracteristicas: string[] = [];
+  const lista:
+    string[] = [];
 
   if (
     categoria === "cafeterias"
   ) {
-    caracteristicas.push("Café");
+    lista.push("Café");
   }
 
   if (
     categoria === "bibliotecas"
   ) {
-    caracteristicas.push(
+    lista.push(
       "Biblioteca",
       "Espacio académico"
     );
@@ -362,7 +616,7 @@ function obtenerCaracteristicas(
   if (
     categoria === "parques"
   ) {
-    caracteristicas.push(
+    lista.push(
       "Aire libre"
     );
   }
@@ -370,23 +624,25 @@ function obtenerCaracteristicas(
   if (
     categoria === "universidades"
   ) {
-    caracteristicas.push(
+    lista.push(
       "Universidad",
       "Entorno académico"
     );
   }
 
   if (
-    lugar.servesCoffee === true &&
-    !caracteristicas.includes("Café")
+    lugar.servesCoffee ===
+      true &&
+    !lista.includes("Café")
   ) {
-    caracteristicas.push("Café");
+    lista.push("Café");
   }
 
   if (
-    lugar.outdoorSeating === true
+    lugar.outdoorSeating ===
+    true
   ) {
-    caracteristicas.push(
+    lista.push(
       "Mesas exteriores"
     );
   }
@@ -394,25 +650,25 @@ function obtenerCaracteristicas(
   if (
     lugar.restroom === true
   ) {
-    caracteristicas.push(
-      "Baños"
-    );
+    lista.push("Baños");
   }
 
   if (
-    lugar.goodForGroups === true
+    lugar.goodForGroups ===
+    true
   ) {
-    caracteristicas.push(
+    lista.push(
       "Ideal para grupos"
     );
   }
 
   if (
-    lugar.accessibilityOptions
+    lugar
+      .accessibilityOptions
       ?.wheelchairAccessibleEntrance ===
     true
   ) {
-    caracteristicas.push(
+    lista.push(
       "Entrada accesible"
     );
   }
@@ -426,15 +682,13 @@ function obtenerCaracteristicas(
         valor === true
     )
   ) {
-    caracteristicas.push(
+    lista.push(
       "Estacionamiento"
     );
   }
 
   return [
-    ...new Set(
-      caracteristicas
-    ),
+    ...new Set(lista),
   ].slice(0, 6);
 }
 
@@ -443,10 +697,14 @@ function obtenerCaracteristicas(
 ===================================================== */
 
 function normalizarResenas(
-  resenas: ResenaGoogle[] | undefined,
+  resenas:
+    | ResenaGoogle[]
+    | undefined,
   lugarId: string
 ) {
-  if (!Array.isArray(resenas)) {
+  if (
+    !Array.isArray(resenas)
+  ) {
     return [];
   }
 
@@ -461,12 +719,14 @@ function normalizarResenas(
           `${lugarId}-${indice}`,
 
         autor:
-          resena.authorAttribution
+          resena
+            .authorAttribution
             ?.displayName ||
           "Usuario de Google",
 
         fotoAutor:
-          resena.authorAttribution
+          resena
+            .authorAttribution
             ?.photoUri ||
           "",
 
@@ -477,16 +737,20 @@ function normalizarResenas(
 
         comentario:
           resena.text?.text ||
-          resena.originalText?.text ||
+          resena
+            .originalText
+            ?.text ||
           "",
 
         fecha:
-          resena.relativePublishTimeDescription ||
+          resena
+            .relativePublishTimeDescription ||
           resena.publishTime ||
           "",
 
         enlaceAutor:
-          resena.authorAttribution
+          resena
+            .authorAttribution
             ?.uri ||
           "",
       })
@@ -511,27 +775,35 @@ function normalizarLugar(
       lugar.id || ""
     ).trim();
 
-  const nombre =
+  const nombreOriginal =
     String(
-      lugar.displayName?.text ||
-      ""
+      lugar
+        .displayName
+        ?.text ||
+        ""
     ).trim();
 
   if (
     !id ||
-    !nombre
+    !nombreOriginal
   ) {
     return null;
   }
 
   const tipos =
-    Array.isArray(lugar.types)
+    Array.isArray(
+      lugar.types
+    )
       ? lugar.types
       : [];
 
   const categoria =
-    obtenerCategoria(
-      tipos
+    obtenerCategoria(tipos);
+
+  const nombre =
+    corregirNombre(
+      nombreOriginal,
+      categoria
     );
 
   const fotos =
@@ -540,16 +812,20 @@ function normalizarLugar(
     );
 
   const abiertoAhora =
-    lugar.currentOpeningHours
+    lugar
+      .currentOpeningHours
       ?.openNow ??
-    lugar.regularOpeningHours
+    lugar
+      .regularOpeningHours
       ?.openNow ??
     null;
 
   const horario =
-    lugar.currentOpeningHours
+    lugar
+      .currentOpeningHours
       ?.weekdayDescriptions ||
-    lugar.regularOpeningHours
+    lugar
+      .regularOpeningHours
       ?.weekdayDescriptions ||
     [];
 
@@ -563,15 +839,21 @@ function normalizarLugar(
       "Santiago de Veraguas, Panamá",
 
     latitud:
-      typeof lugar.location
-        ?.latitude === "number"
-        ? lugar.location.latitude
+      typeof lugar
+        .location
+        ?.latitude ===
+      "number"
+        ? lugar.location
+            .latitude
         : null,
 
     longitud:
-      typeof lugar.location
-        ?.longitude === "number"
-        ? lugar.location.longitude
+      typeof lugar
+        .location
+        ?.longitude ===
+      "number"
+        ? lugar.location
+            .longitude
         : null,
 
     calificacion:
@@ -587,7 +869,8 @@ function normalizarLugar(
     categoria,
 
     tipo:
-      lugar.primaryTypeDisplayName
+      lugar
+        .primaryTypeDisplayName
         ?.text ||
       categoria,
 
@@ -614,11 +897,13 @@ function normalizarLugar(
       "",
 
     telefono:
-      lugar.nationalPhoneNumber ||
+      lugar
+        .nationalPhoneNumber ||
       "",
 
     descripcion:
-      lugar.editorialSummary
+      lugar
+        .editorialSummary
         ?.text ||
       crearDescripcion(
         categoria,
@@ -640,6 +925,19 @@ function normalizarLugar(
         lugar.reviews,
         id
       ),
+
+    /*
+      Esto solo sirve para comprobar
+      rápidamente si ya llegaron fotos.
+      Tu page.tsx lo ignorará.
+    */
+
+    cantidadFotosGoogle:
+      Array.isArray(
+        lugar.photos
+      )
+        ? lugar.photos.length
+        : 0,
   };
 }
 
@@ -651,12 +949,27 @@ function obtenerErrorGoogle(
   valor: unknown
 ): string {
   if (
-    esObjeto(valor) &&
-    esObjeto(valor.error) &&
-    typeof valor.error.message ===
-      "string"
+    typeof valor !==
+      "object" ||
+    valor === null
   ) {
-    return valor.error.message;
+    return "Google Places rechazó la solicitud.";
+  }
+
+  if (
+    "error" in valor
+  ) {
+    const error =
+      (
+        valor as ErrorGoogle
+      ).error;
+
+    if (
+      typeof error?.message ===
+        "string"
+    ) {
+      return error.message;
+    }
   }
 
   return "Google Places rechazó la solicitud.";
@@ -669,12 +982,61 @@ function obtenerErrorGoogle(
 async function buscarLugares(
   apiKey: string,
   consulta: string,
-  categoria: CategoriaBusqueda
+  categoria:
+    CategoriaBusqueda
 ): Promise<NextResponse> {
   const textoBusqueda =
     consulta.trim()
-      ? `${consulta.trim()}, Santiago de Veraguas, Panamá`
+      ? `${consulta.trim()} en Santiago de Veraguas Panamá`
       : CONSULTAS[categoria];
+
+  const fieldMask = [
+    "places.id",
+    "places.name",
+
+    "places.displayName",
+
+    "places.formattedAddress",
+
+    "places.location",
+
+    "places.rating",
+
+    "places.userRatingCount",
+
+    "places.primaryType",
+
+    "places.primaryTypeDisplayName",
+
+    "places.types",
+
+    /*
+      Primer intento:
+      Text Search.
+    */
+
+    "places.photos",
+
+    "places.googleMapsUri",
+
+    "places.businessStatus",
+
+    "places.regularOpeningHours",
+
+    "places.currentOpeningHours",
+
+    "places.servesCoffee",
+
+    "places.outdoorSeating",
+
+    "places.restroom",
+
+    "places.goodForGroups",
+
+    "places.accessibilityOptions",
+
+    "places.parkingOptions",
+  ].join(",");
 
   const respuesta =
     await fetch(
@@ -689,56 +1051,37 @@ async function buscarLugares(
           "X-Goog-Api-Key":
             apiKey,
 
-          "X-Goog-FieldMask": [
-            "places.id",
-            "places.displayName",
-            "places.formattedAddress",
-            "places.location",
-            "places.rating",
-            "places.userRatingCount",
-            "places.primaryType",
-            "places.primaryTypeDisplayName",
-            "places.types",
-
-            /*
-              ESTA LÍNEA HACE QUE GOOGLE
-              DEVUELVA LAS FOTOS
-            */
-            "places.photos",
-
-            "places.googleMapsUri",
-            "places.businessStatus",
-            "places.regularOpeningHours",
-            "places.currentOpeningHours",
-          ].join(","),
+          "X-Goog-FieldMask":
+            fieldMask,
         },
 
-        body: JSON.stringify({
-          textQuery:
-            textoBusqueda,
+        body:
+          JSON.stringify({
+            textQuery:
+              textoBusqueda,
 
-          languageCode:
-            "es",
+            languageCode:
+              "es",
 
-          regionCode:
-            "PA",
+            regionCode:
+              "PA",
 
-          pageSize:
-            20,
+            pageSize:
+              20,
 
-          rankPreference:
-            "RELEVANCE",
+            rankPreference:
+              "RELEVANCE",
 
-          locationBias: {
-            circle: {
-              center:
-                CENTRO_SANTIAGO,
+            locationBias: {
+              circle: {
+                center:
+                  CENTRO_SANTIAGO,
 
-              radius:
-                18000,
+                radius:
+                  18000,
+              },
             },
-          },
-        }),
+          }),
 
         cache:
           "no-store",
@@ -751,7 +1094,7 @@ async function buscarLugares(
       .catch(
         () => null
       )) as
-      | RespuestaBusqueda
+      | RespuestaBusquedaGoogle
       | null;
 
   if (
@@ -763,7 +1106,7 @@ async function buscarLugares(
 
         error:
           datos?.error?.message ||
-          "No se pudieron buscar los lugares.",
+          `Google Places devolvió ${respuesta.status}.`,
       },
       {
         status:
@@ -772,11 +1115,34 @@ async function buscarLugares(
     );
   }
 
+  /*
+    AQUÍ ESTÁ EL CAMBIO PRINCIPAL.
+
+    Antes:
+      datos.places
+        .map(normalizarLugar)
+
+    Ahora:
+      Text Search
+      ↓
+      detectar los que no tienen photos
+      ↓
+      consultar Place Details
+      ↓
+      añadir photos
+      ↓
+      normalizar
+  */
+
+  const lugaresGoogle =
+    await completarFotos(
+      apiKey,
+      datos?.places || []
+    );
+
   const lugares =
-    (datos?.places || [])
-      .map(
-        normalizarLugar
-      )
+    lugaresGoogle
+      .map(normalizarLugar)
       .filter(
         (
           lugar
@@ -812,7 +1178,7 @@ async function buscarLugares(
 }
 
 /* =====================================================
-   DETALLE DE UN LUGAR
+   DETALLE
 ===================================================== */
 
 async function obtenerDetalleLugar(
@@ -836,6 +1202,57 @@ async function obtenerDetalleLugar(
     "PA"
   );
 
+  const fieldMask = [
+    "id",
+    "name",
+
+    "displayName",
+
+    "formattedAddress",
+
+    "location",
+
+    "rating",
+
+    "userRatingCount",
+
+    "primaryType",
+
+    "primaryTypeDisplayName",
+
+    "types",
+
+    "photos",
+
+    "googleMapsUri",
+
+    "websiteUri",
+
+    "nationalPhoneNumber",
+
+    "businessStatus",
+
+    "regularOpeningHours",
+
+    "currentOpeningHours",
+
+    "reviews",
+
+    "editorialSummary",
+
+    "servesCoffee",
+
+    "outdoorSeating",
+
+    "restroom",
+
+    "goodForGroups",
+
+    "accessibilityOptions",
+
+    "parkingOptions",
+  ].join(",");
+
   const respuesta =
     await fetch(
       url.toString(),
@@ -843,40 +1260,14 @@ async function obtenerDetalleLugar(
         method: "GET",
 
         headers: {
+          "Content-Type":
+            "application/json",
+
           "X-Goog-Api-Key":
             apiKey,
 
-          "X-Goog-FieldMask": [
-            "id",
-            "displayName",
-            "formattedAddress",
-            "location",
-            "rating",
-            "userRatingCount",
-            "primaryType",
-            "primaryTypeDisplayName",
-            "types",
-
-            /*
-              FOTOS
-            */
-            "photos",
-
-            "googleMapsUri",
-            "websiteUri",
-            "nationalPhoneNumber",
-            "businessStatus",
-            "regularOpeningHours",
-            "currentOpeningHours",
-            "reviews",
-            "editorialSummary",
-            "servesCoffee",
-            "outdoorSeating",
-            "restroom",
-            "goodForGroups",
-            "accessibilityOptions",
-            "parkingOptions",
-          ].join(","),
+          "X-Goog-FieldMask":
+            fieldMask,
         },
 
         cache:
@@ -884,14 +1275,19 @@ async function obtenerDetalleLugar(
       }
     );
 
-  const datos: unknown =
-    await respuesta
+  const datos =
+    (await respuesta
       .json()
       .catch(
         () => null
-      );
+      )) as
+      | LugarGoogle
+      | ErrorGoogle
+      | null;
 
-  if (!respuesta.ok) {
+  if (
+    !respuesta.ok
+  ) {
     return NextResponse.json(
       {
         success: false,
@@ -908,17 +1304,47 @@ async function obtenerDetalleLugar(
     );
   }
 
+  let lugarGoogle =
+    datos as LugarGoogle;
+
+  /*
+    Seguridad adicional:
+    si el detalle completo tampoco
+    contiene photos, hacemos una consulta
+    específica de id,photos.
+  */
+
+  if (
+    !Array.isArray(
+      lugarGoogle.photos
+    ) ||
+    lugarGoogle.photos.length ===
+      0
+  ) {
+    const fotos =
+      await obtenerFotosDesdeDetalles(
+        apiKey,
+        lugarId
+      );
+
+    lugarGoogle = {
+      ...lugarGoogle,
+      photos: fotos,
+    };
+  }
+
   const lugar =
     normalizarLugar(
-      datos as LugarGoogle
+      lugarGoogle
     );
 
   if (!lugar) {
     return NextResponse.json(
       {
         success: false,
+
         error:
-          "No se pudo obtener la información del lugar.",
+          "No se pudo procesar el lugar.",
       },
       {
         status: 404,
@@ -926,14 +1352,22 @@ async function obtenerDetalleLugar(
     );
   }
 
-  return NextResponse.json({
-    success: true,
-    lugar,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      lugar,
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    }
+  );
 }
 
 /* =====================================================
-   GET /api/lugares
+   GET
 ===================================================== */
 
 export async function GET(
@@ -942,7 +1376,8 @@ export async function GET(
   try {
     const apiKey =
       process.env
-        .GOOGLE_PLACES_API_KEY;
+        .GOOGLE_PLACES_API_KEY
+        ?.trim();
 
     if (!apiKey) {
       return NextResponse.json(
@@ -950,7 +1385,7 @@ export async function GET(
           success: false,
 
           error:
-            "Falta GOOGLE_PLACES_API_KEY en .env.local.",
+            "GOOGLE_PLACES_API_KEY no está configurada.",
         },
         {
           status: 500,
@@ -958,16 +1393,9 @@ export async function GET(
       );
     }
 
-    /*
-      SOLO EN CASO DE:
-
-      /api/lugares?id=PLACE_ID
-
-      SE CARGA DETALLE.
-    */
-
     const lugarId =
-      request.nextUrl.searchParams
+      request.nextUrl
+        .searchParams
         .get("id")
         ?.trim();
 
@@ -978,19 +1406,16 @@ export async function GET(
       );
     }
 
-    /*
-      /api/lugares?categoria=todos
-
-      NO NECESITA NAME DE FOTOGRAFÍA.
-    */
-
     const consulta =
-      request.nextUrl.searchParams
-        .get("q") || "";
+      request.nextUrl
+        .searchParams
+        .get("q") ||
+      "";
 
     const categoria =
-      normalizarCategoria(
-        request.nextUrl.searchParams
+      categoriaPermitida(
+        request.nextUrl
+          .searchParams
           .get("categoria")
       );
 
@@ -1000,7 +1425,7 @@ export async function GET(
       categoria
     );
   } catch (error) {
-    console.error(
+    console.warn(
       "Error /api/lugares:",
       error
     );

@@ -554,7 +554,7 @@ export default function Home() {
           >
             <Sparkles size={15} />
 
-            Estudia mejor con inteligencia artificial
+            Estudia mejor con Rooco
 
             <span
               className="
