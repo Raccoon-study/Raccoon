@@ -116,16 +116,17 @@ const ELEMENTOS_MENU: ElementoMenu[] = [
     href: "/biblioteca",
     icono: Library,
   },
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 /* =====================================================

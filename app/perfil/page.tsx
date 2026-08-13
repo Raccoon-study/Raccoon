@@ -153,17 +153,18 @@ const elementosMenu: ElementoMenu[] = [
     href: "/biblioteca",
     icono: Library,
   },
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
     activo: true,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 const diasSemana = [

@@ -173,16 +173,18 @@ const elementosMenu: ElementoMenu[] = [
     href: "/biblioteca",
     icono: Library,
   },
+
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 /* =====================================================
@@ -2250,10 +2252,10 @@ export default function QuizzesPage() {
                       </div>
 
                       <Image
-                        src="/raccoon.png"
+                        src="/quizzes.png"
                         alt="Raccoon creando quiz"
-                        width={230}
-                        height={190}
+                        width={480}
+                        height={480}
                         className="max-h-[180px] w-auto object-contain drop-shadow-xl"
                       />
                     </div>
@@ -3154,7 +3156,7 @@ export default function QuizzesPage() {
                     </p>
 
                     <Image
-                      src="/raccoon.png"
+                      src="/quizzes.png"
                       alt="Consejo Raccoon"
                       width={100}
                       height={100}

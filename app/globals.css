@@ -1,51 +1,439 @@
 @import "tailwindcss";
 
+/* =====================================================
+   DARK MODE MANUAL
+   Permite usar clases como:
+   dark:bg-slate-900
+   dark:text-white
+===================================================== */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =====================================================
+   TEMA CLARO
+===================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fbff;
+  --foreground: #13213a;
+
+  --surface: #ffffff;
+  --surface-secondary: #f3f7fc;
+
+  --card: #ffffff;
+
+  --sidebar: #ffffff;
+
+  --header: rgba(255, 255, 255, 0.95);
+
+  --border: #ddeaf7;
+
+  --input-background: #ffffff;
+
+  --text-primary: #13213a;
+  --text-secondary: #52709b;
+  --text-muted: #8294aa;
+
+  --primary: #55a8e8;
+  --primary-dark: #1687d9;
+
+  --secondary: #7771e8;
+
+  --success: #26a66b;
+  --danger: #ef4444;
+  --warning: #f5b942;
+
+  --shadow:
+    0 10px 30px
+    rgba(37, 74, 120, 0.08);
 }
+
+/* =====================================================
+   TEMA OSCURO
+===================================================== */
+
+.dark {
+  --background: #101927;
+  --foreground: #f8fafc;
+
+  --surface: #182437;
+  --surface-secondary: #151f30;
+
+  --card: #182437;
+
+  --sidebar: #151f30;
+
+  --header: rgba(21, 31, 48, 0.95);
+
+  --border: #334155;
+
+  --input-background: #1e293b;
+
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  --primary: #55a8e8;
+  --primary-dark: #65b5f0;
+
+  --secondary: #8b7cf6;
+
+  --success: #4ade80;
+  --danger: #fb7185;
+  --warning: #facc15;
+
+  --shadow:
+    0 12px 35px
+    rgba(0, 0, 0, 0.28);
+}
+
+/* =====================================================
+   TAILWIND THEME
+===================================================== */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background:
+    var(--background);
+
+  --color-foreground:
+    var(--foreground);
+
+  --font-sans:
+    var(--font-geist-sans);
+
+  --font-mono:
+    var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =====================================================
+   BASE GLOBAL
+===================================================== */
+
+html {
+  min-height: 100%;
+  background:
+    var(--background);
+
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+
+  background:
+    var(--background);
+
+  color:
+    var(--foreground);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
+
+/* =====================================================
+   TODOS LOS ELEMENTOS
+===================================================== */
+
+* {
+  box-sizing:
+    border-box;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  font:
+    inherit;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+button {
+  cursor:
+    pointer;
+}
+
+button:disabled {
+  cursor:
+    not-allowed;
+}
+
+/* =====================================================
+   FORMULARIOS
+===================================================== */
+
+input,
+textarea,
+select {
+  color:
+    var(--text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color:
+    var(--text-muted);
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color:
+    var(--text-primary);
+}
+
+.dark option {
+  background:
+    var(--input-background);
+
+  color:
+    var(--text-primary);
+}
+
+/* =====================================================
+   SCROLLBAR
+===================================================== */
+
+::-webkit-scrollbar {
+  width:
+    8px;
+
+  height:
+    8px;
+}
+
+::-webkit-scrollbar-track {
+  background:
+    transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background:
+    #c7d5e5;
+
+  border-radius:
+    999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background:
+    #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    #9fb4ca;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background:
+    #64748b;
+}
+
+/* =====================================================
+   SELECCIÓN DE TEXTO
+===================================================== */
+
+::selection {
+  background:
+    rgba(85, 168, 232, 0.25);
+
+  color:
+    var(--text-primary);
+}
+
+/* =====================================================
+   ANIMACIÓN SLIDE UP
+===================================================== */
+
 @keyframes slideUp {
   from {
-    transform: translateY(100%);
+    opacity: 0;
+
+    transform:
+      translateY(100%);
   }
+
   to {
-    transform: translateY(0);
+    opacity: 1;
+
+    transform:
+      translateY(0);
   }
 }
 
 .animate-slideUp {
-  animation: slideUp 0.3s ease;
-}
-@keyframes fadeIn{
-
-from{
-opacity:0;
-transform:translateY(20px);
+  animation:
+    slideUp 0.3s ease;
 }
 
-to{
-opacity:1;
-transform:translateY(0px);
+/* =====================================================
+   ANIMACIÓN FADE IN
+===================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
 }
 
+.animate-fadeIn {
+  animation:
+    fadeIn 0.35s ease
+    both;
+}
+
+/* =====================================================
+   FADE NORMAL
+===================================================== */
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade {
+  animation:
+    fade 0.25s ease
+    both;
+}
+
+/* =====================================================
+   ESCALA SUAVE
+===================================================== */
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+
+    transform:
+      scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation:
+    scaleIn 0.25s ease
+    both;
+}
+
+/* =====================================================
+   UTILIDADES GLOBALES RACCOON
+===================================================== */
+
+.raccoon-page {
+  min-height:
+    100vh;
+
+  background:
+    var(--background);
+
+  color:
+    var(--foreground);
+}
+
+.raccoon-card {
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
+
+  box-shadow:
+    var(--shadow);
+}
+
+.raccoon-sidebar {
+  background:
+    var(--sidebar);
+
+  border-color:
+    var(--border);
+}
+
+.raccoon-header {
+  background:
+    var(--header);
+
+  border-color:
+    var(--border);
+
+  backdrop-filter:
+    blur(14px);
+}
+
+.raccoon-input {
+  background:
+    var(--input-background);
+
+  color:
+    var(--text-primary);
+
+  border:
+    1px solid
+    var(--border);
+}
+
+.raccoon-input:focus {
+  border-color:
+    var(--primary);
+
+  outline:
+    none;
+}
+
+.raccoon-text-primary {
+  color:
+    var(--text-primary);
+}
+
+.raccoon-text-secondary {
+  color:
+    var(--text-secondary);
+}
+
+.raccoon-text-muted {
+  color:
+    var(--text-muted);
 }

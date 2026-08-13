@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   LoaderCircle,
   Maximize2,
   Minus,
@@ -19,22 +21,30 @@ import {
 } from "lucide-react";
 
 /* =====================================================
-   TIPOS DE GOOGLE BOOKS
+   TIPOS
 ===================================================== */
 
 interface GoogleBooksViewerInstance {
   load: (
-    identifiers: string | string[],
+    identifiers:
+      | string
+      | string[],
     notFoundCallback?: () => void,
     successCallback?: () => void
   ) => void;
 
   nextPage: () => void;
+
   previousPage: () => void;
+
   zoomIn: () => void;
+
   zoomOut: () => void;
+
   resize: () => void;
+
   getPageNumber: () => string;
+
   isLoaded?: () => boolean;
 }
 
@@ -49,165 +59,439 @@ interface GoogleBooksNamespace {
     callback: () => void
   ) => void;
 
-  DefaultViewer: new (
+  DefaultViewer?: new (
     elemento: HTMLElement
   ) => GoogleBooksViewerInstance;
 }
 
-declare global {
-  interface Window {
+type WindowGoogleBooks =
+  Window & {
     google?: {
-      books?: GoogleBooksNamespace;
+      books?:
+        GoogleBooksNamespace;
     };
+  };
+
+/* =====================================================
+   CONSTANTES
+===================================================== */
+
+const GOOGLE_BOOKS_SCRIPT =
+  "https://www.google.com/books/jsapi.js";
+
+let promesaGoogleBooks:
+  Promise<GoogleBooksNamespace> | null =
+  null;
+
+/* =====================================================
+   OBTENER GOOGLE BOOKS
+===================================================== */
+
+function obtenerGoogleBooks():
+  GoogleBooksNamespace | undefined {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return undefined;
   }
+
+  return (
+    window as
+      WindowGoogleBooks
+  ).google?.books;
 }
 
 /* =====================================================
-   CARGAR API
+   ESPERAR SOLO AL LOADER
+
+   IMPORTANTE:
+   Aquí NO esperamos DefaultViewer.
+
+   Primero debe existir:
+   google.books.load()
 ===================================================== */
 
-let promesaGoogleBooks:
-  Promise<void> | null = null;
-
-function esperarGoogleBooks(
-  intentos = 100
-): Promise<void> {
+function esperarLoaderGoogleBooks(
+  intentos = 160
+): Promise<GoogleBooksNamespace> {
   return new Promise(
-    (resolver, rechazar) => {
+    (
+      resolve,
+      reject
+    ) => {
       let intento = 0;
 
-      const intervalo =
-        window.setInterval(() => {
-          intento++;
+      const revisar =
+        () => {
+          const books =
+            obtenerGoogleBooks();
 
           if (
-            window.google?.books
-              ?.DefaultViewer
+            books &&
+            typeof books.load ===
+              "function" &&
+            typeof books.setOnLoadCallback ===
+              "function"
           ) {
-            window.clearInterval(
-              intervalo
+            resolve(
+              books
             );
 
-            resolver();
             return;
           }
 
-          if (intento >= intentos) {
-            window.clearInterval(
-              intervalo
-            );
+          intento += 1;
 
-            rechazar(
+          if (
+            intento >=
+            intentos
+          ) {
+            reject(
               new Error(
-                "Google Books tardó demasiado en cargar."
+                "No se pudo iniciar Google Books."
               )
             );
-          }
-        }, 50);
-    }
-  );
-}
 
-function inicializarGoogleBooks(): Promise<void> {
-  return new Promise(
-    (resolver, rechazar) => {
-      const books =
-        window.google?.books;
-
-      if (!books) {
-        rechazar(
-          new Error(
-            "No se encontró el visor de Google Books."
-          )
-        );
-
-        return;
-      }
-
-      try {
-        books.load({
-          language: "es",
-        });
-
-        let resuelto = false;
-
-        const terminar = () => {
-          if (resuelto) {
             return;
           }
 
-          resuelto = true;
-          resolver();
+          window.setTimeout(
+            revisar,
+            50
+          );
         };
 
-        books.setOnLoadCallback(
-          terminar
+      revisar();
+    }
+  );
+}
+
+/* =====================================================
+   INICIALIZAR EMBEDDED VIEWER
+
+   ORDEN:
+
+   google.books.load()
+          ↓
+   setOnLoadCallback()
+          ↓
+   DefaultViewer
+===================================================== */
+
+function inicializarEmbeddedViewer(
+  books: GoogleBooksNamespace
+): Promise<GoogleBooksNamespace> {
+  /*
+    Si ya fue cargado,
+    terminamos inmediatamente.
+  */
+
+  if (
+    typeof books.DefaultViewer ===
+    "function"
+  ) {
+    return Promise.resolve(
+      books
+    );
+  }
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+      let terminado =
+        false;
+
+      const finalizar =
+        () => {
+          if (
+            terminado
+          ) {
+            return;
+          }
+
+          const booksListos =
+            obtenerGoogleBooks();
+
+          if (
+            typeof booksListos
+              ?.DefaultViewer !==
+            "function"
+          ) {
+            return;
+          }
+
+          terminado =
+            true;
+
+          window.clearTimeout(
+            timeout
+          );
+
+          resolve(
+            booksListos
+          );
+        };
+
+      const timeout =
+        window.setTimeout(
+          () => {
+            if (
+              terminado
+            ) {
+              return;
+            }
+
+            terminado =
+              true;
+
+            reject(
+              new Error(
+                "El lector de Google Books no terminó de inicializarse."
+              )
+            );
+          },
+          15000
         );
 
-        window.setTimeout(() => {
-          if (
-            window.google?.books
-              ?.DefaultViewer
-          ) {
-            terminar();
-          }
-        }, 1500);
-      } catch (error) {
-        rechazar(error);
+      try {
+        /*
+          Google recomienda cargar
+          primero la API.
+        */
+
+        books.load({
+          language:
+            "es",
+        });
+
+        /*
+          Y después esperar a que
+          Embedded Viewer esté listo.
+        */
+
+        books.setOnLoadCallback(
+          finalizar
+        );
+
+        /*
+          Respaldo por si la API ya
+          terminó de cargar antes de
+          registrar el callback.
+        */
+
+        const comprobar =
+          () => {
+            if (
+              terminado
+            ) {
+              return;
+            }
+
+            const actual =
+              obtenerGoogleBooks();
+
+            if (
+              typeof actual
+                ?.DefaultViewer ===
+              "function"
+            ) {
+              finalizar();
+
+              return;
+            }
+
+            window.setTimeout(
+              comprobar,
+              100
+            );
+          };
+
+        comprobar();
+      } catch (
+        error
+      ) {
+        terminado =
+          true;
+
+        window.clearTimeout(
+          timeout
+        );
+
+        reject(
+          error instanceof
+            Error
+            ? error
+            : new Error(
+                "No se pudo inicializar Google Books."
+              )
+        );
       }
     }
   );
 }
 
-function cargarGoogleBooks(): Promise<void> {
+/* =====================================================
+   CARGAR SCRIPT
+===================================================== */
+
+function cargarGoogleBooks():
+  Promise<GoogleBooksNamespace> {
   if (
-    typeof window === "undefined"
+    typeof window ===
+    "undefined"
   ) {
     return Promise.reject(
       new Error(
-        "El visor solo funciona en el navegador."
+        "Google Books solo puede utilizarse en el navegador."
       )
     );
   }
 
+  /*
+    Ya completamente cargado.
+  */
+
+  const existente =
+    obtenerGoogleBooks();
+
   if (
-    window.google?.books
-      ?.DefaultViewer
+    typeof existente
+      ?.DefaultViewer ===
+    "function"
   ) {
-    return Promise.resolve();
+    return Promise.resolve(
+      existente
+    );
   }
 
-  if (promesaGoogleBooks) {
+  /*
+    Ya existe una carga
+    global en curso.
+  */
+
+  if (
+    promesaGoogleBooks
+  ) {
     return promesaGoogleBooks;
   }
 
   promesaGoogleBooks =
-    new Promise<void>(
-      (resolver, rechazar) => {
+    new Promise<
+      GoogleBooksNamespace
+    >(
+      (
+        resolve,
+        reject
+      ) => {
+        const comenzar =
+          async () => {
+            try {
+              /*
+                Esperamos a google.books.load,
+                NO a DefaultViewer.
+              */
+
+              const books =
+                await esperarLoaderGoogleBooks();
+
+              const listo =
+                await inicializarEmbeddedViewer(
+                  books
+                );
+
+              resolve(
+                listo
+              );
+            } catch (
+              error
+            ) {
+              promesaGoogleBooks =
+                null;
+
+              reject(
+                error
+              );
+            }
+          };
+
+        /*
+          Puede existir porque Next.js
+          hizo una recarga en caliente.
+        */
+
         const scriptExistente =
           document.querySelector<HTMLScriptElement>(
-            'script[data-raccoon-books="true"]'
+            'script[data-raccoon-google-books="true"]'
+          ) ||
+          document.querySelector<HTMLScriptElement>(
+            'script[src*="google.com/books/jsapi.js"]'
           );
 
-        const activar = async () => {
-          try {
-            await esperarGoogleBooks();
+        if (
+          scriptExistente
+        ) {
+          /*
+            Si google.books ya existe,
+            continuamos directamente.
+          */
 
-            await inicializarGoogleBooks();
+          if (
+            obtenerGoogleBooks()
+          ) {
+            void comenzar();
 
-            resolver();
-          } catch (error) {
-            promesaGoogleBooks =
-              null;
-
-            rechazar(error);
+            return;
           }
-        };
 
-        if (scriptExistente) {
-          void activar();
+          /*
+            El script existe pero todavía
+            está descargándose.
+          */
+
+          scriptExistente.addEventListener(
+            "load",
+            () => {
+              void comenzar();
+            },
+            {
+              once: true,
+            }
+          );
+
+          scriptExistente.addEventListener(
+            "error",
+            () => {
+              promesaGoogleBooks =
+                null;
+
+              reject(
+                new Error(
+                  "No se pudo descargar Google Books."
+                )
+              );
+            },
+            {
+              once: true,
+            }
+          );
+
+          /*
+            También empezamos a comprobar,
+            porque el evento load pudo haber
+            ocurrido antes.
+          */
+
+          void comenzar();
+
           return;
         }
+
+        /*
+          Primera carga.
+        */
 
         const script =
           document.createElement(
@@ -215,27 +499,34 @@ function cargarGoogleBooks(): Promise<void> {
           );
 
         script.src =
-          "https://www.google.com/books/jsapi.js";
+          GOOGLE_BOOKS_SCRIPT;
 
-        script.async = true;
+        script.async =
+          true;
 
-        script.dataset.raccoonBooks =
+        script.defer =
+          true;
+
+        script.dataset
+          .raccoonGoogleBooks =
           "true";
 
-        script.onload = () => {
-          void activar();
-        };
+        script.onload =
+          () => {
+            void comenzar();
+          };
 
-        script.onerror = () => {
-          promesaGoogleBooks =
-            null;
+        script.onerror =
+          () => {
+            promesaGoogleBooks =
+              null;
 
-          rechazar(
-            new Error(
-              "No se pudo cargar el lector de Google Books."
-            )
-          );
-        };
+            reject(
+              new Error(
+                "No se pudo descargar el lector de Google Books."
+              )
+            );
+          };
 
         document.head.appendChild(
           script
@@ -244,6 +535,27 @@ function cargarGoogleBooks(): Promise<void> {
     );
 
   return promesaGoogleBooks;
+}
+
+/* =====================================================
+   ISBN
+===================================================== */
+
+function limpiarISBN(
+  isbn?: string
+): string {
+  if (
+    !isbn
+  ) {
+    return "";
+  }
+
+  return isbn
+    .replace(
+      /[^0-9Xx]/g,
+      ""
+    )
+    .trim();
 }
 
 /* =====================================================
@@ -269,129 +581,381 @@ export default function GoogleBooksViewer({
       null
     );
 
+  /*
+    Nos permite ignorar una carga vieja
+    si el usuario cambia de libro.
+  */
+
+  const identificadorCargaRef =
+    useRef(0);
+
   const [
     cargando,
     setCargando,
-  ] = useState(true);
+  ] = useState(
+    true
+  );
 
   const [
     cargado,
     setCargado,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     error,
     setError,
-  ] = useState("");
+  ] = useState(
+    ""
+  );
 
   const [
     paginaActual,
     setPaginaActual,
-  ] = useState("");
+  ] = useState(
+    ""
+  );
 
-  const actualizarPagina = () => {
-    window.setTimeout(() => {
-      try {
-        const pagina =
-          visorRef.current?.getPageNumber();
+  /* =====================================================
+     ENLACE GOOGLE BOOKS
+  ===================================================== */
 
-        setPaginaActual(
-          pagina || ""
+  const enlaceGoogle =
+    libroId.trim()
+      ? `https://books.google.com/books?id=${encodeURIComponent(
+          libroId.trim()
+        )}`
+      : isbn
+        ? `https://books.google.com/books?vid=ISBN${encodeURIComponent(
+            limpiarISBN(
+              isbn
+            )
+          )}`
+        : "https://books.google.com/";
+
+  /* =====================================================
+     PÁGINA ACTUAL
+  ===================================================== */
+
+  const actualizarPagina =
+    useCallback(
+      () => {
+        window.setTimeout(
+          () => {
+            try {
+              const pagina =
+                visorRef.current
+                  ?.getPageNumber();
+
+              setPaginaActual(
+                pagina ||
+                  ""
+              );
+            } catch {
+              setPaginaActual(
+                ""
+              );
+            }
+          },
+          250
         );
-      } catch {
-        setPaginaActual("");
-      }
-    }, 250);
-  };
+      },
+      []
+    );
 
-  const iniciarVisor = async () => {
-    try {
-      setCargando(true);
-      setCargado(false);
-      setError("");
-      setPaginaActual("");
+  /* =====================================================
+     INICIAR VISOR
+  ===================================================== */
 
-      await cargarGoogleBooks();
+  const iniciarVisor =
+    useCallback(
+      async () => {
+        const cargaActual =
+          ++identificadorCargaRef.current;
 
-      if (
-        !contenedorRef.current ||
-        !window.google?.books
-          ?.DefaultViewer
-      ) {
-        throw new Error(
-          "No se pudo preparar el lector."
-        );
-      }
+        try {
+          setCargando(
+            true
+          );
 
-      contenedorRef.current.innerHTML =
-        "";
-
-      const visor =
-        new window.google.books.DefaultViewer(
-          contenedorRef.current
-        );
-
-      visorRef.current = visor;
-
-      const identificadores:
-        string[] = [
-        libroId,
-      ];
-
-      if (isbn) {
-        identificadores.push(
-          `ISBN:${isbn}`
-        );
-      }
-
-      visor.load(
-        identificadores,
-
-        () => {
-          setCargando(false);
-          setCargado(false);
+          setCargado(
+            false
+          );
 
           setError(
-            "Google Books no permite mostrar este libro dentro de la aplicación."
+            ""
           );
-        },
 
-        () => {
-          setCargando(false);
-          setCargado(true);
-          setError("");
+          setPaginaActual(
+            ""
+          );
 
-          actualizarPagina();
+          visorRef.current =
+            null;
+
+          /*
+            Limpiar cualquier visor
+            anterior.
+          */
+
+          if (
+            contenedorRef.current
+          ) {
+            contenedorRef.current.innerHTML =
+              "";
+          }
+
+          const id =
+            libroId.trim();
+
+          const isbnLimpio =
+            limpiarISBN(
+              isbn
+            );
+
+          if (
+            !id &&
+            !isbnLimpio
+          ) {
+            throw new Error(
+              "Este libro no tiene un identificador válido."
+            );
+          }
+
+          /*
+            1. Cargar correctamente
+               Google Books.
+          */
+
+          const books =
+            await cargarGoogleBooks();
+
+          /*
+            El usuario pudo cerrar o
+            cambiar de libro mientras
+            esperaba.
+          */
+
+          if (
+            cargaActual !==
+            identificadorCargaRef.current
+          ) {
+            return;
+          }
+
+          const contenedor =
+            contenedorRef.current;
+
+          const Constructor =
+            books.DefaultViewer;
+
+          if (
+            !contenedor ||
+            typeof Constructor !==
+              "function"
+          ) {
+            throw new Error(
+              "Google Books no pudo preparar el lector."
+            );
+          }
+
+          contenedor.innerHTML =
+            "";
+
+          /*
+            2. Crear DefaultViewer SOLO
+               después del callback.
+          */
+
+          const visor =
+            new Constructor(
+              contenedor
+            );
+
+          visorRef.current =
+            visor;
+
+          /*
+            3. Google permite enviar
+               varios identificadores.
+
+               Probamos:
+               - Volume ID
+               - ISBN
+               - URL de Google Books
+          */
+
+          const identificadores:
+            string[] = [];
+
+          if (
+            id
+          ) {
+            identificadores.push(
+              id
+            );
+
+            identificadores.push(
+              `https://books.google.com/books?id=${id}`
+            );
+          }
+
+          if (
+            isbnLimpio
+          ) {
+            identificadores.push(
+              `ISBN:${isbnLimpio}`
+            );
+          }
+
+          const unicos =
+            [
+              ...new Set(
+                identificadores
+              ),
+            ];
+
+          if (
+            unicos.length ===
+            0
+          ) {
+            throw new Error(
+              "No encontramos un identificador para este libro."
+            );
+          }
+
+          /*
+            4. Cargar el libro.
+          */
+
+          visor.load(
+            unicos,
+
+            /*
+              NO SE PUDO MOSTRAR
+            */
+
+            () => {
+              if (
+                cargaActual !==
+                identificadorCargaRef.current
+              ) {
+                return;
+              }
+
+              setCargando(
+                false
+              );
+
+              setCargado(
+                false
+              );
+
+              setError(
+                "Google Books encontró el libro, pero esta vista previa no puede mostrarse dentro de Raccoon Study."
+              );
+            },
+
+            /*
+              ÉXITO
+            */
+
+            () => {
+              if (
+                cargaActual !==
+                identificadorCargaRef.current
+              ) {
+                return;
+              }
+
+              setCargando(
+                false
+              );
+
+              setCargado(
+                true
+              );
+
+              setError(
+                ""
+              );
+
+              actualizarPagina();
+
+              /*
+                Ajustar después de que el
+                modal ya tenga tamaño.
+              */
+
+              window.setTimeout(
+                () => {
+                  try {
+                    visor.resize();
+                  } catch {
+                    // Ya cargará con su tamaño actual.
+                  }
+                },
+                250
+              );
+            }
+          );
+        } catch (
+          errorVisor
+        ) {
+          if (
+            cargaActual !==
+            identificadorCargaRef.current
+          ) {
+            return;
+          }
+
+          console.error(
+            "GoogleBooksViewer:",
+            errorVisor
+          );
+
+          setCargando(
+            false
+          );
+
+          setCargado(
+            false
+          );
+
+          setError(
+            errorVisor instanceof
+              Error
+              ? errorVisor.message
+              : "No se pudo abrir el libro."
+          );
         }
-      );
-    } catch (errorVisor) {
-      setCargando(false);
-      setCargado(false);
+      },
+      [
+        libroId,
+        isbn,
+        actualizarPagina,
+      ]
+    );
 
-      setError(
-        errorVisor instanceof Error
-          ? errorVisor.message
-          : "No se pudo abrir el libro."
-      );
-    }
-  };
+  /* =====================================================
+     CARGAR CUANDO CAMBIA EL LIBRO
+  ===================================================== */
 
   useEffect(() => {
-    let activo = true;
-
-    const cargar = async () => {
-      if (!activo) {
-        return;
-      }
-
-      await iniciarVisor();
-    };
-
-    void cargar();
+    void iniciarVisor();
 
     return () => {
-      activo = false;
-      visorRef.current = null;
+      /*
+        Invalidar callbacks
+        del libro anterior.
+      */
+
+      identificadorCargaRef.current +=
+        1;
+
+      visorRef.current =
+        null;
 
       if (
         contenedorRef.current
@@ -400,152 +964,243 @@ export default function GoogleBooksViewer({
           "";
       }
     };
-  }, [libroId, isbn]);
+  }, [
+    iniciarVisor,
+  ]);
+
+  /* =====================================================
+     RESPONSIVE
+  ===================================================== */
 
   useEffect(() => {
     const elemento =
       contenedorRef.current;
 
-    if (!elemento) {
+    if (
+      !elemento ||
+      typeof ResizeObserver ===
+        "undefined"
+    ) {
       return;
     }
 
     const observador =
-      new ResizeObserver(() => {
-        try {
-          visorRef.current?.resize();
-        } catch {
-          // El visor todavía no está listo.
+      new ResizeObserver(
+        () => {
+          try {
+            visorRef.current
+              ?.resize();
+          } catch {
+            // Todavía no está listo.
+          }
         }
-      });
+      );
 
-    observador.observe(elemento);
+    observador.observe(
+      elemento
+    );
 
     return () => {
       observador.disconnect();
     };
   }, []);
 
-  const paginaAnterior = () => {
+  /* =====================================================
+     CONTROLES
+  ===================================================== */
+
+  function paginaAnterior() {
     try {
-      visorRef.current?.previousPage();
+      visorRef.current
+        ?.previousPage();
+
       actualizarPagina();
     } catch {
-      // No existe una página anterior.
+      // Sin página anterior.
     }
-  };
+  }
 
-  const paginaSiguiente = () => {
+  function paginaSiguiente() {
     try {
-      visorRef.current?.nextPage();
+      visorRef.current
+        ?.nextPage();
+
       actualizarPagina();
     } catch {
-      // No existe una página siguiente.
+      // Sin página siguiente.
     }
-  };
+  }
 
-  const acercar = () => {
+  function acercar() {
     try {
-      visorRef.current?.zoomIn();
+      visorRef.current
+        ?.zoomIn();
     } catch {
-      // El visor todavía no está listo.
+      // Visor no listo.
     }
-  };
+  }
 
-  const alejar = () => {
+  function alejar() {
     try {
-      visorRef.current?.zoomOut();
+      visorRef.current
+        ?.zoomOut();
     } catch {
-      // El visor todavía no está listo.
+      // Visor no listo.
     }
-  };
+  }
 
-  const ajustar = () => {
+  function ajustar() {
     try {
-      visorRef.current?.resize();
+      visorRef.current
+        ?.resize();
     } catch {
-      // El visor todavía no está listo.
+      // Visor no listo.
     }
-  };
+  }
+
+  /* =====================================================
+     JSX
+  ===================================================== */
 
   return (
-    <div className="flex h-full min-h-[580px] w-full flex-col bg-[#E9EEF5] dark:bg-[#0F1725]">
-      {/* CONTROLES */}
+    <div className="flex h-full min-h-[580px] w-full min-w-0 flex-col overflow-hidden bg-[#E9EEF5] dark:bg-[#0F1725]">
+      {/* =================================================
+          CONTROLES
+      ================================================= */}
 
-      <div className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 border-b border-[#DDE6F0] bg-white px-3 py-2 dark:border-slate-700 dark:bg-[#151F30] sm:px-5">
-        <div className="flex items-center gap-2">
+      <div className="flex min-h-[58px] flex-wrap items-center justify-between gap-2 border-b border-[#DDE6F0] bg-white px-2 py-2 dark:border-slate-700 dark:bg-[#151F30] sm:gap-3 sm:px-5">
+        {/* IZQUIERDA */}
+
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <button
             type="button"
-            onClick={paginaAnterior}
-            disabled={!cargado}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EAF1FF] hover:text-[#1769E0] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200"
+            onClick={
+              paginaAnterior
+            }
+            disabled={
+              !cargado
+            }
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EAF1FF] hover:text-[#1769E0] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200 sm:h-10 sm:w-10"
             aria-label="Página anterior"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft
+              size={20}
+            />
           </button>
 
           <button
             type="button"
-            onClick={paginaSiguiente}
-            disabled={!cargado}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EAF1FF] hover:text-[#1769E0] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200"
+            onClick={
+              paginaSiguiente
+            }
+            disabled={
+              !cargado
+            }
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EAF1FF] hover:text-[#1769E0] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200 sm:h-10 sm:w-10"
             aria-label="Página siguiente"
           >
-            <ChevronRight size={20} />
+            <ChevronRight
+              size={20}
+            />
           </button>
 
           <div className="hidden h-7 w-px bg-[#DDE6F0] dark:bg-slate-700 sm:block" />
 
           <button
             type="button"
-            onClick={alejar}
-            disabled={!cargado}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EDE9FF] hover:text-[#7652D9] disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200"
+            onClick={
+              alejar
+            }
+            disabled={
+              !cargado
+            }
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EDE9FF] hover:text-[#7652D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200 sm:h-10 sm:w-10"
             aria-label="Alejar"
           >
-            <Minus size={18} />
+            <Minus
+              size={18}
+            />
           </button>
 
           <button
             type="button"
-            onClick={acercar}
-            disabled={!cargado}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EDE9FF] hover:text-[#7652D9] disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200"
+            onClick={
+              acercar
+            }
+            disabled={
+              !cargado
+            }
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EDE9FF] hover:text-[#7652D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200 sm:h-10 sm:w-10"
             aria-label="Acercar"
           >
-            <Plus size={18} />
+            <Plus
+              size={18}
+            />
           </button>
 
           <button
             type="button"
-            onClick={ajustar}
-            disabled={!cargado}
-            className="hidden h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EDE9FF] hover:text-[#7652D9] disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200 sm:flex"
+            onClick={
+              ajustar
+            }
+            disabled={
+              !cargado
+            }
+            className="hidden h-10 w-10 items-center justify-center rounded-xl bg-[#F1F5FA] text-[#506C88] transition hover:bg-[#EDE9FF] hover:text-[#7652D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-200 sm:flex"
             aria-label="Ajustar visor"
           >
-            <Maximize2 size={18} />
+            <Maximize2
+              size={18}
+            />
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* DERECHA */}
+
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {paginaActual && (
-            <span className="rounded-xl bg-[#F1F5FA] px-4 py-2 text-xs font-black text-[#506C88] dark:bg-slate-700 dark:text-slate-200">
-              Página {paginaActual}
+            <span className="rounded-xl bg-[#F1F5FA] px-3 py-2 text-[10px] font-black text-[#506C88] dark:bg-slate-700 dark:text-slate-200 sm:px-4 sm:text-xs">
+              Página{" "}
+              {paginaActual}
             </span>
           )}
 
-          <span className="hidden items-center gap-2 text-xs font-bold text-[#6085A5] sm:flex dark:text-slate-400">
-            <BookOpen size={15} />
+          <a
+            href={
+              enlaceGoogle
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 items-center gap-1.5 rounded-xl bg-[#EAF4FF] px-3 text-[10px] font-black text-[#1769E0] transition hover:bg-[#DCEEFF] dark:bg-[#1D3558] dark:text-[#70B7F0] sm:h-10 sm:text-xs"
+          >
+            <ExternalLink
+              size={15}
+            />
+
+            <span className="hidden sm:inline">
+              Google Books
+            </span>
+          </a>
+
+          <span className="hidden items-center gap-2 text-xs font-bold text-[#6085A5] dark:text-slate-400 md:flex">
+            <BookOpen
+              size={15}
+            />
+
             Lector Raccoon
           </span>
         </div>
       </div>
 
-      {/* VISOR */}
+      {/* =================================================
+          CONTENEDOR
+      ================================================= */}
 
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-[520px] flex-1 overflow-hidden">
+        {/* CARGANDO */}
+
         {cargando && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#F8FBFE] px-6 text-center dark:bg-[#101827]">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#F8FBFE] px-5 text-center dark:bg-[#101827] sm:px-6">
             <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-gradient-to-br from-[#EAF8FF] to-[#EFEAFF] dark:from-[#1C304D] dark:to-[#28243E]">
               <LoaderCircle
                 size={38}
@@ -558,45 +1213,92 @@ export default function GoogleBooksViewer({
             </h3>
 
             <p className="mt-2 max-w-md text-sm leading-6 text-[#6085A5] dark:text-slate-400">
-              Estamos cargando la vista previa de{" "}
-              <strong>{titulo}</strong>.
+              Estamos cargando
+              la vista previa
+              de{" "}
+              <strong>
+                {titulo}
+              </strong>
+              .
             </p>
           </div>
         )}
 
-        {error && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#F8FBFE] p-6 text-center dark:bg-[#101827]">
-            <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-red-50 text-red-500 dark:bg-red-950/30">
-              <AlertCircle size={38} />
+        {/* ERROR */}
+
+        {!cargando &&
+          error && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center overflow-y-auto bg-[#F8FBFE] p-5 text-center dark:bg-[#101827] sm:p-6">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[24px] bg-red-50 text-red-500 dark:bg-red-950/30">
+                <AlertCircle
+                  size={38}
+                />
+              </div>
+
+              <h3 className="mt-5 text-xl font-black">
+                Vista interna no disponible
+              </h3>
+
+              <p className="mt-3 max-w-lg text-sm leading-7 text-[#6085A5] dark:text-slate-400">
+                {error}
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void iniciarVisor()
+                  }
+                  className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] px-5 py-3 text-sm font-black text-white"
+                >
+                  <RotateCcw
+                    size={18}
+                  />
+
+                  Intentar nuevamente
+                </button>
+
+                <a
+                  href={
+                    enlaceGoogle
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#D8DFF0] bg-white px-5 py-3 text-sm font-black text-[#1769E0] transition hover:bg-[#EEF6FF] dark:border-slate-600 dark:bg-slate-800 dark:text-[#70B7F0]"
+                >
+                  <BookOpen
+                    size={18}
+                  />
+
+                  Abrir en Google Books
+
+                  <ExternalLink
+                    size={16}
+                  />
+                </a>
+              </div>
+
+              <p className="mt-5 max-w-lg text-xs leading-5 text-[#8295AA] dark:text-slate-500">
+                Algunos libros
+                tienen restricciones
+                de vista previa o
+                disponibilidad según
+                la edición.
+              </p>
             </div>
+          )}
 
-            <h3 className="mt-5 text-xl font-black">
-              Vista interna no disponible
-            </h3>
-
-            <p className="mt-3 max-w-md text-sm leading-7 text-[#6085A5] dark:text-slate-400">
-              {error}
-            </p>
-
-            <button
-              type="button"
-              onClick={() =>
-                void iniciarVisor()
-              }
-              className="mt-6 flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] px-6 py-3 font-black text-white"
-            >
-              <RotateCcw size={18} />
-              Intentar nuevamente
-            </button>
-          </div>
-        )}
+        {/* GOOGLE BOOKS */}
 
         <div
-          ref={contenedorRef}
+          ref={
+            contenedorRef
+          }
           className={`
             h-full
             min-h-[520px]
             w-full
+            min-w-0
             transition-opacity
             duration-300
             ${

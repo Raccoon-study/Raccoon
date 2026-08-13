@@ -171,16 +171,17 @@ const elementosMenu: ElementoMenu[] = [
     href: "/biblioteca",
     icono: Library,
   },
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 const cantidades = [
@@ -2291,10 +2292,10 @@ export default function FlashcardsPage() {
                   </div>
 
                   <Image
-                    src="/raccoon.png"
+                    src="/flaschard.png"
                     alt="Raccoon Flashcards"
-                    width={210}
-                    height={180}
+                    width={270}
+                    height={270}
                   />
                 </div>
               </section>

@@ -181,17 +181,17 @@ const elementosMenu: ElementoMenu[] = [
     nombre: "Biblioteca",
     href: "/biblioteca",
     icono: Library,
+  },  {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
   },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 const diasSemana = [
@@ -3344,7 +3344,7 @@ export default function Dashboard() {
                   ) : (
                     <>
                       <Image
-                        src="/subirmaterial.png"
+                        src="/archivo.png"
                         alt="Subir material"
                         width={150}
                         height={150}

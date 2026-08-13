@@ -271,16 +271,17 @@ const ELEMENTOS_MENU: ElementoMenu[] = [
     icono: Library,
     activo: true,
   },
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 /* =====================================================
