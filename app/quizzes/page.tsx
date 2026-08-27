@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   Crown,
+  Copy,
   FileText,
   FileUp,
   Flame,
@@ -33,6 +34,7 @@ import {
   Home,
   Library,
   Lightbulb,
+  Link2,
   ListChecks,
   LoaderCircle,
   Lock,
@@ -41,9 +43,12 @@ import {
   Menu,
   MessageCircle,
   Moon,
+  Pencil,
+  Plus,
   RefreshCcw,
   RotateCcw,
   Search,
+  Share2,
   ShieldCheck,
   Shuffle,
   Sparkles,
@@ -51,9 +56,11 @@ import {
   Target,
   TextCursorInput,
   ToggleLeft,
+  Trash2,
   Trophy,
   Upload,
   User,
+  UsersRound,
   X,
   Zap,
 } from "lucide-react";
@@ -78,6 +85,7 @@ type TipoPregunta =
   | "multiple"
   | "true_false"
   | "short"
+  | "fill_blank"
   | "mixed";
 
 type Dificultad =
@@ -104,7 +112,8 @@ interface PreguntaQuiz {
   tipo:
     | "multiple"
     | "true_false"
-    | "short";
+    | "short"
+    | "fill_blank";
   pregunta: string;
   opciones: string[];
   respuesta_correcta: string;
@@ -220,6 +229,13 @@ const tiposPregunta: Array<{
     premium: true,
   },
   {
+    id: "fill_blank",
+    nombre: "Llenar espacio",
+    descripcion: "Completa la palabra o frase que falta.",
+    icono: TextCursorInput,
+    premium: true,
+  },
+  {
     id: "mixed",
     nombre: "Mixto",
     descripcion: "Combina todos los tipos.",
@@ -261,21 +277,21 @@ const dificultades: Array<{
   {
     id: "easy",
     nombre: "Fácil",
-    descripcion: "Conceptos básicos",
+    descripcion: "Definiciones y datos directos",
     color: "bg-[#25B873]",
     premium: false,
   },
   {
     id: "medium",
     nombre: "Intermedio",
-    descripcion: "Comprensión y análisis",
+    descripcion: "Comprensión, relaciones y aplicación",
     color: "bg-[#F5B82E]",
     premium: false,
   },
   {
     id: "hard",
     nombre: "Avanzado",
-    descripcion: "Análisis profundo",
+    descripcion: "Inferencia, comparación y síntesis",
     color: "bg-[#EF5B67]",
     premium: true,
   },
@@ -426,6 +442,7 @@ function normalizarQuiz(
       dato.tipo_preguntas ===
         "true_false" ||
       dato.tipo_preguntas === "short" ||
+      dato.tipo_preguntas === "fill_blank" ||
       dato.tipo_preguntas === "mixed"
         ? dato.tipo_preguntas
         : "multiple",
@@ -535,6 +552,10 @@ function nombreTipoPregunta(
 
   if (tipo === "short") {
     return "Respuesta corta";
+  }
+
+  if (tipo === "fill_blank") {
+    return "Llenar espacio";
   }
 
   if (tipo === "mixed") {
@@ -735,6 +756,67 @@ export default function QuizzesPage() {
   ] = useState<ResultadoFinal | null>(
     null
   );
+
+  /* EDITOR DE PREGUNTAS */
+
+  const [
+    mostrarModalPregunta,
+    setMostrarModalPregunta,
+  ] = useState(false);
+
+  const [
+    modoEditorPregunta,
+    setModoEditorPregunta,
+  ] = useState<"agregar" | "editar">(
+    "agregar"
+  );
+
+  const [
+    nuevaPreguntaTexto,
+    setNuevaPreguntaTexto,
+  ] = useState("");
+
+  const [
+    nuevoTipoPregunta,
+    setNuevoTipoPregunta,
+  ] = useState<
+    "multiple" | "true_false" | "short" | "fill_blank"
+  >("multiple");
+
+  const [
+    nuevaRespuestaCorrecta,
+    setNuevaRespuestaCorrecta,
+  ] = useState("");
+
+  const [
+    nuevasOpciones,
+    setNuevasOpciones,
+  ] = useState(["", "", "", ""]);
+
+  const [
+    modoColaborador,
+    setModoColaborador,
+  ] = useState(false);
+
+  const [
+    guardandoEdicion,
+    setGuardandoEdicion,
+  ] = useState(false);
+
+  const [
+    mostrarCompartir,
+    setMostrarCompartir,
+  ] = useState(false);
+
+  const [
+    enlaceCompartir,
+    setEnlaceCompartir,
+  ] = useState("");
+
+  const [
+    enlaceCopiado,
+    setEnlaceCopiado,
+  ] = useState(false);
 
   const [
     guardandoResultado,
@@ -1599,6 +1681,442 @@ export default function QuizzesPage() {
       indicePregunta
     ] || null;
 
+  const guardarPreguntasQuiz = async (
+    preguntasActualizadas: PreguntaQuiz[]
+  ) => {
+    if (!quizActivo) {
+      return false;
+    }
+
+    const { error } = await supabase
+      .from("quizzes")
+      .update({
+        preguntas: preguntasActualizadas,
+        cantidad_preguntas: preguntasActualizadas.length,
+      })
+      .eq("id", quizActivo.id)
+      .eq("usuario_id", quizActivo.usuario_id);
+
+    if (error) {
+      console.error("Error actualizando preguntas:", error);
+      mostrarNotificacion(
+        "No se pudieron guardar los cambios del quiz."
+      );
+      return false;
+    }
+
+    setQuizActivo({
+      ...quizActivo,
+      preguntas: preguntasActualizadas,
+      cantidad_preguntas: preguntasActualizadas.length,
+    });
+
+    setQuizzesRecientes((anteriores) =>
+      anteriores.map((quiz) =>
+        quiz.id === quizActivo.id
+          ? {
+              ...quiz,
+              preguntas: preguntasActualizadas,
+              cantidad_preguntas: preguntasActualizadas.length,
+            }
+          : quiz
+      )
+    );
+
+    return true;
+  };
+
+  const abrirModalAgregarPregunta = () => {
+    setModoEditorPregunta("agregar");
+    setNuevaPreguntaTexto("");
+    setNuevoTipoPregunta("multiple");
+    setNuevaRespuestaCorrecta("");
+    setNuevasOpciones(["", "", "", ""]);
+    setMostrarModalPregunta(true);
+  };
+
+  const abrirModalEditarPregunta = () => {
+    if (!preguntaActual) {
+      return;
+    }
+
+    setModoEditorPregunta("editar");
+    setNuevaPreguntaTexto(
+      preguntaActual.pregunta
+    );
+    setNuevoTipoPregunta(
+      preguntaActual.tipo
+    );
+    setNuevaRespuestaCorrecta(
+      preguntaActual.respuesta_correcta
+    );
+
+    const opciones =
+      preguntaActual.tipo === "multiple"
+        ? [
+            ...preguntaActual.opciones,
+            "",
+            "",
+            "",
+            "",
+          ].slice(0, 4)
+        : ["", "", "", ""];
+
+    setNuevasOpciones(opciones);
+    setMostrarModalPregunta(true);
+  };
+
+  const guardarPreguntaEditor = async () => {
+    if (!quizActivo) {
+      return;
+    }
+
+    const preguntaLimpia =
+      nuevaPreguntaTexto.trim();
+
+    const respuestaLimpia =
+      nuevaRespuestaCorrecta.trim();
+
+    if (!preguntaLimpia) {
+      mostrarNotificacion(
+        "Escribe la pregunta."
+      );
+      return;
+    }
+
+    if (!respuestaLimpia) {
+      mostrarNotificacion(
+        "Indica la respuesta correcta."
+      );
+      return;
+    }
+
+    if (
+      nuevoTipoPregunta === "fill_blank" &&
+      !preguntaLimpia.includes("_____")
+    ) {
+      mostrarNotificacion(
+        "En llenar espacio usa _____ para marcar la parte faltante."
+      );
+      return;
+    }
+
+    if (
+      nuevoTipoPregunta === "multiple"
+    ) {
+      const opcionesLimpias =
+        nuevasOpciones.map(
+          (opcion) => opcion.trim()
+        );
+
+      if (
+        opcionesLimpias.some(
+          (opcion) => !opcion
+        )
+      ) {
+        mostrarNotificacion(
+          "Completa las cuatro opciones."
+        );
+        return;
+      }
+
+      if (
+        !opcionesLimpias.includes(
+          respuestaLimpia
+        )
+      ) {
+        mostrarNotificacion(
+          "Selecciona una de las cuatro opciones como respuesta correcta."
+        );
+        return;
+      }
+    }
+
+    const opcionesFinales =
+      nuevoTipoPregunta === "multiple"
+        ? nuevasOpciones.map(
+            (opcion) => opcion.trim()
+          )
+        : nuevoTipoPregunta ===
+            "true_false"
+          ? ["Verdadero", "Falso"]
+          : [];
+
+    setGuardandoEdicion(true);
+
+    try {
+      if (
+        modoEditorPregunta === "editar" &&
+        preguntaActual
+      ) {
+        const actualizadas =
+          quizActivo.preguntas.map(
+            (pregunta) =>
+              pregunta.id ===
+              preguntaActual.id
+                ? {
+                    ...pregunta,
+                    tipo:
+                      nuevoTipoPregunta,
+                    pregunta:
+                      preguntaLimpia,
+                    opciones:
+                      opcionesFinales,
+                    respuesta_correcta:
+                      respuestaLimpia,
+                  }
+                : pregunta
+          );
+
+        const guardado =
+          await guardarPreguntasQuiz(
+            actualizadas
+          );
+
+        if (guardado) {
+          setMostrarModalPregunta(false);
+          setRespuestaUsuario("");
+          setRespuestaComprobada(false);
+          setUltimaRespuestaCorrecta(null);
+          mostrarNotificacion(
+            "Pregunta actualizada correctamente."
+          );
+        }
+
+        return;
+      }
+
+      const nuevaPregunta: PreguntaQuiz = {
+        id:
+          typeof crypto !== "undefined" &&
+          typeof crypto.randomUUID ===
+            "function"
+            ? crypto.randomUUID()
+            : `pregunta-${Date.now()}`,
+        tipo: nuevoTipoPregunta,
+        pregunta: preguntaLimpia,
+        opciones: opcionesFinales,
+        respuesta_correcta:
+          respuestaLimpia,
+        explicacion:
+          "Pregunta agregada manualmente desde el editor de Raccoon Study.",
+      };
+
+      const actualizadas = [
+        ...quizActivo.preguntas,
+        nuevaPregunta,
+      ];
+
+      const guardado =
+        await guardarPreguntasQuiz(
+          actualizadas
+        );
+
+      if (guardado) {
+        setMostrarModalPregunta(false);
+        mostrarNotificacion(
+          "Pregunta agregada correctamente."
+        );
+      }
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+
+  const eliminarPreguntaActual =
+    async () => {
+      if (
+        !quizActivo ||
+        !preguntaActual
+      ) {
+        return;
+      }
+
+      if (
+        quizActivo.preguntas.length <= 1
+      ) {
+        mostrarNotificacion(
+          "El quiz debe conservar al menos una pregunta."
+        );
+        return;
+      }
+
+      const actualizadas =
+        quizActivo.preguntas.filter(
+          (pregunta) =>
+            pregunta.id !==
+            preguntaActual.id
+        );
+
+      const guardado =
+        await guardarPreguntasQuiz(
+          actualizadas
+        );
+
+      if (!guardado) {
+        return;
+      }
+
+      setIndicePregunta((actual) =>
+        Math.min(
+          actual,
+          actualizadas.length - 1
+        )
+      );
+
+      setRespuestaUsuario("");
+      setRespuestaComprobada(false);
+      setUltimaRespuestaCorrecta(null);
+
+      mostrarNotificacion(
+        "Pregunta eliminada."
+      );
+    };
+
+  const alternarModoColaborador = () => {
+    if (!esPremium) {
+      setMostrarPremium(true);
+      return;
+    }
+
+    setModoColaborador(
+      (actual) => !actual
+    );
+
+    mostrarNotificacion(
+      modoColaborador
+        ? "Modo colaborador desactivado."
+        : "Modo colaborador activado."
+    );
+  };
+
+  const obtenerEnlaceQuiz = () => {
+    if (!quizActivo) {
+      return "";
+    }
+
+    const base =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}`
+        : "";
+
+    return `${base}?quiz=${encodeURIComponent(
+      quizActivo.id
+    )}`;
+  };
+
+  const abrirCompartirQuiz = () => {
+    if (!quizActivo) {
+      return;
+    }
+
+    if (!esPremium) {
+      setMostrarPremium(true);
+      return;
+    }
+
+    const enlace = obtenerEnlaceQuiz();
+
+    setEnlaceCompartir(enlace);
+    setEnlaceCopiado(false);
+    setMostrarCompartir(true);
+  };
+
+  const copiarEnlaceQuiz = async () => {
+    const enlace =
+      enlaceCompartir ||
+      obtenerEnlaceQuiz();
+
+    if (!enlace) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        enlace
+      );
+
+      setEnlaceCopiado(true);
+
+      mostrarNotificacion(
+        "Enlace del quiz copiado."
+      );
+
+      window.setTimeout(() => {
+        setEnlaceCopiado(false);
+      }, 2200);
+    } catch (error) {
+      console.warn(
+        "No se pudo copiar el enlace:",
+        error
+      );
+
+      mostrarNotificacion(
+        "No se pudo copiar el enlace."
+      );
+    }
+  };
+
+  const copiarContenidoQuiz = async () => {
+    if (!quizActivo) {
+      return;
+    }
+
+    const textoCompartir = [
+      `Raccoon Study · ${quizActivo.titulo}`,
+      `${quizActivo.materia} · ${quizActivo.preguntas.length} preguntas`,
+      "",
+      ...quizActivo.preguntas.map(
+        (pregunta, indice) =>
+          `${indice + 1}. ${pregunta.pregunta}`
+      ),
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(
+        textoCompartir
+      );
+
+      mostrarNotificacion(
+        "Preguntas del quiz copiadas."
+      );
+    } catch (error) {
+      console.warn(
+        "No se pudo copiar el contenido:",
+        error
+      );
+    }
+  };
+
+  const compartirConSistema = async () => {
+    if (!quizActivo) {
+      return;
+    }
+
+    const enlace =
+      enlaceCompartir ||
+      obtenerEnlaceQuiz();
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: quizActivo.titulo,
+          text: `Te comparto este quiz de ${quizActivo.materia} en Raccoon Study.`,
+          url: enlace,
+        });
+
+        return;
+      }
+
+      await copiarEnlaceQuiz();
+    } catch (error) {
+      console.warn(
+        "Compartir cancelado o no disponible:",
+        error
+      );
+    }
+  };
+
   const comprobarRespuesta = () => {
     if (
       !preguntaActual ||
@@ -2095,7 +2613,7 @@ export default function QuizzesPage() {
 
               <input
                 placeholder="Buscar métodos, temas, quizzes..."
-                className="w-48 bg-transparent text-sm outline-none placeholder:text-[#8AA4BE] lg:w-64"
+                className="w-48 bg-transparent text-sm text-[#203450] caret-[#3978F6] outline-none placeholder:text-[#8AA4BE] dark:text-white dark:caret-[#7DB8FF] dark:placeholder:text-slate-500 lg:w-64"
               />
             </div>
 
@@ -2497,7 +3015,7 @@ export default function QuizzesPage() {
                               )
                             }
                             placeholder="Pega aquí tus apuntes, resumen o contenido..."
-                            className="min-h-[180px] w-full resize-none rounded-[20px] border-2 border-[#BFE7D0] bg-[#FAFFFC] p-5 leading-7 outline-none transition focus:border-[#26A66B] dark:border-slate-700 dark:bg-slate-800"
+                            className="min-h-[180px] w-full resize-none rounded-[20px] border-2 border-[#BFE7D0] bg-[#FAFFFC] p-5 leading-7 text-[#203450] caret-[#26A66B] outline-none transition placeholder:text-[#8EA1B6] focus:border-[#26A66B] dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:caret-[#67E8A5] dark:placeholder:text-slate-500"
                           />
 
                           <div className="mt-2 flex justify-between text-xs text-[#6085A5]">
@@ -3324,41 +3842,119 @@ export default function QuizzesPage() {
                 /* PREGUNTA */
 
                 <div>
-                  <section className="rounded-[28px] bg-gradient-to-r from-[#F3F0FF] to-[#EDF4FF] p-6 dark:from-[#28243E] dark:to-[#1C304D] sm:p-8">
-                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                      <div>
-                        <span className="rounded-full bg-[#E9E2FF] px-4 py-2 text-xs font-black text-[#6548E8]">
-                          {
-                            quizActivo.materia
-                          }
-                        </span>
+                  <section className="relative overflow-hidden rounded-[30px] border border-[#DCE7FA] bg-gradient-to-br from-[#F1EEFF] via-[#EEF5FF] to-[#E9F4FF] p-5 shadow-[0_18px_45px_rgba(69,88,180,0.08)] dark:border-slate-700 dark:from-[#2A2545] dark:via-[#1D2B45] dark:to-[#18314B] sm:p-7">
+                    <div className="pointer-events-none absolute -right-14 -top-16 h-52 w-52 rounded-full bg-blue-300/25 blur-3xl" />
+                    <div className="pointer-events-none absolute bottom-0 left-[35%] h-40 w-40 rounded-full bg-violet-300/15 blur-3xl" />
 
-                        <h1 className="mt-4 text-2xl font-black sm:text-3xl">
+                    <div className="relative z-10 flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-white/75 px-3 py-1.5 text-[11px] font-black text-[#6548E8] shadow-sm backdrop-blur dark:bg-white/10 dark:text-violet-200">
+                            {quizActivo.materia}
+                          </span>
+
+                          <span className="rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1.5 text-[10px] font-black text-[#3978F6] dark:border-blue-900/30 dark:bg-blue-950/30 dark:text-blue-300">
+                            {nombreTipoPregunta(
+                              quizActivo.tipo_preguntas
+                            )}
+                          </span>
+
+                          <span className="rounded-full border border-amber-100 bg-amber-50/80 px-3 py-1.5 text-[10px] font-black text-[#A87600] dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300">
+                            {nombreDificultad(
+                              quizActivo.dificultad
+                            )}
+                          </span>
+                        </div>
+
+                        <h1 className="mt-4 max-w-[760px] text-2xl font-black leading-tight tracking-[-0.02em] text-[#0A1C3A] dark:text-white sm:text-3xl lg:text-[34px]">
                           {quizActivo.titulo}
                         </h1>
 
-                        <p className="mt-2 text-sm text-[#6085A5] dark:text-slate-300">
-                          {nombreTipoPregunta(
-                            quizActivo.tipo_preguntas
-                          )}{" "}
-                          ·{" "}
-                          {nombreDificultad(
-                            quizActivo.dificultad
-                          )}
+                        <p className="mt-2 text-xs font-semibold text-[#7288A5] dark:text-slate-300 sm:text-sm">
+                          {quizActivo.preguntas.length} preguntas · Avanza a tu ritmo y comprueba cada respuesta.
                         </p>
                       </div>
 
-                      <Image
-                        src="/raccoon.png"
-                        alt="Raccoon Quiz"
-                        width={120}
-                        height={120}
-                        className="mx-auto object-contain sm:mx-0"
-                      />
+                      <div className="relative hidden h-28 w-32 shrink-0 items-center justify-center sm:flex">
+                        <div className="absolute h-24 w-24 rounded-full bg-white/55 shadow-inner dark:bg-white/5" />
+                        <span className="absolute left-0 top-1 text-xl text-yellow-400">★</span>
+                        <span className="absolute right-0 top-0 text-2xl">🎓</span>
+                        <Image
+                          src="/raccoon.png"
+                          alt="Raccoon Quiz"
+                          width={105}
+                          height={105}
+                          className="relative z-10 h-[100px] w-[100px] object-contain drop-shadow-md"
+                        />
+                      </div>
                     </div>
                   </section>
 
-                  <section className="mt-5 rounded-[28px] bg-white p-6 shadow-sm dark:bg-[#182437] sm:p-9">
+                  <section className="mt-5 rounded-[30px] border border-[#E4EAF3] bg-white p-4 shadow-[0_16px_42px_rgba(29,61,111,0.07)] dark:border-slate-700 dark:bg-[#182437] sm:p-7 lg:p-8">
+                    {/* HERRAMIENTAS DEL QUIZ */}
+                    <div className="mb-7 rounded-[22px] border border-[#E2E9F3] bg-gradient-to-r from-[#FAFBFE] to-[#F6F8FC] p-2.5 dark:border-slate-700 dark:from-[#131F30] dark:to-[#162336] sm:p-3">
+                      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                      <button
+                        type="button"
+                        onClick={abrirModalEditarPregunta}
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#D7E2F0] bg-white px-3 py-2.5 text-[11px] font-black text-[#48627F] shadow-sm transition hover:-translate-y-0.5 hover:border-[#3978F6] hover:text-[#3978F6] dark:border-slate-700 dark:bg-[#182437] dark:text-slate-200 sm:px-4 sm:text-xs"
+                      >
+                        <Pencil size={15} />
+                        Corregir respuesta
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={abrirModalAgregarPregunta}
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-[11px] font-black text-blue-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300 sm:px-4 sm:text-xs"
+                      >
+                        <Plus size={15} />
+                        Agregar pregunta
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void eliminarPreguntaActual()
+                        }
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[11px] font-black text-red-500 shadow-sm transition hover:-translate-y-0.5 hover:bg-red-100 dark:border-red-900/30 dark:bg-red-950/20 sm:px-4 sm:text-xs"
+                      >
+                        <Trash2 size={15} />
+                        Eliminar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={alternarModoColaborador}
+                        className={`col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-black shadow-sm transition sm:ml-auto sm:px-4 sm:text-xs ${
+                          modoColaborador && esPremium
+                            ? "border-[#6B58E8] bg-[#F1EDFF] text-[#6548E8] dark:bg-violet-950/30"
+                            : "border-[#E8CF80] bg-[#FFF8E5] text-[#9D7500] dark:border-amber-900/40 dark:bg-amber-950/20"
+                        }`}
+                      >
+                        <UsersRound size={15} />
+                        Modo colaborador
+                        {!esPremium && (
+                          <span className="rounded-full bg-[#E9C65D] px-2 py-0.5 text-[9px] text-[#6A4A00]">
+                            PREMIUM
+                          </span>
+                        )}
+                      </button>
+
+                      {modoColaborador &&
+                        esPremium && (
+                          <button
+                            type="button"
+                            onClick={abrirCompartirQuiz}
+                            className="col-span-2 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#356AF2] to-[#7652D9] px-4 py-2.5 text-xs font-black text-white shadow-[0_8px_18px_rgba(88,82,220,0.20)] transition hover:-translate-y-0.5 sm:col-auto"
+                          >
+                            <Share2 size={15} />
+                            Compartir quiz
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-black text-[#6548E8]">
                         Pregunta{" "}
@@ -3383,7 +3979,7 @@ export default function QuizzesPage() {
                       </span>
                     </div>
 
-                    <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#E7EDF5] dark:bg-slate-700">
+                    <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-[#E8EDF5] shadow-inner dark:bg-slate-700">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-[#356AF2] to-[#7652D9] transition-all"
                         style={{
@@ -3399,30 +3995,82 @@ export default function QuizzesPage() {
                       />
                     </div>
 
-                    <h2 className="mt-8 text-xl font-black leading-8 sm:text-2xl">
+                    <h2 className="mt-7 text-[20px] font-black leading-8 tracking-[-0.01em] text-[#0B1D3B] dark:text-white sm:mt-8 sm:text-2xl lg:text-[26px]">
                       {
                         preguntaActual.pregunta
                       }
                     </h2>
 
                     {preguntaActual.tipo ===
-                    "short" ? (
-                      <textarea
-                        value={
-                          respuestaUsuario
-                        }
-                        onChange={(evento) =>
-                          setRespuestaUsuario(
-                            evento.target
-                              .value
-                          )
-                        }
-                        disabled={
-                          respuestaComprobada
-                        }
-                        placeholder="Escribe tu respuesta..."
-                        className="mt-6 min-h-[130px] w-full resize-none rounded-2xl border-2 border-[#DDE5EF] bg-[#FAFCFE] p-5 outline-none transition focus:border-[#7652D9] disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800"
-                      />
+                      "short" ||
+                    preguntaActual.tipo ===
+                      "fill_blank" ? (
+                      <div className="mt-6">
+                        <textarea
+                          value={
+                            respuestaUsuario
+                          }
+                          onChange={(evento) =>
+                            setRespuestaUsuario(
+                              evento.target
+                                .value
+                            )
+                          }
+                          disabled={
+                            respuestaComprobada
+                          }
+                          placeholder={
+                            preguntaActual.tipo ===
+                            "fill_blank"
+                              ? "Escribe la palabra o frase que falta..."
+                              : "Escribe tu respuesta..."
+                          }
+                          className="
+                            min-h-[132px]
+                            w-full
+                            resize-none
+                            rounded-2xl
+                            border-2
+                            border-[#DDE5EF]
+                            bg-[#FBFCFF]
+                            px-5
+                            py-4
+                            text-[15px]
+                            font-medium
+                            text-[#203450]
+                            caret-[#7652D9]
+                            outline-none
+                            transition
+                            placeholder:text-[#9AACC2]
+                            focus:border-[#7652D9]
+                            focus:bg-white
+                            focus:ring-4
+                            focus:ring-[#7652D9]/10
+                            disabled:cursor-not-allowed
+                            disabled:opacity-70
+                            dark:border-[#40516B]
+                            dark:bg-[#0F1B2D]
+                            dark:text-white
+                            dark:caret-[#A98CFF]
+                            dark:placeholder:text-[#8293AA]
+                            dark:focus:border-[#9B6BFF]
+                            dark:focus:bg-[#0F1B2D]
+                            dark:focus:ring-[#9B6BFF]/20
+                          "
+                        />
+
+                        {preguntaActual.tipo ===
+                          "fill_blank" &&
+                          !respuestaComprobada && (
+                            <p className="mt-2 flex items-center gap-2 text-xs text-[#7C90AA] dark:text-slate-400">
+                              <TextCursorInput
+                                size={14}
+                                className="text-[#7652D9]"
+                              />
+                              Completa únicamente el espacio en blanco.
+                            </p>
+                          )}
+                      </div>
                     ) : (
                       <div className="mt-6 grid gap-3">
                         {preguntaActual.opciones.map(
@@ -3693,7 +4341,7 @@ export default function QuizzesPage() {
                   )
                 }
                 placeholder="Buscar material..."
-                className="w-full bg-transparent text-sm outline-none"
+                className="w-full bg-transparent text-sm text-[#203450] caret-[#3978F6] outline-none placeholder:text-[#8AA4BE] dark:text-white dark:caret-[#7DB8FF] dark:placeholder:text-slate-500"
               />
             </div>
 
@@ -3763,6 +4411,516 @@ export default function QuizzesPage() {
         </div>
       )}
 
+      {/* MODAL COMPARTIR QUIZ */}
+
+      {mostrarCompartir && quizActivo && (
+        <div
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-[#07152F]/60 p-4 backdrop-blur-[6px]"
+          onMouseDown={(evento) => {
+            if (
+              evento.target ===
+              evento.currentTarget
+            ) {
+              setMostrarCompartir(false);
+            }
+          }}
+        >
+          <div className="relative w-full max-w-[560px] overflow-hidden rounded-[30px] border border-white/70 bg-white shadow-[0_35px_100px_rgba(7,21,47,0.35)] dark:border-slate-700 dark:bg-[#172235]">
+            <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-blue-200/35 blur-3xl dark:bg-blue-900/10" />
+            <div className="absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-violet-200/20 blur-3xl dark:bg-violet-900/10" />
+
+            <div className="relative p-6 sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E8F0FF] to-[#EEE7FF] text-[#5E52E8] shadow-sm">
+                    <Share2 size={22} />
+                  </div>
+
+                  <p className="mt-5 text-[11px] font-black uppercase tracking-[0.18em] text-[#3978F6]">
+                    Modo colaborador
+                  </p>
+
+                  <h2 className="mt-1 text-2xl font-black text-[#0A1C3A] dark:text-white">
+                    Comparte este quiz
+                  </h2>
+
+                  <p className="mt-2 max-w-[430px] text-sm leading-6 text-[#71849E] dark:text-slate-400">
+                    Copia el enlace y envíalo a quien quieras. También puedes copiar las preguntas o abrir el menú para compartir.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMostrarCompartir(false)
+                  }
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F2F5FA] text-slate-500 transition hover:bg-red-50 hover:text-red-500 dark:bg-slate-800"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="mt-7 rounded-[22px] border border-[#DFE7F2] bg-[#F8FAFD] p-3 dark:border-slate-700 dark:bg-[#111D2E]">
+                <p className="px-1 text-[10px] font-black uppercase tracking-[0.13em] text-[#8A9AB0]">
+                  Enlace del quiz
+                </p>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="min-w-0 flex-1 rounded-xl bg-white px-4 py-3 text-xs font-semibold text-[#536A88] shadow-sm dark:bg-[#1A293D] dark:text-slate-300">
+                    <p className="truncate">
+                      {enlaceCompartir}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void copiarEnlaceQuiz()
+                    }
+                    className={`flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 ${
+                      enlaceCopiado
+                        ? "bg-[#20B873]"
+                        : "bg-gradient-to-r from-[#3978F6] to-[#6654E8]"
+                    }`}
+                  >
+                    {enlaceCopiado ? (
+                      <Check size={16} />
+                    ) : (
+                      <Copy size={16} />
+                    )}
+
+                    <span className="hidden sm:inline">
+                      {enlaceCopiado
+                        ? "Copiado"
+                        : "Copiar"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void copiarContenidoQuiz()
+                  }
+                  className="flex min-h-[74px] items-center gap-3 rounded-2xl border border-[#E0E7F1] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#BFD2F3] hover:shadow-md dark:border-slate-700 dark:bg-[#1A293D]"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#3978F6] dark:bg-blue-950/30">
+                    <Copy size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-[#203450] dark:text-white">
+                      Copiar preguntas
+                    </p>
+                    <p className="mt-1 text-[10px] text-[#8596AA]">
+                      Para pegar en chat o correo
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void compartirConSistema()
+                  }
+                  className="flex min-h-[74px] items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md dark:border-violet-900/30 dark:bg-violet-950/20"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300">
+                    <Share2 size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-[#203450] dark:text-white">
+                      Compartir con...
+                    </p>
+                    <p className="mt-1 text-[10px] text-[#8596AA]">
+                      WhatsApp, correo y más
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="mt-5 flex items-start gap-3 rounded-2xl bg-[#FFF8E8] p-4 text-[#7E641E] dark:bg-amber-950/20 dark:text-amber-200">
+                <Crown size={18} className="mt-0.5 shrink-0" />
+                <p className="text-xs leading-5">
+                  El modo colaborador es una función Premium. El enlace identifica este quiz para compartirlo desde Raccoon Study.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITOR DE PREGUNTAS */}
+
+      {mostrarModalPregunta && (
+        <div className="fixed inset-0 z-[240] flex items-center justify-center bg-[#07152F]/60 p-4 backdrop-blur-[6px]">
+          <div className="relative max-h-[92vh] w-full max-w-[720px] overflow-y-auto rounded-[32px] border border-white/70 bg-white p-6 shadow-[0_35px_100px_rgba(7,21,47,0.35)] dark:border-slate-700 dark:bg-[#172235] sm:p-8">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-blue-200/35 blur-3xl dark:bg-blue-900/10" />
+            <div className="pointer-events-none absolute -left-20 bottom-0 h-48 w-48 rounded-full bg-violet-200/20 blur-3xl dark:bg-violet-900/10" />
+
+            <div className="relative flex items-start justify-between gap-5">
+              <div>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E6EEFF] to-[#ECE5FF] text-[#5D52E7] shadow-sm">
+                  {modoEditorPregunta === "agregar" ? (
+                    <Plus size={23} />
+                  ) : (
+                    <Pencil size={22} />
+                  )}
+                </div>
+
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#3978F6]">
+                  Editor de quiz
+                </p>
+
+                <h2 className="mt-1 text-2xl font-black text-[#07152F] dark:text-white sm:text-3xl">
+                  {modoEditorPregunta === "agregar"
+                    ? "Agregar nueva pregunta"
+                    : "Corregir pregunta"}
+                </h2>
+
+                <p className="mt-2 max-w-[520px] text-sm leading-6 text-[#74859D] dark:text-slate-400">
+                  Personaliza el tipo, el enunciado y la respuesta correcta sin salir del quiz.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMostrarModalPregunta(false)
+                }
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F2F5FA] text-slate-500 transition hover:bg-red-50 hover:text-red-500 dark:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="my-7 h-px bg-slate-100 dark:bg-slate-700" />
+
+            {/* TIPO */}
+            <div>
+              <label className="text-sm font-black text-[#203450] dark:text-slate-200">
+                Tipo de pregunta
+              </label>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    id: "multiple",
+                    nombre: "Opción múltiple",
+                    descripcion: "Cuatro alternativas",
+                    icono: ListChecks,
+                  },
+                  {
+                    id: "true_false",
+                    nombre: "Verdadero o falso",
+                    descripcion: "Dos opciones",
+                    icono: ToggleLeft,
+                  },
+                  {
+                    id: "short",
+                    nombre: "Respuesta corta",
+                    descripcion: "Respuesta escrita",
+                    icono: TextCursorInput,
+                  },
+                  {
+                    id: "fill_blank",
+                    nombre: "Llenar espacio",
+                    descripcion: "Completar la frase",
+                    icono: TextCursorInput,
+                  },
+                ].map((tipo) => {
+                  const Icono = tipo.icono;
+                  const activo =
+                    nuevoTipoPregunta === tipo.id;
+
+                  return (
+                    <button
+                      key={tipo.id}
+                      type="button"
+                      onClick={() => {
+                        const nuevoTipo =
+                          tipo.id as
+                            | "multiple"
+                            | "true_false"
+                            | "short"
+                            | "fill_blank";
+
+                        setNuevoTipoPregunta(
+                          nuevoTipo
+                        );
+
+                        if (
+                          nuevoTipo ===
+                          "true_false"
+                        ) {
+                          setNuevaRespuestaCorrecta(
+                            ""
+                          );
+                        }
+                      }}
+                      className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
+                        activo
+                          ? "border-[#5B54EF] bg-[#F4F1FF] shadow-[0_8px_20px_rgba(91,84,239,0.10)] dark:bg-violet-950/30"
+                          : "border-[#E3E9F2] bg-white hover:border-blue-200 hover:bg-blue-50/50 dark:border-slate-700 dark:bg-slate-800/50"
+                      }`}
+                    >
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                          activo
+                            ? "bg-[#5B54EF] text-white"
+                            : "bg-[#EEF3FF] text-[#3978F6] dark:bg-slate-700"
+                        }`}
+                      >
+                        <Icono size={19} />
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-black text-[#203450] dark:text-white">
+                          {tipo.nombre}
+                        </p>
+                        <p className="mt-1 text-[10px] text-[#8998AC]">
+                          {tipo.descripcion}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* PREGUNTA */}
+            <div className="mt-7">
+              <label className="text-sm font-black text-[#203450] dark:text-slate-200">
+                Pregunta
+              </label>
+
+              <textarea
+                value={nuevaPreguntaTexto}
+                onChange={(evento) =>
+                  setNuevaPreguntaTexto(
+                    evento.target.value
+                  )
+                }
+                placeholder={
+                  nuevoTipoPregunta ===
+                  "fill_blank"
+                    ? "Ej: La fotosíntesis ocurre principalmente en los _____."
+                    : "Escribe aquí la pregunta..."
+                }
+                className="mt-3 min-h-[118px] w-full resize-none rounded-2xl border border-[#DCE5F1] bg-[#FBFCFF] px-4 py-4 text-sm text-[#203450] caret-[#3978F6] outline-none transition placeholder:text-[#A1AFC0] focus:border-[#3978F6] focus:ring-4 focus:ring-blue-100/70 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:caret-[#7DB8FF] dark:placeholder:text-slate-500 dark:focus:ring-blue-950/40"
+              />
+
+              {nuevoTipoPregunta ===
+                "fill_blank" && (
+                <p className="mt-2 flex items-center gap-2 text-xs text-[#7587A1]">
+                  <Lightbulb
+                    size={14}
+                    className="text-amber-500"
+                  />
+                  Usa _____ para indicar exactamente dónde irá la respuesta.
+                </p>
+              )}
+            </div>
+
+            {/* OPCIONES MÚLTIPLES */}
+            {nuevoTipoPregunta ===
+              "multiple" && (
+              <div className="mt-7">
+                <div className="flex items-center justify-between gap-4">
+                  <label className="text-sm font-black text-[#203450] dark:text-slate-200">
+                    Opciones
+                  </label>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-[#3978F6] dark:bg-blue-950/30">
+                    4 respuestas
+                  </span>
+                </div>
+
+                <div className="mt-3 grid gap-3">
+                  {nuevasOpciones.map(
+                    (opcion, indice) => (
+                      <div
+                        key={indice}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF3FF] text-xs font-black text-[#3978F6] dark:bg-slate-700">
+                          {String.fromCharCode(
+                            65 + indice
+                          )}
+                        </div>
+
+                        <input
+                          type="text"
+                          value={opcion}
+                          onChange={(evento) => {
+                            const copia = [
+                              ...nuevasOpciones,
+                            ];
+                            copia[indice] =
+                              evento.target.value;
+                            setNuevasOpciones(
+                              copia
+                            );
+
+                            if (
+                              nuevaRespuestaCorrecta ===
+                              opcion
+                            ) {
+                              setNuevaRespuestaCorrecta(
+                                evento.target.value
+                              );
+                            }
+                          }}
+                          placeholder={`Opción ${
+                            indice + 1
+                          }`}
+                          className="h-11 flex-1 rounded-xl border border-[#DCE5F1] bg-[#FBFCFF] px-4 text-sm text-[#203450] caret-[#3978F6] outline-none transition placeholder:text-[#A1AFC0] focus:border-[#3978F6] focus:ring-4 focus:ring-blue-100/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:caret-[#7DB8FF] dark:placeholder:text-slate-500"
+                        />
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* RESPUESTA CORRECTA */}
+            <div className="mt-7">
+              <label className="flex items-center gap-2 text-sm font-black text-[#203450] dark:text-slate-200">
+                <CheckCircle2
+                  size={17}
+                  className="text-green-500"
+                />
+                Respuesta correcta
+              </label>
+
+              {nuevoTipoPregunta ===
+              "true_false" ? (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {[
+                    "Verdadero",
+                    "Falso",
+                  ].map((valor) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() =>
+                        setNuevaRespuestaCorrecta(
+                          valor
+                        )
+                      }
+                      className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
+                        nuevaRespuestaCorrecta ===
+                        valor
+                          ? "border-green-500 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300"
+                          : "border-[#DCE5F1] bg-white text-[#50647D] hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      }`}
+                    >
+                      {valor}
+                    </button>
+                  ))}
+                </div>
+              ) : nuevoTipoPregunta ===
+                "multiple" ? (
+                <select
+                  value={
+                    nuevaRespuestaCorrecta
+                  }
+                  onChange={(evento) =>
+                    setNuevaRespuestaCorrecta(
+                      evento.target.value
+                    )
+                  }
+                  className="mt-3 h-12 w-full rounded-2xl border border-[#DCE5F1] bg-[#FBFCFF] px-4 text-sm font-bold text-[#405672] outline-none focus:border-[#3978F6] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">
+                    Selecciona la respuesta correcta
+                  </option>
+
+                  {nuevasOpciones.map(
+                    (opcion, indice) =>
+                      opcion.trim() ? (
+                        <option
+                          key={indice}
+                          value={opcion}
+                        >
+                          {String.fromCharCode(
+                            65 + indice
+                          )}
+                          . {opcion}
+                        </option>
+                      ) : null
+                  )}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={
+                    nuevaRespuestaCorrecta
+                  }
+                  onChange={(evento) =>
+                    setNuevaRespuestaCorrecta(
+                      evento.target.value
+                    )
+                  }
+                  placeholder={
+                    nuevoTipoPregunta ===
+                    "fill_blank"
+                      ? "Escribe solamente la palabra o frase que falta..."
+                      : "Escribe la respuesta correcta..."
+                  }
+                  className="mt-3 h-12 w-full rounded-2xl border border-[#DCE5F1] bg-[#FBFCFF] px-4 text-sm text-[#203450] caret-[#3978F6] outline-none transition placeholder:text-[#A1AFC0] focus:border-[#3978F6] focus:ring-4 focus:ring-blue-100/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:caret-[#7DB8FF] dark:placeholder:text-slate-500"
+                />
+              )}
+            </div>
+
+            {/* PIE */}
+            <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 dark:border-slate-700 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  setMostrarModalPregunta(false)
+                }
+                className="h-12 rounded-2xl border border-[#DCE5F1] bg-white px-6 text-sm font-black text-[#657A95] transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                disabled={guardandoEdicion}
+                onClick={() =>
+                  void guardarPreguntaEditor()
+                }
+                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3978F6] to-[#6557E8] px-7 text-sm font-black text-white shadow-[0_12px_25px_rgba(57,120,246,0.25)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {guardandoEdicion ? (
+                  <>
+                    <LoaderCircle
+                      size={17}
+                      className="animate-spin"
+                    />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    {modoEditorPregunta ===
+                    "agregar" ? (
+                      <Plus size={17} />
+                    ) : (
+                      <Check size={17} />
+                    )}
+                    {modoEditorPregunta ===
+                    "agregar"
+                      ? "Agregar pregunta"
+                      : "Guardar cambios"}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL PREMIUM */}
 
       {mostrarPremium && (
@@ -3786,7 +4944,7 @@ export default function QuizzesPage() {
             </h2>
 
             <p className="mt-3 leading-7 text-[#6085A5] dark:text-slate-300">
-              Desbloquea respuestas cortas, preguntas mixtas, dificultad avanzada, explicaciones detalladas y quizzes ilimitados.
+              Desbloquea respuestas cortas, preguntas mixtas, dificultad avanzada, explicaciones detalladas, modo colaborador y quizzes ilimitados.
             </p>
 
             <div className="mt-5 space-y-3">
@@ -3794,6 +4952,7 @@ export default function QuizzesPage() {
                 "Hasta 25 preguntas",
                 "Dificultad avanzada",
                 "Explicaciones detalladas",
+                "Modo colaborador y compartir",
                 "Quizzes ilimitados",
               ].map((beneficio) => (
                 <div

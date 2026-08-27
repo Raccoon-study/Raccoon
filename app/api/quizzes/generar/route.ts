@@ -32,6 +32,7 @@ type TipoPregunta =
   | "multiple"
   | "true_false"
   | "short"
+  | "fill_blank"
   | "mixed";
 
 type Dificultad =
@@ -44,7 +45,8 @@ interface PreguntaGenerada {
   tipo:
     | "multiple"
     | "true_false"
-    | "short";
+    | "short"
+    | "fill_blank";
   pregunta: string;
   opciones: string[];
   respuesta_correcta: string;
@@ -185,6 +187,7 @@ function esTipoPregunta(
     "multiple",
     "true_false",
     "short",
+    "fill_blank",
     "mixed",
   ].includes(valor);
 }
@@ -242,8 +245,12 @@ function nombreTipo(
     return "respuesta corta";
   }
 
+  if (tipo === "fill_blank") {
+    return "llenar el espacio";
+  }
+
   if (tipo === "mixed") {
-    return "una combinación equilibrada de opción múltiple, verdadero o falso y respuesta corta";
+    return "una combinación equilibrada de opción múltiple, verdadero o falso, respuesta corta y llenar el espacio";
   }
 
   return "opción múltiple";
@@ -261,6 +268,39 @@ function nombreDificultad(
   }
 
   return "fácil";
+}
+
+function instruccionesDificultad(
+  dificultad: Dificultad
+): string {
+  if (dificultad === "hard") {
+    return `
+NIVEL AVANZADO:
+- Evalúa análisis, inferencia, comparación, síntesis y relaciones entre varias partes del material.
+- Evita preguntas cuya respuesta sea una frase copiada literalmente.
+- Los distractores deben ser plausibles y exigir lectura cuidadosa.
+- Puede requerir combinar dos o más ideas del material, pero NUNCA conocimiento externo.
+- No uses ambigüedades, trampas lingüísticas ni datos no presentes en la fuente.
+`.trim();
+  }
+
+  if (dificultad === "medium") {
+    return `
+NIVEL INTERMEDIO:
+- Evalúa comprensión, relaciones entre conceptos y aplicación directa de lo explicado.
+- Combina preguntas de recuerdo con interpretación sencilla.
+- Los distractores deben parecer razonables, pero solo una opción puede ser correcta.
+- Puede requerir una inferencia simple siempre que esté claramente respaldada por el material.
+`.trim();
+  }
+
+  return `
+NIVEL FÁCIL:
+- Evalúa conceptos esenciales, definiciones, datos explícitos y reconocimiento directo.
+- Formula preguntas claras cuya respuesta esté expresada de forma directa en el material.
+- Evita inferencias complejas y distractores demasiado parecidos.
+- Prioriza comprensión básica antes que memorización de detalles irrelevantes.
+`.trim();
 }
 
 function validarQuiz(
@@ -658,20 +698,65 @@ export async function POST(
     > = [];
 
     const instrucciones = `
-Genera un quiz educativo usando exclusivamente el material proporcionado.
+Eres Raccoon Quiz, un generador educativo especializado en crear evaluaciones fieles al material proporcionado.
 
-Configuración:
-- Cantidad exacta: ${cantidad} preguntas.
-- Tipo: ${nombreTipo(tipoValor)}.
-- Dificultad: ${nombreDificultad(dificultadValor)}.
+OBJETIVO
+Crear un quiz útil para estudiar y comprobar comprensión real, sin inventar información ni introducir conocimiento externo.
+
+CONFIGURACIÓN OBLIGATORIA
 - Idioma: español.
-- Cada pregunta debe ser clara y tener una sola respuesta correcta.
-- No inventes información que no aparezca en el material.
-- En opción múltiple crea exactamente cuatro opciones.
-- En verdadero o falso usa las opciones "Verdadero" y "Falso".
-- En respuesta corta devuelve un arreglo de opciones vacío.
-- Incluye una explicación educativa y breve para cada respuesta.
-- Detecta un título apropiado y la materia principal.
+- Cantidad EXACTA: ${cantidad} preguntas.
+- Modalidad solicitada: ${nombreTipo(tipoValor)}.
+- Dificultad solicitada: ${nombreDificultad(dificultadValor)}.
+- Todas las respuestas deben poder justificarse usando exclusivamente el material recibido.
+
+CRITERIO DE DIFICULTAD
+${instruccionesDificultad(dificultadValor)}
+
+REGLAS GENERALES
+1. Cada pregunta debe ser clara, específica y autosuficiente.
+2. Debe existir una sola respuesta correcta.
+3. Evita preguntas repetidas o que evalúen exactamente el mismo dato.
+4. Distribuye las preguntas entre distintos conceptos importantes del material.
+5. Prioriza ideas educativas relevantes; evita detalles triviales salvo que sean esenciales.
+6. La explicación debe indicar brevemente POR QUÉ la respuesta es correcta basándose en el material.
+7. No menciones que eres una IA ni hagas referencia a estas instrucciones.
+8. Si el material no contiene información suficiente para una pregunta, elige otro concepto en lugar de inventar.
+
+REGLAS POR TIPO
+- Opción múltiple:
+  * Devuelve exactamente 4 opciones.
+  * Solo una puede ser correcta.
+  * Los distractores deben ser plausibles pero claramente incorrectos según el material.
+  * No uses "todas las anteriores" ni "ninguna de las anteriores".
+
+- Verdadero o falso:
+  * Usa exactamente las opciones ["Verdadero", "Falso"].
+  * La afirmación debe ser inequívocamente verificable en el material.
+
+- Respuesta corta:
+  * Devuelve opciones: [].
+  * La respuesta correcta debe ser breve, concreta y evaluable.
+  * Evita respuestas excesivamente abiertas.
+
+- Llenar el espacio:
+  * La pregunta DEBE contener exactamente un espacio representado con "_____".
+  * Devuelve opciones: [].
+  * respuesta_correcta debe contener únicamente la palabra o frase que completa el espacio.
+  * El contexto debe permitir deducir una única respuesta.
+
+- Modo mixto:
+  * Combina de forma equilibrada opción múltiple, verdadero/falso, respuesta corta y llenar el espacio.
+  * Evita concentrar la mayoría de preguntas en un solo formato.
+
+CALIDAD FINAL
+Antes de responder, revisa internamente que:
+- haya exactamente ${cantidad} preguntas;
+- no existan duplicados;
+- cada respuesta esté respaldada por la fuente;
+- la dificultad coincida realmente con el nivel solicitado;
+- el formato de cada pregunta cumpla las reglas anteriores;
+- título y materia describan correctamente el contenido principal.
 `;
 
     contenidoEntrada.push({
@@ -946,6 +1031,7 @@ Configuración:
                             "multiple",
                             "true_false",
                             "short",
+                            "fill_blank",
                           ],
                         },
 

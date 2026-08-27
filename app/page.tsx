@@ -425,9 +425,33 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* ACCIONES */}
+        {/* NAVEGACIÓN + ACCIONES */}
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/Nosotros"
+            className="
+              hidden h-11
+              items-center
+              justify-center
+              rounded-full
+              border border-[#D5E0F0]
+              bg-white/75
+              px-5
+              text-sm
+              font-black
+              text-[#2E5CA3]
+              transition
+              hover:bg-white
+              hover:shadow-md
+              dark:border-slate-700
+              dark:bg-slate-800/70
+              dark:text-white
+              sm:flex
+            "
+          >
+            Nosotros
+          </Link>
           <button
             type="button"
             onClick={cambiarTema}

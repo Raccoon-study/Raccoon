@@ -2689,6 +2689,43 @@ export default function Dashboard() {
       100
     );
 
+  /*
+    TIEMPO SEMANAL REAL
+    La tarjeta y la gráfica utilizan únicamente los eventos
+    comprendidos entre el lunes y el domingo de la semana actual.
+  */
+  const segundosEstaSemana =
+    metricas.segundos_semana.reduce(
+      (total, segundos) =>
+        total + segundos,
+      0
+    );
+
+  const inicioSemanaActual =
+    obtenerInicioSemana(new Date());
+
+  const finSemanaActual =
+    new Date(inicioSemanaActual);
+
+  finSemanaActual.setDate(
+    finSemanaActual.getDate() + 6
+  );
+
+  const etiquetaSemana =
+    `${inicioSemanaActual.toLocaleDateString(
+      "es-PA",
+      {
+        day: "numeric",
+        month: "short",
+      }
+    )} – ${finSemanaActual.toLocaleDateString(
+      "es-PA",
+      {
+        day: "numeric",
+        month: "short",
+      }
+    )}`;
+
   const maximoSemana =
     Math.max(
       ...metricas.segundos_semana,
@@ -2765,7 +2802,7 @@ export default function Dashboard() {
   ===================================================== */
 
   return (
-    <main className="min-h-screen bg-[#F5FAFF] text-[#10233F] transition-colors duration-500 dark:bg-[#101827] dark:text-white">
+    <main className="min-h-screen bg-[#F5F9FF] text-[#10233F] transition-colors duration-500 dark:bg-[#07111F] dark:text-white">
       {menuAbierto && (
         <div
           onClick={() =>
@@ -2779,7 +2816,7 @@ export default function Dashboard() {
 
       <aside
         className={`
-          fixed left-0 top-0 z-50 flex h-screen w-[250px]
+          fixed left-0 top-0 z-50 flex h-screen w-[238px]
           flex-col border-r border-[#DDEAF7] bg-white
           transition-transform duration-300
           dark:border-slate-700 dark:bg-[#151F30]
@@ -2934,8 +2971,8 @@ export default function Dashboard() {
 
       {/* CONTENIDO */}
 
-      <div className="lg:ml-[250px]">
-        <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#DDEAF7] bg-white/90 px-4 backdrop-blur-xl dark:border-slate-700 dark:bg-[#151F30]/90 sm:px-6 lg:px-9">
+      <div className="lg:ml-[238px]">
+        <header className="sticky top-0 z-30 flex h-[70px] items-center justify-between border-b border-[#DDEAF7] bg-white/90 px-3 backdrop-blur-xl dark:border-[#233148] dark:bg-[#0D1828]/92 sm:h-[74px] sm:px-5 lg:px-7 xl:px-8">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -3117,8 +3154,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="mx-auto max-w-[1500px] px-4 py-6 pb-28 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-[#182437] md:hidden">
+        <div className="mx-auto w-full max-w-[1560px] px-3 py-4 pb-24 sm:px-5 sm:py-6 lg:px-6 xl:px-7">
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-[#E4EDF7] bg-white px-4 py-3 shadow-sm dark:border-[#26364D] dark:bg-[#111E31] md:hidden">
             <Search
               size={19}
               className="text-[#8AA4BE]"
@@ -3155,11 +3192,11 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="grid gap-7 xl:grid-cols-[1fr_380px]">
+          <div className="grid min-w-0 gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
             {/* COLUMNA PRINCIPAL */}
 
-            <div className="space-y-7">
-              <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF8FF] via-white to-[#F0ECFF] p-6 shadow-sm dark:from-[#1D3558] dark:via-[#182437] dark:to-[#28243E] sm:p-8">
+            <div className="min-w-0 space-y-5 sm:space-y-6">
+              <section className="relative overflow-hidden rounded-[24px] border border-white/70 bg-gradient-to-br from-[#E8F5FF] via-white to-[#EFEAFF] p-4 shadow-[0_16px_45px_rgba(41,88,145,0.07)] dark:border-[#233148] dark:from-[#16304D] dark:via-[#111E31] dark:to-[#2A2344] sm:rounded-[28px] sm:p-7">
                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#55A8E8]/10" />
 
                 <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
@@ -3246,7 +3283,7 @@ export default function Dashboard() {
                       <div className="mt-3 flex items-center gap-3">
                         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white dark:bg-slate-600">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-[#55A8E8] to-[#7771E8]"
+                            className="h-full rounded-full bg-gradient-to-r from-[#19A7FF] via-[#527CFF] to-[#8B5CFF] shadow-[0_0_16px_rgba(82,124,255,0.32)]"
                             style={{
                               width:
                                 `${ultimoMaterial.progreso}%`,
@@ -3466,7 +3503,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
                     {materialesVisibles.map(
                       (
                         material,
@@ -3474,7 +3511,7 @@ export default function Dashboard() {
                       ) => (
                         <article
                           key={material.id}
-                          className="rounded-[22px] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
+                          className="min-w-0 rounded-[20px] border border-[#E4EDF7] bg-white p-4 shadow-[0_10px_28px_rgba(36,76,125,0.05)] transition hover:-translate-y-1 hover:border-[#BFD8F3] hover:shadow-[0_18px_35px_rgba(38,101,176,0.10)] dark:border-[#26364D] dark:bg-[#111E31] dark:hover:border-[#365276] sm:p-5"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div
@@ -3540,7 +3577,7 @@ export default function Dashboard() {
                                   material
                                 )
                               }
-                              className="flex items-center justify-center gap-2 rounded-xl bg-[#F1F8FD] py-3 text-sm font-bold text-[#1687D9] transition hover:bg-[#E4F3FC] dark:bg-slate-700"
+                              className="flex items-center justify-center gap-2 rounded-xl border border-[#CBE9FA] bg-gradient-to-r from-[#F3FBFF] to-[#E9F7FF] py-3 text-sm font-bold text-[#008DFF] transition hover:-translate-y-0.5 hover:border-[#8ED8FF] hover:shadow-md dark:border-[#214F73] dark:from-[#102B42] dark:to-[#0D2236] dark:text-[#52BCFF]"
                             >
                               <Eye size={17} />
                               Revisar
@@ -3553,7 +3590,7 @@ export default function Dashboard() {
                                   material
                                 )
                               }
-                              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] py-3 text-sm font-black text-white"
+                              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#199CFF] via-[#4F7CFF] to-[#8A55F7] py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(79,124,255,0.22)] transition hover:-translate-y-0.5 hover:brightness-110 dark:from-[#20A7FF] dark:via-[#557DFF] dark:to-[#9B63FF]"
                             >
                               Estudiar
                               <ArrowRight size={17} />
@@ -3573,13 +3610,13 @@ export default function Dashboard() {
                   ¿Qué puedes hacer?
                 </h2>
 
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                   <AccionRapida
                     href="/metodos/pomodoro"
                     icono={Timer}
                     titulo="Pomodoro"
                     descripcion="Estudia en sesiones de concentración."
-                    estiloIcono="bg-[#FFE6E8] text-[#EE5A68]"
+                    estiloIcono="bg-gradient-to-br from-[#FFE4E8] to-[#FFD2D9] text-[#FF3F5F] shadow-[0_8px_20px_rgba(255,63,95,0.16)] dark:from-[#4B1623] dark:to-[#35111B] dark:text-[#FF7087]"
                   />
 
                   <AccionRapida
@@ -3587,7 +3624,7 @@ export default function Dashboard() {
                     icono={FileText}
                     titulo="Crear resumen"
                     descripcion="Convierte materiales en guías."
-                    estiloIcono="bg-[#E9E2FF] text-[#7652D9]"
+                    estiloIcono="bg-gradient-to-br from-[#EEE7FF] to-[#DCCFFF] text-[#7A45FF] shadow-[0_8px_20px_rgba(122,69,255,0.16)] dark:from-[#2F1C58] dark:to-[#241640] dark:text-[#A98CFF]"
                   />
 
                   <AccionRapida
@@ -3595,7 +3632,7 @@ export default function Dashboard() {
                     icono={ClipboardCheck}
                     titulo="Crear quiz"
                     descripcion="Evalúa lo que aprendiste."
-                    estiloIcono="bg-[#DDF7EA] text-[#26A66B]"
+                    estiloIcono="bg-gradient-to-br from-[#DFFFF0] to-[#C8F7DF] text-[#00A968] shadow-[0_8px_20px_rgba(0,169,104,0.15)] dark:from-[#0A3E32] dark:to-[#082C26] dark:text-[#4EF0AE]"
                   />
 
                   <AccionRapida
@@ -3603,7 +3640,7 @@ export default function Dashboard() {
                     icono={Layers3}
                     titulo="Flashcards"
                     descripcion="Memoriza con tarjetas."
-                    estiloIcono="bg-[#DDF3FF] text-[#1687D9]"
+                    estiloIcono="bg-gradient-to-br from-[#E0F5FF] to-[#C8EFFF] text-[#008DFF] shadow-[0_8px_20px_rgba(0,141,255,0.16)] dark:from-[#0A3352] dark:to-[#08243B] dark:text-[#42B7FF]"
                   />
 
                   <AccionRapida
@@ -3611,7 +3648,7 @@ export default function Dashboard() {
                     icono={Trophy}
                     titulo="Ver progreso"
                     descripcion="Revisa tu nivel y experiencia."
-                    estiloIcono="bg-[#FFF1C9] text-[#EBA900]"
+                    estiloIcono="bg-gradient-to-br from-[#FFF4C9] to-[#FFE69A] text-[#E9A500] shadow-[0_8px_20px_rgba(233,165,0,0.16)] dark:from-[#4A3206] dark:to-[#352405] dark:text-[#FFD05A]"
                   />
                 </div>
               </section>
@@ -3619,10 +3656,10 @@ export default function Dashboard() {
 
             {/* COLUMNA DERECHA */}
 
-            <aside className="space-y-7">
+            <aside className="min-w-0 space-y-5 sm:space-y-6">
               {/* PROGRESO */}
 
-              <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
+              <section className="rounded-[24px] border border-[#E4EDF7] bg-white p-5 shadow-[0_12px_32px_rgba(36,76,125,0.05)] dark:border-[#26364D] dark:bg-[#111E31] sm:p-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black">
                     Tu Progreso
@@ -3636,7 +3673,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="mt-6 flex items-center justify-between">
+                <div className="mt-5 grid grid-cols-2 items-center gap-4 sm:flex sm:justify-between">
                   <Image
                     src="/raccoon.png"
                     alt="Nivel"
@@ -3746,8 +3783,8 @@ export default function Dashboard() {
 
               {/* CHATS */}
 
-              <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
-                <div className="flex items-center justify-between gap-3">
+              <section className="rounded-[24px] border border-[#E4EDF7] bg-white p-5 shadow-[0_12px_32px_rgba(36,76,125,0.05)] dark:border-[#26364D] dark:bg-[#111E31] sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-xl font-black">
                       Chats recientes
@@ -3849,66 +3886,66 @@ export default function Dashboard() {
 
               {/* ACTIVIDAD */}
 
-              <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
+              <section className="rounded-[24px] border border-[#E4EDF7] bg-white p-5 shadow-[0_12px_32px_rgba(36,76,125,0.05)] dark:border-[#26364D] dark:bg-[#111E31] sm:p-6">
                 <h2 className="text-xl font-black">
                   Tu actividad
                 </h2>
 
-                <div className="mt-6 grid grid-cols-2 gap-3">
+                <div className="mt-5 grid grid-cols-2 gap-3">
                   <ActividadCard
                     icono={FileText}
                     valor={materiales.length}
                     nombre="Materiales"
-                    estilo="bg-[#F1F8FD] text-[#1687D9]"
+                    estilo="border border-[#8ED8FF] bg-gradient-to-br from-[#E6F7FF] via-[#D9F3FF] to-[#C9E9FF] text-[#008DFF] shadow-[0_12px_28px_rgba(0,141,255,0.18)] dark:border-[#149CFF] dark:from-[#072A46] dark:via-[#083C64] dark:to-[#0B2440] dark:text-[#42B7FF] dark:shadow-[0_0_26px_rgba(20,156,255,0.18)]"
                   />
 
                   <ActividadCard
                     icono={CheckCircle2}
                     valor={materialesCompletados}
                     nombre="Completados"
-                    estilo="bg-[#F3EDFF] text-[#7652D9]"
+                    estilo="border border-[#C3A7FF] bg-gradient-to-br from-[#F5EEFF] via-[#EBDDFF] to-[#E4D2FF] text-[#7A45FF] shadow-[0_12px_28px_rgba(122,69,255,0.16)] dark:border-[#8B5CFF] dark:from-[#24154A] dark:via-[#332064] dark:to-[#21143E] dark:text-[#A98CFF] dark:shadow-[0_0_26px_rgba(139,92,255,0.18)]"
                   />
 
                   <ActividadCard
                     icono={ClipboardCheck}
                     valor={metricas.quizzes_completados}
                     nombre="Quizzes"
-                    estilo="bg-[#DDF7EA] text-[#26A66B]"
+                    estilo="border border-[#7FE9BC] bg-gradient-to-br from-[#E5FFF4] via-[#D7FBEA] to-[#C5F5DD] text-[#00A968] shadow-[0_12px_28px_rgba(0,169,104,0.16)] dark:border-[#13D88C] dark:from-[#073B31] dark:via-[#07523F] dark:to-[#082E29] dark:text-[#4EF0AE] dark:shadow-[0_0_26px_rgba(19,216,140,0.16)]"
                   />
 
                   <ActividadCard
                     icono={Layers3}
                     valor={metricas.tarjetas_dominadas}
                     nombre="Dominadas"
-                    estilo="bg-[#FFF1C9] text-[#D89A00]"
+                    estilo="border border-[#FFD86A] bg-gradient-to-br from-[#FFF8D9] via-[#FFEFB8] to-[#FFE28A] text-[#E5A000] shadow-[0_12px_28px_rgba(229,160,0,0.17)] dark:border-[#FFB300] dark:from-[#4A3004] dark:via-[#5C3D05] dark:to-[#352204] dark:text-[#FFC94D] dark:shadow-[0_0_26px_rgba(255,179,0,0.15)]"
                   />
                 </div>
               </section>
 
               {/* TIEMPO */}
 
-              <section className="rounded-[25px] bg-white p-7 shadow-sm dark:bg-[#182437]">
+              <section className="rounded-[24px] border border-[#DCE9F7] bg-gradient-to-br from-white via-[#FBFDFF] to-[#F3F8FF] p-5 shadow-[0_14px_34px_rgba(32,92,150,0.07)] dark:border-[#2B405E] dark:from-[#13243A] dark:via-[#101E31] dark:to-[#0D1929] dark:shadow-[0_16px_38px_rgba(0,0,0,0.22)] sm:p-6">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-black">
                       Tiempo de Estudio
                     </h2>
 
-                    <p className="mt-1 text-xs text-[#6085A5]">
-                      Actividad de esta semana
+                    <p className="mt-1 text-xs text-[#6085A5] dark:text-slate-400">
+                      Esta semana · {etiquetaSemana}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 rounded-xl bg-[#EAF1FF] px-3 py-2 font-black text-[#1769E0] dark:bg-[#1D3558]">
+                  <div className="flex w-fit items-center gap-2 rounded-xl bg-[#EAF1FF] px-3 py-2 text-sm font-black text-[#1769E0] dark:bg-[#17345A] dark:text-[#7BC4FF]">
                     <Clock3 size={17} />
 
                     {formatearTiempo(
-                      metricas.total_segundos
+                      segundosEstaSemana
                     )}
                   </div>
                 </div>
 
-                <div className="mt-7 flex h-32 items-end justify-between gap-3">
+                <div className="mt-6 grid h-36 grid-cols-7 items-end gap-1.5 sm:gap-2">
                   {alturasSemana.map(
                     (
                       altura,
@@ -3918,7 +3955,7 @@ export default function Dashboard() {
                         key={
                           diasSemana[indice]
                         }
-                        className="flex flex-1 flex-col items-center gap-2"
+                        className="flex min-w-0 flex-col items-center gap-2"
                       >
                         <div
                           title={`${Math.round(
@@ -3927,7 +3964,7 @@ export default function Dashboard() {
                             ] / 60
                           )} minutos`}
                           className={`
-                            w-full rounded-t-md bg-gradient-to-t from-[#55A8E8] to-[#7771E8] transition-all
+                            w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-[#1687D9] via-[#4D7FF3] to-[#7652D9] shadow-[0_6px_16px_rgba(75,103,222,0.18)] transition-all dark:from-[#35A8FF] dark:via-[#5379FF] dark:to-[#9B68FF]
                             ${
                               metricas.segundos_semana[
                                 indice
@@ -3948,6 +3985,15 @@ export default function Dashboard() {
                       </div>
                     )
                   )}
+                </div>
+
+                <div className="mt-5 flex items-center gap-2 rounded-2xl border border-[#CDE6FF] bg-gradient-to-r from-[#EEF8FF] to-[#E6F2FF] px-4 py-3 text-xs font-black text-[#087BEA] shadow-sm dark:border-[#1E5F99] dark:from-[#0F3150] dark:to-[#102743] dark:text-[#67C3FF]">
+                  <Sparkles size={15} />
+                  {segundosEstaSemana > 0
+                    ? `¡Sigue así! ${formatearTiempo(
+                        segundosEstaSemana
+                      )} de estudio esta semana.`
+                    : "Aún no registras tiempo de estudio esta semana."}
                 </div>
               </section>
             </aside>
@@ -4335,7 +4381,7 @@ function AccionRapida({
   return (
     <Link
       href={href}
-      className="rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:bg-[#182437]"
+      className="rounded-2xl border border-[#E3ECF7] bg-white p-5 shadow-[0_10px_26px_rgba(29,76,125,0.05)] transition hover:-translate-y-1 hover:border-[#C3DDF6] hover:shadow-[0_18px_36px_rgba(40,103,175,0.10)] dark:border-[#283A54] dark:bg-gradient-to-br dark:from-[#132238] dark:to-[#0F1B2D] dark:shadow-[0_10px_28px_rgba(0,0,0,0.18)] dark:hover:border-[#3C5A80]"
     >
       <div
         className={`flex h-12 w-12 items-center justify-center rounded-xl ${estiloIcono}`}
@@ -4366,16 +4412,24 @@ function ActividadCard({
   estilo: string;
 }) {
   return (
-    <div className={`rounded-2xl p-4 ${estilo}`}>
-      <Icono size={22} />
+    <div
+      className={`group relative overflow-hidden rounded-2xl p-4 transition duration-300 hover:-translate-y-1 hover:brightness-105 ${estilo}`}
+    >
+      <div className="absolute -right-5 -top-5 h-16 w-16 rounded-full bg-white/30 blur-2xl dark:bg-white/5" />
 
-      <p className="mt-3 text-2xl font-black text-[#10233F] dark:text-white">
-        {valor}
-      </p>
+      <div className="relative">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 shadow-sm backdrop-blur dark:bg-white/10">
+          <Icono size={20} />
+        </div>
 
-      <p className="mt-1 text-xs text-[#6085A5] dark:text-slate-300">
-        {nombre}
-      </p>
+        <p className="mt-3 text-2xl font-black tracking-tight text-[#0B1C36] dark:text-white">
+          {valor}
+        </p>
+
+        <p className="mt-1 text-xs font-bold text-[#45627E] dark:text-slate-200">
+          {nombre}
+        </p>
+      </div>
     </div>
   );
 }
