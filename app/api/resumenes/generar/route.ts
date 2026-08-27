@@ -228,6 +228,29 @@ export async function POST(
       );
     }
 
+    /*
+      PLAN DEL USUARIO
+      Se valida en servidor para impedir que un usuario
+      gratuito solicite funciones Premium modificando
+      manualmente el frontend.
+    */
+    const metadata = {
+      ...(user.user_metadata || {}),
+      ...(user.app_metadata || {}),
+    };
+
+    const plan = String(
+      metadata.plan ||
+        metadata.subscription ||
+        metadata.tipo_plan ||
+        ""
+    ).toLowerCase();
+
+    const esPremium =
+      metadata.premium === true ||
+      metadata.is_premium === true ||
+      plan.includes("premium");
+
     /* ARCHIVO */
 
     const formulario =
@@ -235,6 +258,18 @@ export async function POST(
 
     const archivo =
       formulario.get("archivo");
+
+    const tipoSolicitado =
+      String(
+        formulario.get("tipo_resumen") ||
+          "corto"
+      ).toLowerCase();
+
+    const detalleSolicitado =
+      String(
+        formulario.get("nivel_detalle") ||
+          "basico"
+      ).toLowerCase();
 
     if (!(archivo instanceof File)) {
       return NextResponse.json(
@@ -304,6 +339,129 @@ export async function POST(
       );
     }
 
+    /*
+      CONFIGURACIÓN EFECTIVA
+      Gratis: siempre corto + básico.
+      Premium: respeta las opciones solicitadas.
+    */
+    const tiposPermitidos = [
+      "corto",
+      "completo",
+      "examen",
+    ];
+
+    const detallesPermitidos = [
+      "basico",
+      "intermedio",
+      "profundo",
+    ];
+
+    const tipoResumen =
+      esPremium &&
+      tiposPermitidos.includes(
+        tipoSolicitado
+      )
+        ? tipoSolicitado
+        : "corto";
+
+    const nivelDetalle =
+      esPremium &&
+      detallesPermitidos.includes(
+        detalleSolicitado
+      )
+        ? detalleSolicitado
+        : "basico";
+
+    const reglasPlan = esPremium
+      ? `
+PLAN: PREMIUM.
+
+OBJETIVO DEL PLAN:
+Entregar una guía de estudio claramente más completa, profunda y útil que la versión gratuita.
+
+TIPO DE RESUMEN SOLICITADO: ${tipoResumen.toUpperCase()}.
+
+REGLAS SEGÚN EL TIPO:
+- CORTO:
+  * resumen_general: 2 a 3 párrafos completos.
+  * secciones_desarrollo: 3 a 4 secciones.
+  * ideas_principales: 4 a 6.
+  * conceptos_clave: 4 a 6.
+  * datos_importantes: 4 a 6.
+  * ejemplos: 0 a 2 si el archivo los permite.
+
+- COMPLETO:
+  * resumen_general: 4 a 6 párrafos.
+  * secciones_desarrollo: 5 a 8 secciones bien diferenciadas.
+  * ideas_principales: 7 a 10.
+  * conceptos_clave: 6 a 10.
+  * datos_importantes: 6 a 10.
+  * ejemplos: 1 a 4 si están sustentados por el material.
+  * conclusión: 2 párrafos cuando el contenido lo permita.
+
+- EXAMEN:
+  * resumen_general: 3 a 5 párrafos centrados en lo evaluable.
+  * secciones_desarrollo: 4 a 7 secciones.
+  * ideas_principales: 7 a 10.
+  * conceptos_clave: 6 a 10.
+  * datos_importantes: 8 a 12.
+  * ejemplos: incluye procedimientos, casos, fórmulas o aplicaciones solamente si aparecen en el material.
+  * prioriza definiciones, clasificaciones, etapas, relaciones, causas, consecuencias, procesos, fechas, cifras y comparaciones que puedan aparecer en una evaluación.
+
+NIVEL DE DETALLE SOLICITADO: ${nivelDetalle.toUpperCase()}.
+
+REGLAS SEGÚN EL NIVEL:
+- BÁSICO:
+  Explica los conceptos esenciales con lenguaje claro, pero sin omitir información importante.
+
+- INTERMEDIO:
+  Además de explicar, conecta conceptos, causas, etapas, componentes, semejanzas y diferencias cuando el documento las presente.
+
+- PROFUNDO:
+  Desarrolla relaciones, matices, procesos, detalles relevantes y conexiones entre distintas partes del documento.
+  No agregues conocimiento externo.
+
+IMPORTANTE:
+La versión Premium debe sentirse notablemente más desarrollada que la gratuita.
+No reduzcas el contenido Premium a tres ideas o tres conceptos salvo que el documento realmente no tenga más información.
+`
+      : `
+PLAN: GRATUITO.
+
+OBJETIVO DEL PLAN:
+Entregar una vista previa útil y correcta del material, pero claramente más breve que Premium.
+
+LÍMITES ESTRICTOS:
+- resumen_general: 1 solo párrafo de máximo 90 palabras.
+- secciones_desarrollo: máximo 2 secciones.
+- cada sección: máximo 80 palabras.
+- ideas_principales: exactamente 3.
+- conceptos_clave: máximo 3.
+- cada definición: máximo 25 palabras.
+- ejemplos: siempre [].
+- datos_importantes: máximo 2.
+- conclusion: 1 párrafo de máximo 55 palabras.
+- tiempo_lectura: debe reflejar un resumen corto.
+
+PRIORIDAD:
+1. Idea central.
+2. Tres puntos imprescindibles.
+3. Tres conceptos fundamentales.
+4. Dos datos que conviene recordar.
+5. Una conclusión muy breve.
+
+NO HAGAS EN GRATUITO:
+- análisis profundo;
+- explicaciones extensas;
+- comparaciones detalladas;
+- desarrollo por muchas secciones;
+- listas largas;
+- ejemplos;
+- contenido tipo guía completa para examen.
+
+La versión gratuita debe ser suficiente para comprender lo básico, pero Premium debe ofrecer claramente más profundidad y cobertura.
+`;
+
     /* OPENAI */
 
     const openai = new OpenAI({
@@ -344,17 +502,18 @@ export async function POST(
         store: false,
 
         instructions: `
-Eres un tutor académico experto en crear guías de estudio.
+Eres Rocco, tutor académico de Raccoon Study especializado en transformar materiales de estudio en resúmenes útiles.
 
-Analiza únicamente el contenido del documento proporcionado.
+REGLAS DE FIDELIDAD:
+1. Analiza únicamente el contenido del documento proporcionado.
+2. No inventes información, autores, fechas, acontecimientos, conceptos, fórmulas, ejemplos ni conclusiones que no estén sustentados por el archivo.
+3. Si el documento no aporta información suficiente para una sección, mantenla breve o devuelve un arreglo vacío cuando corresponda.
+4. Conserva la terminología académica importante del material.
+5. Escribe completamente en español.
+6. Evita repetir la misma idea en diferentes secciones.
+7. Prioriza claridad, jerarquía y utilidad para estudiar.
 
-No inventes información, autores, fechas, acontecimientos, definiciones, ejemplos o fórmulas que no estén sustentados por el documento.
-
-El resultado debe estar escrito completamente en español.
-
-El resumen debe ser elaborado, explicativo, organizado y útil para preparar una evaluación.
-
-Evita repetir exactamente la misma información en diferentes secciones.
+${reglasPlan}
         `,
 
         input: [
@@ -374,77 +533,70 @@ Evita repetir exactamente la misma información en diferentes secciones.
                 text: `
 Analiza cuidadosamente el archivo "${archivo.name}".
 
-Crea una guía de estudio completa.
+OBJETIVO:
+Crear un resumen académico que pueda mostrarse en una interfaz de estudio por secciones.
 
-REQUISITOS:
+ESTRUCTURA:
 
-1. TÍTULO
-Crea un título académico claro y representativo.
+1. titulo
+Título claro, específico y representativo del documento.
 
-2. MATERIA
-Identifica la asignatura o área de conocimiento.
+2. materia
+Identifica la asignatura o área de conocimiento basándote únicamente en el contenido.
 
-3. TIEMPO DE LECTURA
-Calcula el tiempo aproximado necesario para leer y estudiar el resumen.
+3. tiempo_lectura
+Estima el tiempo aproximado de lectura del resumen generado.
 
-4. RESUMEN GENERAL
-Escribe entre 3 y 6 párrafos desarrollados.
-Explica:
-- el tema central;
-- el propósito del contenido;
-- las ideas fundamentales;
-- la relación entre los elementos explicados.
+4. resumen_general
+Presenta la idea central, el propósito del contenido y las relaciones fundamentales.
+No lo conviertas en una introducción vacía: debe explicar realmente el tema.
 
-No escribas solamente una introducción breve.
+5. secciones_desarrollo
+Organiza el tema en subtítulos claros.
+Cada sección debe explicar una parte distinta del contenido y evitar repetir el resumen general.
 
-5. DESARROLLO DEL TEMA
-Divide el contenido en entre 3 y 7 secciones temáticas.
+6. ideas_principales
+Cada elemento debe ser una oración completa, concreta y útil para estudiar.
 
-Cada sección debe contener:
-- un subtítulo claro;
-- una explicación desarrollada;
-- información fiel al documento;
-- relación con el tema general.
+7. conceptos_clave
+Selecciona términos realmente importantes del documento.
+Cada definición debe ser clara, breve y fiel al material.
 
-6. IDEAS PRINCIPALES
-Incluye entre 5 y 10 ideas principales.
+8. ejemplos
+Incluye únicamente ejemplos, casos, procedimientos, fórmulas o aplicaciones sustentados por el documento.
+Si no hay ejemplos, devuelve [].
 
-Cada idea debe:
-- estar escrita como una oración completa;
-- ser explicativa;
-- representar información importante del documento.
+9. datos_importantes
+Selecciona información que conviene recordar para una evaluación: características, clasificaciones, etapas, relaciones, cifras o hechos relevantes presentes en el archivo.
 
-7. CONCEPTOS CLAVE
-Incluye entre 4 y 10 conceptos importantes.
+10. conclusion
+Cierra conectando las ideas esenciales y explicando qué debe comprender el estudiante al terminar el tema.
 
-Cada concepto debe tener una definición clara y basada en el documento.
-
-8. EJEMPLOS Y APLICACIONES
-Incluye ejemplos, casos, procedimientos, fórmulas o aplicaciones únicamente cuando aparezcan en el documento.
-
-Si el material no contiene ejemplos, devuelve un arreglo vacío.
-
-9. DATOS IMPORTANTES
-Incluye entre 4 y 10 datos que el estudiante debería recordar para una evaluación.
-
-10. CONCLUSIÓN
-Escribe una conclusión desarrollada que conecte las ideas principales y explique la importancia del tema.
-
-No devuelvas texto fuera de la estructura solicitada.
+No devuelvas markdown ni texto fuera del JSON solicitado.
                 `,
               },
             ],
           },
         ],
 
-        max_output_tokens: 8000,
+        max_output_tokens:
+          esPremium
+            ? nivelDetalle === "profundo"
+              ? 9000
+              : tipoResumen === "completo" ||
+                  tipoResumen === "examen"
+                ? 7500
+                : 5200
+            : 1800,
 
         text: {
           format: {
             type: "json_schema",
             name: "resumen_academico",
             description:
-              "Guía de estudio completa y elaborada.",
+              esPremium
+                ? "Guía de estudio Premium, completa y elaborada."
+                : "Resumen gratuito breve y esencial.",
             strict: true,
             schema: esquemaResumen,
           },
@@ -489,10 +641,146 @@ No devuelvas texto fuera de la estructura solicitada.
       );
     }
 
+    /*
+      DIFERENCIA REAL ENTRE PLANES
+
+      El prompt orienta al modelo, pero aquí también
+      aplicamos límites en servidor para que un resumen
+      gratuito nunca termine mostrando prácticamente lo
+      mismo que uno Premium.
+    */
+    if (!esPremium) {
+      const limitarPalabras = (
+        valor: unknown,
+        maximo: number
+      ) => {
+        const texto =
+          typeof valor === "string"
+            ? valor.trim()
+            : "";
+
+        if (!texto) {
+          return "";
+        }
+
+        const palabras =
+          texto.split(/\s+/);
+
+        if (palabras.length <= maximo) {
+          return texto;
+        }
+
+        return `${palabras
+          .slice(0, maximo)
+          .join(" ")}…`;
+      };
+
+      resumen = {
+        ...resumen,
+
+        resumen_general: limitarPalabras(
+          resumen.resumen_general,
+          90
+        ),
+
+        secciones_desarrollo:
+          Array.isArray(
+            resumen.secciones_desarrollo
+          )
+            ? resumen.secciones_desarrollo
+                .slice(0, 2)
+                .map(
+                  (
+                    seccion: {
+                      titulo?: unknown;
+                      contenido?: unknown;
+                    }
+                  ) => ({
+                    titulo:
+                      typeof seccion.titulo ===
+                      "string"
+                        ? seccion.titulo
+                        : "Tema",
+                    contenido:
+                      limitarPalabras(
+                        seccion.contenido,
+                        80
+                      ),
+                  })
+                )
+            : [],
+
+        ideas_principales:
+          Array.isArray(
+            resumen.ideas_principales
+          )
+            ? resumen.ideas_principales
+                .slice(0, 3)
+                .map((idea: unknown) =>
+                  limitarPalabras(idea, 28)
+                )
+            : [],
+
+        conceptos_clave:
+          Array.isArray(
+            resumen.conceptos_clave
+          )
+            ? resumen.conceptos_clave
+                .slice(0, 3)
+                .map(
+                  (
+                    concepto: {
+                      concepto?: unknown;
+                      definicion?: unknown;
+                    }
+                  ) => ({
+                    concepto:
+                      typeof concepto.concepto ===
+                      "string"
+                        ? concepto.concepto
+                        : "Concepto",
+                    definicion:
+                      limitarPalabras(
+                        concepto.definicion,
+                        25
+                      ),
+                  })
+                )
+            : [],
+
+        ejemplos: [],
+
+        datos_importantes:
+          Array.isArray(
+            resumen.datos_importantes
+          )
+            ? resumen.datos_importantes
+                .slice(0, 2)
+                .map((dato: unknown) =>
+                  limitarPalabras(dato, 24)
+                )
+            : [],
+
+        conclusion: limitarPalabras(
+          resumen.conclusion,
+          55
+        ),
+      };
+    }
+
     return NextResponse.json(
       resumen,
       {
         status: 200,
+        headers: {
+          "X-Raccoon-Plan": esPremium
+            ? "premium"
+            : "free",
+          "X-Raccoon-Resumen-Tipo":
+            tipoResumen,
+          "X-Raccoon-Nivel":
+            nivelDetalle,
+        },
       }
     );
   } catch (error: unknown) {

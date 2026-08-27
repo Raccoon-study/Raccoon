@@ -27,14 +27,14 @@ const lideres = [
     cargo: "Diseño y Branding",
     descripcion:
       "Aporta creatividad, diseño e identidad visual al proyecto Raccoon Study.",
-    imagen: "/images/marielis.png",
+    imagen: "/images/Marielis.jpg",
   },
   {
     nombre: "Jhulianys Urriola",
     cargo: "Programación",
     descripcion:
       "Participa en el desarrollo, programación y funcionamiento de Raccoon Study.",
-    imagen: "/images/jhulianys.png",
+    imagen: "/images/Jhulianys.jpg",
   },
 ];
 

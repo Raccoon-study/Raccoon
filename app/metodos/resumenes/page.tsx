@@ -19,15 +19,23 @@ import {
   BookOpen,
   Brain,
   BrainCircuit,
+  Bookmark,
+  Check,
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
   Clock3,
   Crown,
+  Copy,
   FilePlus2,
   FileText,
+  FolderOpen,
+  GraduationCap,
   Headphones,
+  HelpCircle,
   Home,
+  Info,
+  Layers,
   Library,
   Lightbulb,
   ListChecks,
@@ -36,6 +44,7 @@ import {
   LogOut,
   MapPin,
   Menu,
+  MessageCircle,
   Moon,
   Music2,
   Pause,
@@ -48,6 +57,7 @@ import {
   User,
   Volume2,
   X,
+  Zap,
 } from "lucide-react";
 
 import { supabase } from "../../lib/supabase";
@@ -397,7 +407,10 @@ export default function ResumenesPage() {
   const generacionAutomaticaRef =
     useRef(false);
 
-  const audioGratisRef =
+  const lecturaCanceladaRef =
+    useRef(false);
+
+  const audioGratisElementRef =
     useRef<HTMLAudioElement | null>(
       null
     );
@@ -464,6 +477,20 @@ export default function ResumenesPage() {
     progresoGeneracion,
     setProgresoGeneracion,
   ] = useState(0);
+
+  const [
+    tipoResumen,
+    setTipoResumen,
+  ] = useState<
+    "corto" | "completo" | "examen"
+  >("corto");
+
+  const [
+    nivelDetalle,
+    setNivelDetalle,
+  ] = useState<
+    "basico" | "intermedio" | "profundo"
+  >("basico");
 
   /* LECTOR */
 
@@ -671,6 +698,16 @@ export default function ResumenesPage() {
     formulario.append(
       "archivo",
       archivo
+    );
+
+    formulario.append(
+      "tipo_resumen",
+      tipoResumen
+    );
+
+    formulario.append(
+      "nivel_detalle",
+      nivelDetalle
     );
 
     const respuesta = await fetch(
@@ -1321,7 +1358,7 @@ export default function ResumenesPage() {
   const reproducirGratis =
     async (track: JamendoTrack) => {
       const audio =
-        audioGratisRef.current;
+        audioGratisElementRef.current;
 
       if (!audio) return;
 
@@ -1428,7 +1465,7 @@ export default function ResumenesPage() {
 
       if (!audio) return;
 
-      audioGratisRef.current?.pause();
+      audioGratisElementRef.current?.pause();
 
       if (
         trackPremiumActual?.id ===
@@ -1510,36 +1547,100 @@ export default function ResumenesPage() {
   const leerResumen = (
     resumen: Resumen
   ) => {
-    if (!esPremium) {
-      setMostrarPremium(true);
+    if (
+      typeof window === "undefined" ||
+      !("speechSynthesis" in window)
+    ) {
+      mostrarNotificacion(
+        "Tu navegador no admite lectura en voz alta."
+      );
       return;
     }
 
     window.speechSynthesis.cancel();
+    lecturaCanceladaRef.current = false;
 
-    const voz =
-      new SpeechSynthesisUtterance(
-        obtenerTextoCompleto(resumen)
+    const texto =
+      obtenerTextoCompleto(resumen);
+
+    /*
+      Dividimos el resumen en fragmentos cortos.
+      Esto hace que SpeechSynthesis sea mucho más
+      estable con resúmenes largos.
+    */
+    const fragmentos =
+      texto
+        .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+        ?.map((parte) => parte.trim())
+        .filter(Boolean) || [texto];
+
+    let indice = 0;
+
+    const reproducirSiguiente = () => {
+      if (
+        lecturaCanceladaRef.current ||
+        indice >= fragmentos.length
+      ) {
+        setLeyendo(false);
+        setLecturaPausada(false);
+        return;
+      }
+
+      const utterance =
+        new SpeechSynthesisUtterance(
+          fragmentos[indice]
+        );
+
+      utterance.lang = "es-ES";
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      const voces =
+        window.speechSynthesis.getVoices();
+
+      const vozEspanol =
+        voces.find((voz) =>
+          voz.lang
+            .toLowerCase()
+            .startsWith("es")
+        ) || null;
+
+      if (vozEspanol) {
+        utterance.voice = vozEspanol;
+      }
+
+      utterance.onstart = () => {
+        setLeyendo(true);
+        setLecturaPausada(false);
+      };
+
+      utterance.onend = () => {
+        if (
+          lecturaCanceladaRef.current
+        ) {
+          return;
+        }
+
+        indice += 1;
+        reproducirSiguiente();
+      };
+
+      utterance.onerror = () => {
+        setLeyendo(false);
+        setLecturaPausada(false);
+      };
+
+      window.speechSynthesis.speak(
+        utterance
       );
-
-    voz.lang = "es-ES";
-
-    voz.onstart = () => {
-      setLeyendo(true);
-      setLecturaPausada(false);
     };
 
-    voz.onend = () => {
-      setLeyendo(false);
-      setLecturaPausada(false);
-    };
-
-    window.speechSynthesis.speak(
-      voz
-    );
+    reproducirSiguiente();
   };
 
   const detenerLectura = () => {
+    lecturaCanceladaRef.current = true;
     window.speechSynthesis.cancel();
     setLeyendo(false);
     setLecturaPausada(false);
@@ -1554,6 +1655,24 @@ export default function ResumenesPage() {
     } else {
       window.speechSynthesis.pause();
       setLecturaPausada(true);
+    }
+  };
+
+  const copiarResumen = async (
+    resumen: Resumen
+  ) => {
+    try {
+      await navigator.clipboard.writeText(
+        obtenerTextoCompleto(resumen)
+      );
+
+      mostrarNotificacion(
+        "Resumen copiado al portapapeles."
+      );
+    } catch {
+      mostrarNotificacion(
+        "No se pudo copiar el resumen."
+      );
     }
   };
 
@@ -1628,14 +1747,14 @@ export default function ResumenesPage() {
 
     return () => {
       window.speechSynthesis?.cancel();
-      audioGratisRef.current?.pause();
+      audioGratisElementRef.current?.pause();
       audioPremiumRef.current?.pause();
     };
   }, []);
 
   useEffect(() => {
-    if (audioGratisRef.current) {
-      audioGratisRef.current.volume =
+    if (audioGratisElementRef.current) {
+      audioGratisElementRef.current.volume =
         volumenGratis / 100;
     }
   }, [volumenGratis]);
@@ -1886,467 +2005,679 @@ export default function ResumenesPage() {
             Volver a métodos
           </Link>
 
-          {/* HERO */}
+          {!resumenSeleccionado && (
+            <>
+              <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_315px]">
+                {/* COLUMNA PRINCIPAL */}
+                <div className="min-w-0 space-y-4">
+                  {/* HERO */}
+                  <section className="relative overflow-hidden rounded-[26px] border border-[#E1E8F5] bg-gradient-to-r from-[#F3ECFF] via-[#EEF5FF] to-[#EAF7FF] px-5 py-6 shadow-[0_14px_36px_rgba(52,83,145,0.06)] dark:border-slate-700 dark:from-[#2A2345] dark:via-[#1A2940] dark:to-[#17344B] sm:px-7 lg:px-8">
+                    <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/50 blur-3xl dark:bg-white/5" />
 
-          <section className="rounded-[28px] bg-gradient-to-br from-[#F1EEFF] to-[#EAF6FF] p-7 dark:from-[#28243E] dark:to-[#1C304D]">
-            <div className="flex flex-col items-center justify-between gap-6 lg:flex-row">
-              <div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-[#E9E2FF] px-4 py-2 text-sm font-bold text-[#7652D9]">
-                  <Sparkles size={16} />
-                  Aprendizaje inteligente
-                </span>
+                    <div className="relative z-10 flex min-h-[155px] items-center justify-between gap-5">
+                      <div className="min-w-0 flex-1">
+                        <h1 className="text-3xl font-black tracking-[-0.035em] text-[#081A39] dark:text-white sm:text-4xl lg:text-[42px]">
+                          Resúmenes con IA
+                        </h1>
 
-                <h1 className="mt-4 text-4xl font-black">
-                  Resúmenes con IA
-                </h1>
+                        <p className="mt-2 max-w-[640px] text-sm leading-6 text-[#627995] dark:text-slate-300 sm:text-base">
+                          Convierte tus materiales en resúmenes claros, rápidos y útiles para estudiar.
+                        </p>
 
-                <p className="mt-4 max-w-xl leading-7 text-[#4169A1] dark:text-slate-300">
-                  Convierte tus materiales en guías de estudio completas.
-                </p>
-              </div>
+                        <div className="mt-5 flex flex-wrap gap-2.5">
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-xs font-bold text-[#5C6F88] shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
+                            <Sparkles size={15} className="text-[#7652D9]" />
+                            Generado con IA
+                          </span>
 
-              <Image
-                src="/resumenes.png"
-                alt="Raccoon"
-                width={380}
-                height={380}
-              />
-            </div>
-          </section>
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-xs font-bold text-[#5C6F88] shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
+                            <FolderOpen size={15} className="text-[#3978F6]" />
+                            Organizado por temas
+                          </span>
 
-          {/* SUBIDA / GENERACIÓN AUTOMÁTICA */}
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-xs font-bold text-[#5C6F88] shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
+                            <Zap size={15} className="text-amber-500" />
+                            Listo en segundos
+                          </span>
+                        </div>
+                      </div>
 
-          <section className="mt-6 rounded-[28px] bg-white p-6 shadow-sm dark:bg-[#182437]">
-            <h2 className="text-2xl font-black">
-              Crear nuevo resumen
-            </h2>
+                      <Image
+                        src="/resumenes.png"
+                        alt="Raccoon creando resúmenes"
+                        width={285}
+                        height={180}
+                        priority
+                        className="hidden max-h-[170px] w-auto shrink-0 object-contain drop-shadow-lg md:block"
+                      />
+                    </div>
+                  </section>
 
-            <label
-              htmlFor="archivo-resumen"
-              className={`
-                mt-6 flex min-h-[240px] flex-col items-center justify-center
-                rounded-[24px] border-2 border-dashed p-6 text-center
-                ${
-                  subiendo
-                    ? "cursor-wait border-[#7652D9] bg-[#F4F0FF] dark:bg-[#28243E]"
-                    : "cursor-pointer border-[#AFCBE3] bg-gradient-to-br from-[#F6FCFF] to-[#F5F1FF] dark:from-[#182A42] dark:to-[#28243E]"
-                }
-              `}
-            >
-              {subiendo ? (
-                <>
-                  <LoaderCircle
-                    size={48}
-                    className="animate-spin text-[#7652D9]"
-                  />
+                  {/* CREAR NUEVO RESUMEN */}
+                  <section className="rounded-[26px] border border-[#E2E9F3] bg-white p-4 shadow-[0_12px_32px_rgba(35,78,124,0.045)] dark:border-slate-700 dark:bg-[#182437] sm:p-5">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-xl font-black text-[#10233F] dark:text-white">
+                          Crear nuevo resumen
+                        </h2>
+                        <p className="mt-1 text-xs text-[#7A8FA7] dark:text-slate-400">
+                          Sube tu material y elige cómo quieres estudiarlo.
+                        </p>
+                      </div>
 
-                  <h3 className="mt-5 text-xl font-black">
-                    Raccoon está trabajando
-                  </h3>
+                      <span className={`hidden rounded-full px-3 py-1.5 text-[10px] font-black sm:inline-flex ${
+                        esPremium
+                          ? "bg-[#FFF1C9] text-[#9A6800] dark:bg-amber-950/30 dark:text-amber-300"
+                          : "bg-[#EAF1FF] text-[#1769E0] dark:bg-blue-950/30 dark:text-blue-300"
+                      }`}>
+                        {esPremium ? "👑 Premium activo" : "Plan gratuito"}
+                      </span>
+                    </div>
 
-                  <p className="mt-2 text-[#6085A5]">
-                    {estadoGeneracion}
-                  </p>
+                    {/* ÁREA DE SUBIDA COMO EN EL BOCETO */}
+                    <div className="overflow-hidden rounded-[22px] border-2 border-dashed border-[#AFC3FF] bg-gradient-to-br from-[#FCFDFF] to-[#FAF8FF] dark:border-[#52669C] dark:from-[#111D2E] dark:to-[#1B1D35]">
+                      <div className="grid min-h-[180px] items-center gap-5 p-5 md:grid-cols-[230px_1fr]">
+                        {/* FORMATOS */}
+                        <div>
+                          <p className="text-sm font-black text-[#213752] dark:text-white">
+                            Sube tu material
+                          </p>
 
-                  <div className="mt-5 h-3 w-full max-w-md rounded-full bg-white dark:bg-slate-700">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#55A8E8] to-[#7652D9]"
-                      style={{
-                        width: `${progresoGeneracion}%`,
-                      }}
+                          <p className="mt-1 text-[10px] text-[#8092A7] dark:text-slate-400">
+                            Formatos soportados
+                          </p>
+
+                          <div className="mt-4 grid grid-cols-4 gap-2">
+                            {[
+                              { nombre: "PDF", icono: FileText, color: "text-red-500 bg-red-50 dark:bg-red-950/20" },
+                              { nombre: "DOCX", icono: FileText, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/20" },
+                              { nombre: "PPTX", icono: FileText, color: "text-orange-500 bg-orange-50 dark:bg-orange-950/20" },
+                              { nombre: "TXT", icono: FileText, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20" },
+                            ].map((formato) => {
+                              const Icono = formato.icono;
+
+                              return (
+                                <div key={formato.nombre} className="text-center">
+                                  <div className={`mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-[#E4EAF2] ${formato.color} dark:border-slate-700`}>
+                                    <Icono size={20} />
+                                  </div>
+                                  <p className="mt-1.5 text-[9px] font-black text-[#667C96] dark:text-slate-400">
+                                    {formato.nombre}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* DROPZONE */}
+                        <label
+                          htmlFor="archivo-resumen"
+                          className={`flex min-h-[135px] cursor-pointer flex-col items-center justify-center rounded-[20px] transition ${
+                            subiendo
+                              ? "cursor-wait"
+                              : "hover:bg-white/65 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          {subiendo ? (
+                            <>
+                              <LoaderCircle size={38} className="animate-spin text-[#7652D9]" />
+                              <p className="mt-3 text-sm font-black">
+                                {estadoGeneracion}
+                              </p>
+                              <div className="mt-4 h-2 w-full max-w-[340px] overflow-hidden rounded-full bg-[#E7ECF4] dark:bg-slate-700">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-[#3978F6] to-[#7652D9]"
+                                  style={{ width: `${progresoGeneracion}%` }}
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EEE9FF] text-[#7652D9] dark:bg-violet-950/30 dark:text-violet-200">
+                                <Upload size={27} />
+                              </div>
+
+                              <p className="mt-3 text-sm font-black text-[#213752] dark:text-white">
+                                Arrastra y suelta tu archivo aquí
+                              </p>
+
+                              <p className="mt-1 text-[10px] text-[#8394A8] dark:text-slate-400">
+                                o selecciona un archivo de tu dispositivo
+                              </p>
+
+                              <span className="mt-4 rounded-xl bg-gradient-to-r from-[#4169F2] to-[#7652D9] px-6 py-3 text-xs font-black text-white shadow-[0_8px_20px_rgba(93,82,217,0.22)]">
+                                Seleccionar archivo
+                              </span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* OPCIONES ABAJO */}
+                      <div className="grid gap-4 border-t border-dashed border-[#B9C9EE] bg-white/55 p-4 dark:border-[#435679] dark:bg-white/[0.025] md:grid-cols-2">
+                        <div className="md:border-r md:border-[#E3E9F2] md:pr-5 dark:md:border-slate-700">
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#70849C] dark:text-slate-400">
+                              Tipo de resumen
+                            </p>
+                            <Info size={13} className="text-[#3978F6]" />
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {[
+                              { id: "corto", nombre: "Corto", premium: false },
+                              { id: "completo", nombre: "Completo", premium: true },
+                              { id: "examen", nombre: "Para examen", premium: true },
+                            ].map((opcion) => {
+                              const bloqueado = opcion.premium && !esPremium;
+                              const activo = tipoResumen === opcion.id;
+
+                              return (
+                                <button
+                                  key={opcion.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (bloqueado) {
+                                      setMostrarPremium(true);
+                                      return;
+                                    }
+                                    setTipoResumen(opcion.id as "corto" | "completo" | "examen");
+                                  }}
+                                  className={`relative rounded-xl border px-2 py-2.5 text-[10px] font-black transition sm:text-xs ${
+                                    activo
+                                      ? "border-[#7652D9] bg-gradient-to-r from-[#4169F2] to-[#7652D9] text-white shadow-sm"
+                                      : "border-[#DFE6F0] bg-white text-[#687D95] hover:border-[#B8C8EE] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  }`}
+                                >
+                                  {opcion.nombre}
+                                  {bloqueado && (
+                                    <Lock size={10} className="absolute right-1 top-1 text-amber-500" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="md:pl-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#70849C] dark:text-slate-400">
+                              Nivel de detalle
+                            </p>
+                            <Info size={13} className="text-[#3978F6]" />
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {[
+                              { id: "basico", nombre: "Básico", premium: false },
+                              { id: "intermedio", nombre: "Intermedio", premium: true },
+                              { id: "profundo", nombre: "Profundo", premium: true },
+                            ].map((opcion) => {
+                              const bloqueado = opcion.premium && !esPremium;
+                              const activo = nivelDetalle === opcion.id;
+
+                              return (
+                                <button
+                                  key={opcion.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (bloqueado) {
+                                      setMostrarPremium(true);
+                                      return;
+                                    }
+                                    setNivelDetalle(opcion.id as "basico" | "intermedio" | "profundo");
+                                  }}
+                                  className={`relative rounded-xl border px-2 py-2.5 text-[10px] font-black transition sm:text-xs ${
+                                    activo
+                                      ? "border-[#7652D9] bg-[#F0ECFF] text-[#6548E8] dark:bg-violet-950/30 dark:text-violet-200"
+                                      : "border-[#DFE6F0] bg-white text-[#687D95] hover:border-[#B8C8EE] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  }`}
+                                >
+                                  {opcion.nombre}
+                                  {bloqueado && (
+                                    <Lock size={10} className="absolute right-1 top-1 text-amber-500" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <input
+                      id="archivo-resumen"
+                      type="file"
+                      className="hidden"
+                      disabled={subiendo}
+                      accept=".pdf,.docx,.pptx,.txt"
+                      onChange={subirArchivo}
                     />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Upload
-                    size={45}
-                    className="text-[#55A8E8]"
-                  />
+                  </section>
 
-                  <h3 className="mt-4 text-xl font-black">
-                    Sube tu material
-                  </h3>
+                  {/* PROCESO */}
+                  <section className="rounded-[22px] border border-[#E2E9F3] bg-white px-4 py-3 dark:border-slate-700 dark:bg-[#182437]">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {[
+                        { titulo: "Archivo recibido", texto: "Listo para analizar", icono: FileText, activo: true },
+                        { titulo: "Analizando", texto: "Comprendiendo contenido", icono: BrainCircuit, activo: subiendo },
+                        { titulo: "Creando resumen", texto: "Organizando información", icono: Sparkles, activo: subiendo && progresoGeneracion > 45 },
+                        { titulo: "Listo", texto: "Revisando calidad", icono: CheckCircle2, activo: false },
+                      ].map((paso) => {
+                        const Icono = paso.icono;
 
-                  <p className="mt-2 text-sm text-[#6085A5]">
-                    PDF, DOCX, PPTX o TXT
-                  </p>
+                        return (
+                          <div
+                            key={paso.titulo}
+                            className={`flex items-center gap-3 rounded-xl px-3 py-2 ${
+                              paso.activo
+                                ? "bg-[#F0ECFF] dark:bg-violet-950/20"
+                                : ""
+                            }`}
+                          >
+                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                              paso.activo
+                                ? "bg-white text-[#7652D9] shadow-sm dark:bg-slate-800"
+                                : "bg-[#F5F7FA] text-[#A3AFBE] dark:bg-slate-800 dark:text-slate-500"
+                            }`}>
+                              <Icono size={16} />
+                            </div>
 
-                  <div className="mt-5 rounded-xl bg-gradient-to-r from-[#4169A1] to-[#7652D9] px-6 py-3 font-black text-white">
-                    Seleccionar archivo
-                  </div>
-                </>
-              )}
-            </label>
-
-            <input
-              id="archivo-resumen"
-              type="file"
-              className="hidden"
-              disabled={subiendo}
-              accept=".pdf,.docx,.pptx,.txt"
-              onChange={subirArchivo}
-            />
-          </section>
-
-          {/* MÚSICA */}
-
-          <section className="mt-7">
-            <h2 className="text-2xl font-black">
-              Música para estudiar
-            </h2>
-
-            <div className="mt-5 grid gap-6 xl:grid-cols-2">
-              {/* JAMENDO */}
-
-              <article className="rounded-[28px] bg-white p-6 shadow-sm dark:bg-[#182437]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-black">
-                     Música
-                    </h3>
-
-                    <p className="text-sm font-bold text-green-600">
-                      Gratis
-                    </p>
-                  </div>
-
-                  <Headphones className="text-[#55A8E8]" />
+                            <div className="min-w-0">
+                              <p className="truncate text-[10px] font-black">
+                                {paso.titulo}
+                              </p>
+                              <p className="mt-0.5 truncate text-[9px] text-[#8A99AB] dark:text-slate-400">
+                                {paso.texto}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
                 </div>
 
-                {cargandoMusicaGratis ? (
-                  <div className="flex h-64 items-center justify-center">
-                    <LoaderCircle className="animate-spin" />
-                  </div>
-                ) : (
-                  <div className="mt-5 max-h-[320px] space-y-3 overflow-y-auto">
-                    {tracksGratis.map(
-                      (track) => {
-                        const activo =
-                          trackGratisActual?.id ===
-                          track.id;
+                {/* COLUMNA DERECHA */}
+                <aside className="min-w-0 space-y-5">
+                  {/* RACCOON IA */}
+                  <section className="rounded-[26px] border border-[#E2E9F3] bg-gradient-to-br from-[#F8FBFF] to-[#F7F2FF] p-5 shadow-[0_12px_30px_rgba(38,78,125,0.05)] dark:border-slate-700 dark:from-[#182437] dark:to-[#211E35]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800">
+                        <Image
+                          src="/raccoon.png"
+                          alt="Raccoon IA"
+                          width={52}
+                          height={52}
+                          className="h-12 w-12 object-contain"
+                        />
+                      </div>
+
+                      <div>
+                        <h2 className="text-lg font-black">
+                          Raccoon IA
+                        </h2>
+                        <span className="mt-1 inline-flex rounded-full bg-[#EEE8FF] px-3 py-1 text-[10px] font-black text-[#7652D9] dark:bg-violet-950/30 dark:text-violet-200">
+                          Tu asistente de estudio
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="mt-5 text-sm font-bold text-[#4D627C] dark:text-slate-300">
+                      ¿Qué te ayudo a hacer hoy?
+                    </p>
+
+                    <div className="mt-4 space-y-2.5">
+                      {[
+                        { titulo: "Resumirlo", texto: "Genera un resumen inteligente", icono: FileText, color: "bg-[#F0ECFF] text-[#7652D9]" },
+                        { titulo: "Explicármelo fácil", texto: "En lenguaje sencillo", icono: MessageCircle, color: "bg-[#EAF6FF] text-[#1687D9]" },
+                        { titulo: "Crear preguntas", texto: "Genera preguntas de práctica", icono: HelpCircle, color: "bg-[#EAF9F1] text-[#26A66B]" },
+                        { titulo: "Prepararme para examen", texto: "Plan de estudio personalizado", icono: GraduationCap, color: "bg-[#FFF3DA] text-[#E29B00]" },
+                      ].map((accion) => {
+                        const Icono = accion.icono;
 
                         return (
                           <button
-                            key={track.id}
-                            onClick={() =>
-                              void reproducirGratis(
-                                track
-                              )
-                            }
-                            className={`
-                              flex w-full items-center gap-3 rounded-2xl border p-3 text-left
-                              ${
-                                activo
-                                  ? "border-[#55A8E8] bg-[#EFF8FF] dark:bg-[#1D3558]"
-                                  : "border-[#E7EDF5] dark:border-slate-700"
+                            key={accion.titulo}
+                            type="button"
+                            onClick={() => {
+                              if (accion.titulo === "Resumirlo") {
+                                document.getElementById("archivo-resumen")?.click();
+                                return;
                               }
-                            `}
+
+                              if (!esPremium) {
+                                setMostrarPremium(true);
+                                return;
+                              }
+
+                              mostrarNotificacion(`${accion.titulo} estará disponible desde Raccoon IA.`);
+                            }}
+                            className="flex w-full items-center justify-between rounded-2xl border border-[#E2E9F3] bg-white p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#C7D6EE] dark:border-slate-700 dark:bg-[#111D2E]"
                           >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={
-                                track.portada ||
-                                "/raccoon.png"
-                              }
-                              alt={track.titulo}
-                              className="h-11 w-11 rounded-xl object-cover"
-                            />
+                            <span className="flex items-center gap-3">
+                              <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${accion.color} dark:bg-slate-800`}>
+                                <Icono size={18} />
+                              </span>
 
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-black">
-                                {track.titulo}
-                              </p>
+                              <span>
+                                <span className="block text-xs font-black">
+                                  {accion.titulo}
+                                </span>
+                                <span className="mt-1 block text-[10px] text-[#8191A5] dark:text-slate-400">
+                                  {accion.texto}
+                                </span>
+                              </span>
+                            </span>
 
-                              <p className="truncate text-xs text-[#6085A5]">
-                                {track.artista}
-                              </p>
-                            </div>
-
-                            {activo &&
-                            musicaGratisActiva ? (
-                              <Pause size={17} />
-                            ) : (
-                              <Play size={17} />
-                            )}
+                            <ArrowRight size={15} />
                           </button>
                         );
-                      }
-                    )}
-                  </div>
-                )}
+                      })}
+                    </div>
+                  </section>
 
-                <div className="mt-4 flex items-center gap-3">
-                  <Volume2 size={18} />
+                  {/* MÚSICA COMPACTA */}
+                  <section className="rounded-[26px] border border-[#E2E9F3] bg-white p-5 shadow-[0_12px_30px_rgba(38,78,125,0.05)] dark:border-slate-700 dark:bg-[#182437]">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-black">
+                        Música para estudiar
+                      </h2>
+                      <Music2 size={18} />
+                    </div>
 
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volumenGratis}
-                    onChange={(evento) =>
-                      setVolumenGratis(
-                        Number(
-                          evento.target.value
-                        )
-                      )
-                    }
-                    className="w-full"
-                  />
-                </div>
-              </article>
-
-              {/* DEEZER */}
-
-              <article className="rounded-[28px] bg-gradient-to-br from-[#F1EDFF] to-[#EAF6FF] p-6 dark:from-[#28243E] dark:to-[#1C304D]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-black">
-                      Playlist
-                    </h3>
-
-                    <p className="text-sm font-bold text-[#7652D9]">
-                      Premium
-                    </p>
-                  </div>
-
-                  {!esPremium ? (
-                    <Lock />
-                  ) : (
-                    <Music2 />
-                  )}
-                </div>
-
-                {!esPremium ? (
-                  <button
-                    onClick={() =>
-                      setMostrarPremium(true)
-                    }
-                    className="mt-6 w-full rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] py-4 font-black text-white"
-                  >
-                    Desbloquear playlist
-                  </button>
-                ) : tracksPremium.length ===
-                  0 ? (
-                  <button
-                    onClick={cargarDeezer}
-                    disabled={
-                      cargandoPlaylist
-                    }
-                    className="mt-6 w-full rounded-xl bg-[#7652D9] py-4 font-black text-white"
-                  >
-                    {cargandoPlaylist
-                      ? "Cargando..."
-                      : "Cargar playlist"}
-                  </button>
-                ) : (
-                  <div className="mt-5 max-h-[320px] space-y-3 overflow-y-auto">
-                    {playlistPremium && (
-                      <p className="font-black">
-                        {
-                          playlistPremium.titulo
-                        }
+                    <div className="mt-4 rounded-[22px] bg-gradient-to-br from-[#EFEAFF] via-[#EBF0FF] to-[#E8F6FF] p-5 dark:from-[#2A2345] dark:via-[#1C2941] dark:to-[#17344B]">
+                      <p className="text-sm font-black">
+                        {trackPremiumActual?.titulo ||
+                          trackGratisActual?.titulo ||
+                          tracksGratis[0]?.titulo ||
+                          "Lo-fi Focus"}
                       </p>
-                    )}
 
-                    {tracksPremium.map(
-                      (track) => (
+                      <p className="mt-1 text-[10px] text-[#7D8DA3] dark:text-slate-300">
+                        Playlist actual
+                      </p>
+
+                      <div className="my-6 flex items-center justify-center">
                         <button
-                          key={track.id}
-                          onClick={() =>
-                            void reproducirPremium(
-                              track
-                            )
-                          }
-                          className="flex w-full items-center gap-3 rounded-2xl bg-white/70 p-3 text-left dark:bg-slate-800"
+                          type="button"
+                          onClick={() => {
+                            if (trackPremiumActual) {
+                              void reproducirPremium(trackPremiumActual);
+                            } else if (trackGratisActual) {
+                              void reproducirGratis(trackGratisActual);
+                            } else if (tracksGratis[0]) {
+                              void reproducirGratis(tracksGratis[0]);
+                            } else {
+                              void cargarMusicaGratis();
+                            }
+                          }}
+                          className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#4169F2] to-[#7652D9] text-white shadow-[0_12px_28px_rgba(93,82,217,0.28)]"
                         >
-                          <Music2 />
-
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-black">
-                              {track.titulo}
-                            </p>
-
-                            <p className="truncate text-xs">
-                              {track.artista}
-                            </p>
-                          </div>
-
-                          {trackPremiumActual?.id ===
-                            track.id &&
-                          musicaPremiumActiva ? (
-                            <Pause size={17} />
+                          {musicaGratisActiva || musicaPremiumActiva ? (
+                            <Pause size={22} />
                           ) : (
-                            <Play size={17} />
+                            <Play size={22} />
                           )}
                         </button>
-                      )
-                    )}
+                      </div>
 
-                    <div className="flex items-center gap-3">
-                      <Volume2 size={18} />
-
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={
-                          volumenPremium
-                        }
-                        onChange={(evento) =>
-                          setVolumenPremium(
-                            Number(
-                              evento.target
-                                .value
-                            )
-                          )
-                        }
-                        className="w-full"
-                      />
+                      <div className="h-1.5 rounded-full bg-white/65 dark:bg-white/10">
+                        <div className="h-full w-[48%] rounded-full bg-gradient-to-r from-[#4169F2] to-[#7652D9]" />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </article>
-            </div>
-          </section>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!esPremium) {
+                          setMostrarPremium(true);
+                          return;
+                        }
+
+                        const disponibles = [
+                          ...tracksGratis.map(
+                            (track) => ({
+                              tipo: "gratis" as const,
+                              track,
+                            })
+                          ),
+                          ...tracksPremium.map(
+                            (track) => ({
+                              tipo: "premium" as const,
+                              track,
+                            })
+                          ),
+                        ];
+
+                        if (disponibles.length === 0) {
+                          void cargarMusicaGratis();
+
+                          if (esPremium) {
+                            void cargarDeezer();
+                          }
+
+                          return;
+                        }
+
+                        const actualId =
+                          trackPremiumActual?.id ??
+                          trackGratisActual?.id;
+
+                        const indiceActual =
+                          disponibles.findIndex(
+                            (item) =>
+                              item.track.id ===
+                              actualId
+                          );
+
+                        const siguiente =
+                          disponibles[
+                            (indiceActual + 1) %
+                              disponibles.length
+                          ];
+
+                        if (
+                          siguiente.tipo ===
+                          "premium"
+                        ) {
+                          void reproducirPremium(
+                            siguiente.track
+                          );
+                        } else {
+                          void reproducirGratis(
+                            siguiente.track
+                          );
+                        }
+                      }}
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-black text-[#7652D9] transition hover:bg-[#F6F2FF] dark:text-violet-200 dark:hover:bg-violet-950/20"
+                    >
+                      Cambiar playlist
+                      <ArrowRight size={14} />
+                    </button>
+                  </section>
+                </aside>
+              </div>
+            </>
+          )}
 
           {/* DETALLE O LISTA */}
 
           {resumenSeleccionado ? (
-            <section className="mt-8 grid gap-6 xl:grid-cols-[1fr_340px]">
-              <div>
-                <button
-                  onClick={() => {
-                    setResumenSeleccionado(
-                      null
-                    );
+            <section className="mt-1">
+              <button
+                onClick={() => {
+                  setResumenSeleccionado(null);
+                  detenerLectura();
+                }}
+                className="mb-4 flex items-center gap-2 text-sm font-black text-[#4169A1] dark:text-blue-300"
+              >
+                <ArrowLeft size={18} />
+                Volver a mis resúmenes
+              </button>
 
-                    detenerLectura();
-                  }}
-                  className="mb-5 flex items-center gap-2 font-bold text-[#4169A1]"
-                >
-                  <ArrowLeft />
-                  Volver
-                </button>
+              {/* RESUMEN LISTO */}
+              <section className="relative overflow-hidden rounded-[28px] border border-[#DDE9F5] bg-gradient-to-r from-[#EAF8FF] via-[#F4F1FF] to-[#EAF3FF] p-5 shadow-[0_16px_42px_rgba(52,86,145,0.07)] dark:border-slate-700 dark:from-[#16304D] dark:via-[#28243E] dark:to-[#18314B] sm:p-7">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-violet-200/30 blur-3xl dark:bg-violet-800/10" />
 
-                <article className="rounded-[28px] bg-white p-7 dark:bg-[#182437]">
-                  <span className="rounded-full bg-[#E9E2FF] px-4 py-2 text-sm font-bold text-[#7652D9]">
-                    {
-                      resumenSeleccionado.materia
-                    }
-                  </span>
+                <div className="relative z-10 flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2BB57D] text-white shadow-[0_10px_24px_rgba(43,181,125,0.24)]">
+                        <Check size={24} />
+                      </span>
 
-                  <h1 className="mt-5 text-3xl font-black">
-                    {
-                      resumenSeleccionado.titulo
-                    }
-                  </h1>
+                      <div>
+                        <h1 className="text-3xl font-black leading-tight tracking-[-0.03em] text-[#0A1C3A] dark:text-white sm:text-4xl">
+                          Resumen listo 🎉
+                        </h1>
 
-                  <section className="mt-8">
+                        <p className="mt-1 text-sm text-[#637E9D] dark:text-slate-300">
+                          Tu material fue analizado y organizado por Raccoon IA.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid max-w-2xl gap-2 sm:grid-cols-3">
+                      {[
+                        {
+                          titulo: "Claro",
+                          texto: "Conceptos fáciles de entender",
+                          color: "text-[#1687D9]",
+                        },
+                        {
+                          titulo: "Organizado",
+                          texto: "Información por temas",
+                          color: "text-[#7652D9]",
+                        },
+                        {
+                          titulo: "Listo para estudiar",
+                          texto: "Contenido útil y enfocado",
+                          color: "text-[#26A66B]",
+                        },
+                      ].map((item) => (
+                        <div
+                          key={item.titulo}
+                          className="rounded-xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/10"
+                        >
+                          <p className={`text-xs font-black ${item.color}`}>
+                            {item.titulo}
+                          </p>
+                          <p className="mt-1 text-[10px] text-[#7188A2] dark:text-slate-300">
+                            {item.texto}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Image
+                    src="/raccoon.png"
+                    alt="Raccoon Study"
+                    width={155}
+                    height={155}
+                    className="hidden h-[145px] w-[145px] shrink-0 object-contain drop-shadow-lg sm:block"
+                  />
+                </div>
+              </section>
+
+              <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
+                {/* CONTENIDO */}
+                <div className="min-w-0 space-y-4">
+                <article className="min-w-0 rounded-[28px] border border-[#E3EAF3] bg-white p-4 shadow-[0_14px_34px_rgba(38,78,125,0.05)] dark:border-slate-700 dark:bg-[#182437] sm:p-7">
+                  <div className="flex flex-wrap gap-2 border-b border-[#E7EDF5] pb-4 dark:border-slate-700">
+                    {[
+                      "Resumen",
+                      "Puntos clave",
+                      "Ejemplos",
+                      "Preguntas",
+                    ].map((tab, indice) => (
+                      <span
+                        key={tab}
+                        className={`rounded-xl px-3 py-2 text-xs font-black ${
+                          indice === 0
+                            ? "bg-[#EAF1FF] text-[#1769E0] dark:bg-blue-950/30 dark:text-blue-200"
+                            : "text-[#7188A2] dark:text-slate-400"
+                        }`}
+                      >
+                        {tab}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* IDEA PRINCIPAL */}
+                  <section className="mt-6 px-1 sm:px-2">
                     <div className="flex items-center gap-3">
-                      <BookOpen className="text-[#1687D9]" />
-
-                      <h2 className="text-2xl font-black">
-                        Resumen general
+                      <BookOpen
+                        size={19}
+                        className="text-[#1687D9]"
+                      />
+                      <h2 className="font-black">
+                        Idea principal
                       </h2>
                     </div>
 
-                    <p className="mt-4 whitespace-pre-line leading-8 text-[#506C88] dark:text-slate-300">
-                      {
-                        resumenSeleccionado.resumen_general
-                      }
+                    <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#506C88] dark:text-slate-300 sm:text-[15px]">
+                      {resumenSeleccionado.resumen_general}
                     </p>
                   </section>
 
-                  <section className="mt-10">
+                  {/* CONCEPTOS CLAVE */}
+                  <section className="mt-6">
                     <div className="flex items-center gap-3">
-                      <FileText className="text-[#7652D9]" />
-
-                      <h2 className="text-2xl font-black">
-                        Desarrollo
-                      </h2>
-                    </div>
-
-                    <div className="mt-5 space-y-4">
-                      {resumenSeleccionado.secciones_desarrollo.map(
-                        (
-                          seccion,
-                          indice
-                        ) => (
-                          <div
-                            key={indice}
-                            className="rounded-2xl border p-5 dark:border-slate-700"
-                          >
-                            <h3 className="font-black text-[#4169A1]">
-                              {
-                                seccion.titulo
-                              }
-                            </h3>
-
-                            <p className="mt-3 leading-7 text-[#506C88] dark:text-slate-300">
-                              {
-                                seccion.contenido
-                              }
-                            </p>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </section>
-
-                  <section className="mt-10">
-                    <div className="flex items-center gap-3">
-                      <Lightbulb className="text-yellow-500" />
-
-                      <h2 className="text-2xl font-black">
-                        Ideas principales
-                      </h2>
-                    </div>
-
-                    <div className="mt-5 space-y-3">
-                      {resumenSeleccionado.ideas_principales.map(
-                        (idea, indice) => (
-                          <div
-                            key={indice}
-                            className="rounded-2xl bg-[#F8FBFD] p-4 dark:bg-slate-800"
-                          >
-                            {indice + 1}.{" "}
-                            {idea}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </section>
-
-                  <section className="mt-10">
-                    <div className="flex items-center gap-3">
-                      <BrainCircuit className="text-[#7652D9]" />
-
-                      <h2 className="text-2xl font-black">
+                      <BrainCircuit
+                        size={19}
+                        className="text-[#7652D9]"
+                      />
+                      <h2 className="font-black">
                         Conceptos clave
                       </h2>
                     </div>
 
-                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {resumenSeleccionado.conceptos_clave.map(
-                        (
-                          concepto,
-                          indice
-                        ) => (
+                        (concepto, indice) => (
                           <div
                             key={indice}
-                            className="rounded-2xl border p-5 dark:border-slate-700"
+                            className="group relative rounded-xl border border-[#DDD5FF] bg-[#F7F4FF] px-3 py-2 dark:border-violet-900/40 dark:bg-violet-950/20"
+                            title={concepto.definicion}
                           >
-                            <h3 className="font-black text-[#7652D9]">
-                              {
-                                concepto.concepto
-                              }
-                            </h3>
+                            <span className="text-xs font-black text-[#6548E8] dark:text-violet-200">
+                              {concepto.concepto}
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </section>
 
-                            <p className="mt-2 text-sm leading-6">
-                              {
-                                concepto.definicion
-                              }
+                  {/* DESARROLLO */}
+                  <section className="mt-7 border-t border-[#EDF1F6] pt-6 dark:border-slate-700">
+                    <div className="flex items-center gap-3">
+                      <FileText
+                        size={19}
+                        className="text-[#D69B00]"
+                      />
+                      <h2 className="font-black">
+                        Desarrollo del tema
+                      </h2>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {resumenSeleccionado.secciones_desarrollo.map(
+                        (seccion, indice) => (
+                          <div
+                            key={indice}
+                            className="flex gap-3"
+                          >
+                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#3978F6]" />
+
+                            <p className="text-sm leading-7 text-[#506C88] dark:text-slate-300">
+                              <span className="font-black text-[#3978F6] dark:text-blue-300">
+                                {seccion.titulo}:
+                              </span>{" "}
+                              {seccion.contenido}
                             </p>
                           </div>
                         )
@@ -2354,110 +2685,434 @@ export default function ResumenesPage() {
                     </div>
                   </section>
 
-                  <section className="mt-10">
+                  {/* IDEAS PRINCIPALES */}
+                  <section className="mt-7">
                     <div className="flex items-center gap-3">
-                      <ListChecks className="text-green-600" />
-
-                      <h2 className="text-2xl font-black">
-                        Datos importantes
+                      <Lightbulb
+                        size={19}
+                        className="text-yellow-500"
+                      />
+                      <h2 className="font-black">
+                        Puntos clave
                       </h2>
                     </div>
 
-                    <div className="mt-5 space-y-3">
-                      {resumenSeleccionado.datos_importantes.map(
-                        (dato, indice) => (
+                    <div className="mt-4 space-y-2.5">
+                      {resumenSeleccionado.ideas_principales.map(
+                        (idea, indice) => (
                           <div
                             key={indice}
-                            className="flex gap-3 rounded-2xl bg-[#F2FBF6] p-4 dark:bg-slate-800"
+                            className="flex gap-3 rounded-xl bg-[#FAFCFE] p-3.5 dark:bg-[#111D2E]"
                           >
-                            <CheckCircle2 className="text-green-600" />
-                            {dato}
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EAF1FF] text-[11px] font-black text-[#1769E0] dark:bg-blue-950/30 dark:text-blue-200">
+                              {indice + 1}
+                            </span>
+
+                            <p className="text-sm leading-6 text-[#506C88] dark:text-slate-300">
+                              {idea}
+                            </p>
                           </div>
                         )
                       )}
                     </div>
                   </section>
 
-                  <section className="mt-10 rounded-2xl bg-gradient-to-r from-[#F0ECFF] to-[#EEF8FF] p-6 dark:from-[#28243E] dark:to-[#1C304D]">
-                    <h2 className="text-xl font-black">
-                      Conclusión
-                    </h2>
+                  {/* DATOS / EJEMPLOS PREMIUM */}
+                  {(resumenSeleccionado.datos_importantes.length > 0 ||
+                    resumenSeleccionado.ejemplos.length > 0) && (
+                    <section className="mt-7 grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-[#D8EFE3] bg-[#F4FBF7] p-4 dark:border-green-900/30 dark:bg-green-950/10">
+                        <div className="flex items-center gap-2">
+                          <ListChecks
+                            size={18}
+                            className="text-[#26A66B]"
+                          />
+                          <h2 className="text-sm font-black">
+                            Datos importantes
+                          </h2>
+                        </div>
 
-                    <p className="mt-3 leading-7">
-                      {
-                        resumenSeleccionado.conclusion
-                      }
+                        <div className="mt-3 space-y-2">
+                          {resumenSeleccionado.datos_importantes.map(
+                            (dato, indice) => (
+                              <p
+                                key={indice}
+                                className="text-xs leading-5 text-[#506C88] dark:text-slate-300"
+                              >
+                                • {dato}
+                              </p>
+                            )
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-[#F0E1B8] bg-[#FFF9EA] p-4 dark:border-amber-900/30 dark:bg-amber-950/10">
+                        <div className="flex items-center gap-2">
+                          <Sparkles
+                            size={18}
+                            className="text-[#D69B00]"
+                          />
+                          <h2 className="text-sm font-black">
+                            Ejemplos
+                          </h2>
+                        </div>
+
+                        {resumenSeleccionado.ejemplos.length > 0 ? (
+                          <div className="mt-3 space-y-2">
+                            {resumenSeleccionado.ejemplos.map(
+                              (ejemplo, indice) => (
+                                <p
+                                  key={indice}
+                                  className="text-xs leading-5 text-[#506C88] dark:text-slate-300"
+                                >
+                                  • {ejemplo}
+                                </p>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-xs text-[#7188A2] dark:text-slate-400">
+                            El material no incluía ejemplos explícitos.
+                          </p>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* CONCLUSIÓN */}
+                  <section className="mt-7 border-t border-[#EDF1F6] pt-6 dark:border-slate-700">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="text-[#26A66B]" />
+                      <h2 className="font-black">
+                        Conclusión
+                      </h2>
+                    </div>
+
+                    <p className="mt-3 text-sm leading-7 text-[#506C88] dark:text-slate-300">
+                      {resumenSeleccionado.conclusion}
                     </p>
                   </section>
+
+                  {/* ACCIONES MÓVILES / ESCRITORIO */}
+                  <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <button
+                      onClick={() => leerResumen(resumenSeleccionado)}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-[#DDE7F1] bg-white px-4 py-3 text-xs font-black text-[#4169A1] transition hover:-translate-y-0.5 hover:bg-[#F4F8FF] dark:border-slate-700 dark:bg-slate-800 dark:text-blue-200"
+                    >
+                      <Headphones size={16} />
+                      Escuchar
+                    </button>
+
+                    <button
+                      onClick={() => void copiarResumen(resumenSeleccionado)}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-[#DDE7F1] bg-white px-4 py-3 text-xs font-black text-[#4169A1] transition hover:-translate-y-0.5 hover:bg-[#F4F8FF] dark:border-slate-700 dark:bg-slate-800 dark:text-blue-200"
+                    >
+                      <Copy size={16} />
+                      Copiar
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        mostrarNotificacion(
+                          "Tu resumen ya está guardado en Raccoon Study."
+                        )
+                      }
+                      className="flex items-center justify-center gap-2 rounded-xl border border-[#DDE7F1] bg-white px-4 py-3 text-xs font-black text-[#4169A1] transition hover:-translate-y-0.5 hover:bg-[#F4F8FF] dark:border-slate-700 dark:bg-slate-800 dark:text-blue-200"
+                    >
+                      <Bookmark size={16} />
+                      Guardar
+                    </button>
+
+                    <button
+                      onClick={() => window.print()}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-white px-4 py-3 text-xs font-black text-red-500 transition hover:-translate-y-0.5 hover:bg-red-50 dark:border-red-900/30 dark:bg-slate-800"
+                    >
+                      <FileText size={16} />
+                      Descargar PDF
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (!esPremium) {
+                          setMostrarPremium(true);
+                          return;
+                        }
+                        mostrarNotificacion(
+                          "Usa el nivel Básico para obtener una versión más simple."
+                        );
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-[#DDD5FF] bg-[#FAF8FF] px-4 py-3 text-xs font-black text-[#7652D9] transition hover:-translate-y-0.5 dark:border-violet-900/30 dark:bg-violet-950/20 dark:text-violet-200"
+                    >
+                      <Sparkles size={16} />
+                      Simplificar
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (!esPremium) {
+                          setMostrarPremium(true);
+                          return;
+                        }
+                        mostrarNotificacion(
+                          "Selecciona Completo + Profundo para generar una versión más detallada."
+                        );
+                      }}
+                      className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-[#DDE7F1] bg-white px-4 py-3 text-xs font-black text-[#4169A1] transition hover:-translate-y-0.5 hover:bg-[#F4F8FF] dark:border-slate-700 dark:bg-slate-800 dark:text-blue-200 sm:col-auto"
+                    >
+                      <ListChecks size={16} />
+                      Más detallado
+                    </button>
+                  </div>
                 </article>
-              </div>
 
-              <aside className="h-fit rounded-[25px] bg-white p-6 dark:bg-[#182437] xl:sticky xl:top-[95px]">
-                <h2 className="text-xl font-black">
-                  Estudiar resumen
-                </h2>
 
-                <button
-                  onClick={() =>
-                    crearQuiz(
-                      resumenSeleccionado
-                    )
-                  }
-                  className="mt-5 w-full rounded-xl bg-gradient-to-r from-[#4169A1] to-[#7652D9] py-4 font-black text-white"
-                >
-                  Crear quiz
-                </button>
+                  {/* MATERIAL ORIGINAL */}
+                  <section className="rounded-[22px] border border-[#E3EAF3] bg-white p-4 shadow-[0_10px_25px_rgba(38,78,125,0.04)] dark:border-slate-700 dark:bg-[#182437]">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-500 dark:border-red-900/30 dark:bg-red-950/20">
+                          <FileText size={21} />
+                        </div>
 
-                {!esPremium ? (
-                  <button
-                    onClick={() =>
-                      setMostrarPremium(true)
-                    }
-                    className="mt-3 flex w-full items-center justify-between rounded-xl border p-4 dark:border-slate-700"
-                  >
-                    <span>
-                      Lector en voz alta
-                    </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-[#526A86] dark:text-slate-300">
+                            Material original
+                          </p>
 
-                    <Lock size={18} />
-                  </button>
-                ) : !leyendo ? (
-                  <button
-                    onClick={() =>
-                      leerResumen(
-                        resumenSeleccionado
-                      )
-                    }
-                    className="mt-3 w-full rounded-xl bg-[#F3EDFF] py-4 font-bold text-[#7652D9]"
-                  >
-                    Escuchar resumen
-                  </button>
-                ) : (
-                  <div className="mt-3 rounded-xl bg-[#F3EDFF] p-4">
-                    <div className="flex justify-center gap-3">
+                          <p className="mt-1 truncate text-sm font-black">
+                            {resumenSeleccionado.nombre_archivo || "Material de estudio"}
+                          </p>
+
+                          <p className="mt-1 text-[10px] text-[#8796A8] dark:text-slate-400">
+                            {resumenSeleccionado.tiempo_lectura}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-[#EAF9F1] px-3 py-2 text-[10px] font-black text-[#26A66B] dark:bg-green-950/20 dark:text-green-300">
+                          <CheckCircle2 size={14} />
+                          Analizado
+                        </span>
+
+                        <button
+                          type="button"
+                          className="rounded-xl border border-[#DCE6F2] px-4 py-2.5 text-xs font-black text-[#1769E0] transition hover:bg-[#F4F8FF] dark:border-slate-700 dark:text-blue-300 dark:hover:bg-slate-800"
+                          onClick={() =>
+                            mostrarNotificacion(
+                              "El material original está asociado a este resumen."
+                            )
+                          }
+                        >
+                          Ver material
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                {/* SIDEBAR */}
+                <aside className="min-w-0 space-y-4 xl:sticky xl:top-[95px] xl:h-fit">
+                  <section className="rounded-[24px] border border-[#E3EAF3] bg-white p-5 shadow-[0_12px_30px_rgba(38,78,125,0.05)] dark:border-slate-700 dark:bg-[#182437]">
+                    <div className="flex items-center gap-2">
+                      <Zap size={17} className="text-[#3978F6]" />
+                      <h2 className="text-lg font-black">
+                        Acciones rápidas
+                      </h2>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
-                        onClick={pausarLectura}
-                        className="rounded-full bg-[#7652D9] p-3 text-white"
+                        onClick={() => crearQuiz(resumenSeleccionado)}
+                        className="group min-h-[132px] rounded-2xl border border-[#DDD5FF] bg-gradient-to-br from-[#FCFBFF] to-[#F6F2FF] p-4 text-left transition hover:-translate-y-1 hover:shadow-md dark:border-violet-900/30 dark:from-[#211D35] dark:to-[#171B2A]"
                       >
-                        {lecturaPausada ? (
-                          <Play />
-                        ) : (
-                          <Pause />
-                        )}
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0ECFF] text-[#7652D9] dark:bg-violet-950/30 dark:text-violet-200">
+                          <ClipboardCheck size={19} />
+                        </div>
+                        <p className="mt-4 text-xs font-black">
+                          Crear quiz
+                        </p>
+                        <p className="mt-1 text-[10px] leading-4 text-[#7A8CA2] dark:text-slate-400">
+                          Pon a prueba lo aprendido
+                        </p>
                       </button>
 
                       <button
-                        onClick={
-                          detenerLectura
+                        onClick={() =>
+                          mostrarNotificacion(
+                            "Flashcards se generarán desde este resumen próximamente."
+                          )
                         }
-                        className="rounded-full bg-white p-3 text-[#7652D9]"
+                        className="group min-h-[132px] rounded-2xl border border-[#CFE9DC] bg-gradient-to-br from-[#FBFFFD] to-[#F2FBF7] p-4 text-left transition hover:-translate-y-1 hover:shadow-md dark:border-green-900/30 dark:from-[#132A25] dark:to-[#15221F]"
                       >
-                        <Square />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF9F1] text-[#26A66B] dark:bg-green-950/20 dark:text-green-300">
+                          <Layers size={19} />
+                        </div>
+                        <p className="mt-4 text-xs font-black">
+                          Generar flashcards
+                        </p>
+                        <p className="mt-1 text-[10px] leading-4 text-[#7A8CA2] dark:text-slate-400">
+                          Tarjetas para repasar
+                        </p>
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          mostrarNotificacion(
+                            "Mapa mental estará disponible próximamente."
+                          )
+                        }
+                        className="group min-h-[132px] rounded-2xl border border-[#CDE4F7] bg-gradient-to-br from-[#FBFDFF] to-[#F3FAFF] p-4 text-left transition hover:-translate-y-1 hover:shadow-md dark:border-blue-900/30 dark:from-[#15283A] dark:to-[#142132]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF6FF] text-[#1687D9] dark:bg-blue-950/30 dark:text-blue-300">
+                          <BrainCircuit size={19} />
+                        </div>
+                        <p className="mt-4 text-xs font-black">
+                          Mapa mental
+                        </p>
+                        <p className="mt-1 text-[10px] leading-4 text-[#7A8CA2] dark:text-slate-400">
+                          Visualiza los conceptos
+                        </p>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (!esPremium) {
+                            setMostrarPremium(true);
+                            return;
+                          }
+                          mostrarNotificacion(
+                            "Explícamelo fácil estará disponible próximamente."
+                          );
+                        }}
+                        className="group min-h-[132px] rounded-2xl border border-[#F1DDC9] bg-gradient-to-br from-[#FFFEFC] to-[#FFF8F1] p-4 text-left transition hover:-translate-y-1 hover:shadow-md dark:border-orange-900/30 dark:from-[#2B221B] dark:to-[#211B18]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF2E6] text-orange-500 dark:bg-orange-950/20 dark:text-orange-300">
+                          <MessageCircle size={19} />
+                        </div>
+                        <p className="mt-4 text-xs font-black">
+                          Explícamelo fácil
+                        </p>
+                        <p className="mt-1 text-[10px] leading-4 text-[#7A8CA2] dark:text-slate-400">
+                          En lenguaje sencillo
+                        </p>
                       </button>
                     </div>
-                  </div>
-                )}
-              </aside>
+                  </section>
+
+                  <section className="rounded-[24px] border border-[#E3EAF3] bg-white p-5 shadow-[0_12px_30px_rgba(38,78,125,0.05)] dark:border-slate-700 dark:bg-[#182437]">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-black">
+                        Progreso de estudio
+                      </h2>
+                      <Sparkles size={17} className="text-[#7652D9]" />
+                    </div>
+
+                    <div className="mt-5 flex items-end justify-between">
+                      <p className="text-sm font-bold text-[#506C88] dark:text-slate-300">
+                        Resumen completado
+                      </p>
+                      <span className="text-2xl font-black text-[#1769E0]">
+                        80%
+                      </span>
+                    </div>
+
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#E8EDF5] dark:bg-slate-700">
+                      <div className="h-full w-[80%] rounded-full bg-gradient-to-r from-[#4169F2] to-[#7652D9]" />
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      {[
+                        "Material subido y analizado",
+                        "Resumen generado",
+                        "Listo para estudiar",
+                      ].map((paso, indice) => (
+                        <div key={paso} className="flex items-center gap-3">
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                              indice < 2
+                                ? "border-[#26A66B] bg-[#EAF9F1] text-[#26A66B] dark:bg-green-950/20"
+                                : "border-[#7652D9] text-[#7652D9]"
+                            }`}
+                          >
+                            {indice < 2 && (
+                              <Check size={12} strokeWidth={3} />
+                            )}
+                          </span>
+                          <p className="text-xs text-[#7188A2] dark:text-slate-300">
+                            {paso}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="relative overflow-hidden rounded-[24px] border border-[#E3EAF3] bg-gradient-to-r from-[#F6FBFF] to-[#F6F0FF] p-5 dark:border-slate-700 dark:from-[#16304D] dark:to-[#28243E]">
+                    <div className="relative z-10 max-w-[190px]">
+                      <p className="font-black text-[#1769E0] dark:text-blue-200">
+                        ¡Vas excelente! 🎉
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-[#7188A2] dark:text-slate-300">
+                        Sigue estudiando y refuerza tu conocimiento con las herramientas interactivas.
+                      </p>
+                    </div>
+
+                    <Image
+                      src="/raccoon.png"
+                      alt="Raccoon"
+                      width={95}
+                      height={95}
+                      className="absolute bottom-0 right-1 h-[88px] w-[88px] object-contain"
+                    />
+                  </section>
+
+                  {/* LECTOR ACTIVO */}
+                  {leyendo && (
+                    <section className="rounded-[24px] border border-[#DDD5FF] bg-gradient-to-br from-[#F5F1FF] to-[#EEF7FF] p-5 dark:border-violet-900/40 dark:from-[#2A2345] dark:to-[#16304D]">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7652D9] text-white">
+                          <Volume2 size={18} />
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-black">
+                            Leyendo resumen
+                          </p>
+                          <p className="mt-1 text-[10px] text-[#7188A2] dark:text-slate-300">
+                            Puedes pausar o detener.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <button
+                          onClick={pausarLectura}
+                          className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-3 text-xs font-black text-[#6548E8] shadow-sm dark:bg-slate-800 dark:text-violet-200"
+                        >
+                          {lecturaPausada ? (
+                            <Play size={16} />
+                          ) : (
+                            <Pause size={16} />
+                          )}
+
+                          {lecturaPausada
+                            ? "Continuar"
+                            : "Pausar"}
+                        </button>
+
+                        <button
+                          onClick={detenerLectura}
+                          className="flex items-center justify-center gap-2 rounded-xl bg-[#7652D9] px-3 py-3 text-xs font-black text-white"
+                        >
+                          <Square size={15} />
+                          Detener
+                        </button>
+                      </div>
+                    </section>
+                  )}
+
+                </aside>
+              </div>
             </section>
           ) : (
             <section className="mt-8">
@@ -2593,7 +3248,7 @@ export default function ResumenesPage() {
             </h2>
 
             <p className="mt-3 text-[#6085A5]">
-              Desbloquea Deezer y el lector en voz alta.
+              Desbloquea resúmenes completos, modo examen, mayor profundidad y herramientas avanzadas.
             </p>
 
             <Link
@@ -2607,7 +3262,7 @@ export default function ResumenesPage() {
       )}
 
       <audio
-        ref={audioGratisRef}
+        ref={audioGratisElementRef}
         onPlay={() =>
           setMusicaGratisActiva(true)
         }
