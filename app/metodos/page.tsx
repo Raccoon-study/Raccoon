@@ -20,6 +20,8 @@ import {
   Clock3,
   FileText,
   Layers3,
+  Network,
+  Lock,
   Check,
   ChevronRight,
 } from "lucide-react";
@@ -34,6 +36,7 @@ type Metodo = {
   etiqueta: string;
   href: string;
   pasos: string[];
+  premium?: boolean;
 };
 
 export default function MetodosPage() {
@@ -139,6 +142,23 @@ export default function MetodosPage() {
         "Crea tus tarjetas",
         "Repasa una pregunta",
         "Comprueba tu respuesta",
+      ],
+    },
+    {
+      id: "organizadores-visuales",
+      nombre: "Organizadores visuales",
+      descripcion:
+        "Convierte tus materiales en mapas mentales, mapas conceptuales, líneas de tiempo, diagramas de flujo y otros esquemas visuales.",
+      icono: <Network size={30} />,
+      color: "#22B983",
+      fondo: "#E8FAF3",
+      etiqueta: "Organización",
+      href: "/metodos/organizadores",
+      premium: true,
+      pasos: [
+        "Elige uno de tus materiales",
+        "Selecciona el organizador visual",
+        "Genera y personaliza con IA",
       ],
     },
   ];
@@ -532,91 +552,177 @@ export default function MetodosPage() {
             </h2>
 
             <p className="mt-2 text-sm text-[#52709B] dark:text-slate-400">
-              Tres formas fáciles de mejorar tu manera de estudiar.
+              Explora distintas formas de estudiar, comprender y organizar mejor tus materiales.
             </p>
           </div>
 
           {/* CARDS */}
 
-          <section className="grid gap-6 lg:grid-cols-3">
-            {metodos.map((metodo) => (
-              <Link
-                key={metodo.id}
-                href={metodo.href}
-                className="group relative overflow-hidden rounded-[28px] bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl dark:bg-[#182437]"
-              >
-                <div
-                  className="absolute -right-12 -top-12 h-36 w-36 rounded-full opacity-60"
-                  style={{
-                    backgroundColor: metodo.fondo,
-                  }}
-                />
+          <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {metodos.map((metodo) => {
+              const bloqueado =
+                metodo.premium === true &&
+                !perfil.premium;
 
-                <div className="relative">
-                  <div className="flex items-start justify-between">
-                    <div
-                      className="flex h-16 w-16 items-center justify-center rounded-2xl"
-                      style={{
-                        backgroundColor: metodo.fondo,
-                        color: metodo.color,
-                      }}
-                    >
-                      {metodo.icono}
-                    </div>
+              const destino = bloqueado
+                ? "/suscripcion"
+                : metodo.href;
 
-                    <span
-                      className="rounded-full px-3 py-1 text-xs font-black"
-                      style={{
-                        backgroundColor: metodo.fondo,
-                        color: metodo.color,
-                      }}
-                    >
-                      {metodo.etiqueta}
-                    </span>
-                  </div>
-
-                  <h3 className="mt-6 text-2xl font-black">
-                    {metodo.nombre}
-                  </h3>
-
-                  <p className="mt-3 min-h-[75px] text-sm leading-6 text-[#52709B] dark:text-slate-400">
-                    {metodo.descripcion}
-                  </p>
-
-                  <div className="mt-6 space-y-3">
-                    {metodo.pasos.map((paso, index) => (
-                      <div
-                        key={paso}
-                        className="flex items-center gap-3 text-sm font-semibold"
-                      >
-                        <div
-                          className="flex h-6 w-6 items-center justify-center rounded-full text-white"
-                          style={{
-                            backgroundColor: metodo.color,
-                          }}
-                        >
-                          <Check size={14} />
-                        </div>
-
-                        {paso}
-                      </div>
-                    ))}
-                  </div>
-
+              return (
+                <Link
+                  key={metodo.id}
+                  href={destino}
+                  className="
+                    group
+                    relative
+                    overflow-hidden
+                    rounded-[28px]
+                    border
+                    border-[#E8EEF6]
+                    bg-white
+                    p-6
+                    shadow-sm
+                    transition
+                    duration-300
+                    hover:-translate-y-2
+                    hover:shadow-xl
+                    dark:border-slate-700
+                    dark:bg-[#182437]
+                  "
+                >
                   <div
-                    className="mt-7 flex items-center justify-between rounded-xl px-4 py-3 text-sm font-black transition group-hover:gap-3"
+                    className="absolute -right-12 -top-12 h-36 w-36 rounded-full opacity-60"
                     style={{
                       backgroundColor: metodo.fondo,
-                      color: metodo.color,
                     }}
-                  >
-                    Explorar método
+                  />
 
-                    <ChevronRight size={19} />
+                  {metodo.premium && (
+                    <div
+                      className="
+                        absolute
+                        right-4
+                        top-4
+                        z-10
+                        flex
+                        items-center
+                        gap-1.5
+                        rounded-full
+                        bg-gradient-to-r
+                        from-[#FFC84D]
+                        to-[#FF9F43]
+                        px-3
+                        py-1.5
+                        text-[10px]
+                        font-black
+                        uppercase
+                        tracking-wide
+                        text-white
+                        shadow-md
+                      "
+                    >
+                      <Crown size={12} />
+                      Premium
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <div className="flex items-start justify-between">
+                      <div
+                        className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                        style={{
+                          backgroundColor: metodo.fondo,
+                          color: metodo.color,
+                        }}
+                      >
+                        {metodo.icono}
+                      </div>
+
+                      {!metodo.premium && (
+                        <span
+                          className="rounded-full px-3 py-1 text-xs font-black"
+                          style={{
+                            backgroundColor: metodo.fondo,
+                            color: metodo.color,
+                          }}
+                        >
+                          {metodo.etiqueta}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-2">
+                      <h3 className="text-2xl font-black">
+                        {metodo.nombre}
+                      </h3>
+
+                      {bloqueado && (
+                        <Lock
+                          size={17}
+                          className="shrink-0 text-[#FFAA2B]"
+                        />
+                      )}
+                    </div>
+
+                    <p className="mt-3 min-h-[92px] text-sm leading-6 text-[#52709B] dark:text-slate-400">
+                      {metodo.descripcion}
+                    </p>
+
+                    <div className="mt-6 space-y-3">
+                      {metodo.pasos.map((paso) => (
+                        <div
+                          key={paso}
+                          className="flex items-center gap-3 text-sm font-semibold"
+                        >
+                          <div
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white"
+                            style={{
+                              backgroundColor: metodo.color,
+                            }}
+                          >
+                            <Check size={14} />
+                          </div>
+
+                          {paso}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div
+                      className="
+                        mt-7
+                        flex
+                        items-center
+                        justify-between
+                        rounded-xl
+                        px-4
+                        py-3
+                        text-sm
+                        font-black
+                        transition
+                        group-hover:gap-3
+                      "
+                      style={{
+                        backgroundColor: metodo.fondo,
+                        color: metodo.color,
+                      }}
+                    >
+                      {bloqueado
+                        ? "Desbloquear Premium"
+                        : metodo.premium
+                          ? "Abrir organizadores"
+                          : "Explorar método"}
+
+                      {bloqueado ? (
+                        <Lock size={17} />
+                      ) : (
+                        <ChevronRight size={19} />
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </section>
 
           {/* BANNER INFERIOR */}

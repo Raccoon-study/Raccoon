@@ -18,9 +18,13 @@ import {
   BadgeCheck,
   Bell,
   Bot,
+  CalendarDays,
+  CalendarPlus,
   Brain,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   Clock3,
   Crown,
@@ -35,14 +39,17 @@ import {
   LogOut,
   MapPin,
   Menu,
+  Mail,
   MessageCircle,
   MessagesSquare,
   Moon,
+  Plus,
   Search,
   Shield,
   Sparkles,
   Sun,
   Timer,
+  Trash2,
   Trophy,
   Upload,
   User,
@@ -154,6 +161,37 @@ interface MetricasEstudio {
 interface RevisionActiva {
   material: Material;
   inicio: number;
+}
+
+type TipoEventoCalendario =
+  | "parcial"
+  | "tarea"
+  | "estudio"
+  | "proyecto"
+  | "otro";
+
+interface EventoCalendario {
+  id: string;
+  usuario_id: string;
+  material_id: string | null;
+  titulo: string;
+  tipo: TipoEventoCalendario;
+  fecha_evento: string;
+  hora_evento: string | null;
+  notas: string;
+  recordatorio_activo: boolean;
+  recordatorio_dias_antes: number;
+  creado_en: string;
+}
+
+interface NotificacionCalendario {
+  id: string;
+  usuario_id: string;
+  evento_id: string | null;
+  titulo: string;
+  mensaje: string;
+  leida: boolean;
+  creado_en: string;
 }
 
 /* =====================================================
@@ -842,6 +880,158 @@ function formatearTiempo(
   )} h`;
 }
 
+
+function normalizarTipoEvento(
+  valor: unknown
+): TipoEventoCalendario {
+  const tipo = String(valor || "").toLowerCase();
+
+  if (
+    tipo === "parcial" ||
+    tipo === "tarea" ||
+    tipo === "estudio" ||
+    tipo === "proyecto"
+  ) {
+    return tipo;
+  }
+
+  return "otro";
+}
+
+function normalizarEventoCalendario(
+  dato: Record<string, unknown>
+): EventoCalendario {
+  return {
+    id: String(dato.id || ""),
+    usuario_id: String(dato.usuario_id || ""),
+    material_id:
+      dato.material_id === null ||
+      dato.material_id === undefined
+        ? null
+        : String(dato.material_id),
+    titulo: textoSeguro(
+      dato.titulo,
+      "Evento de estudio"
+    ),
+    tipo: normalizarTipoEvento(dato.tipo),
+    fecha_evento: textoSeguro(
+      dato.fecha_evento,
+      claveFechaLocal(new Date())
+    ),
+    hora_evento:
+      typeof dato.hora_evento === "string"
+        ? dato.hora_evento
+        : null,
+    notas: textoSeguro(dato.notas),
+    recordatorio_activo:
+      dato.recordatorio_activo !== false,
+    recordatorio_dias_antes:
+      Math.max(
+        0,
+        numeroSeguro(
+          dato.recordatorio_dias_antes,
+          1
+        )
+      ),
+    creado_en: textoSeguro(
+      dato.creado_en,
+      new Date().toISOString()
+    ),
+  };
+}
+
+function normalizarNotificacionCalendario(
+  dato: Record<string, unknown>
+): NotificacionCalendario {
+  return {
+    id: String(dato.id || ""),
+    usuario_id: String(dato.usuario_id || ""),
+    evento_id:
+      dato.evento_id === null ||
+      dato.evento_id === undefined
+        ? null
+        : String(dato.evento_id),
+    titulo: textoSeguro(
+      dato.titulo,
+      "Recordatorio"
+    ),
+    mensaje: textoSeguro(
+      dato.mensaje,
+      "Tienes una fecha próxima."
+    ),
+    leida: dato.leida === true,
+    creado_en: textoSeguro(
+      dato.creado_en,
+      new Date().toISOString()
+    ),
+  };
+}
+
+function fechaISODesdePartes(
+  año: number,
+  mes: number,
+  dia: number
+): string {
+  const fecha = new Date(año, mes, dia);
+  return claveFechaLocal(fecha);
+}
+
+function obtenerDiasMesCalendario(
+  fechaBase: Date
+): {
+  fecha: string;
+  dia: number;
+  delMes: boolean;
+}[] {
+  const año = fechaBase.getFullYear();
+  const mes = fechaBase.getMonth();
+  const primero = new Date(año, mes, 1);
+
+  // Lunes = 0 ... domingo = 6
+  const desplazamiento =
+    primero.getDay() === 0
+      ? 6
+      : primero.getDay() - 1;
+
+  const inicio = new Date(
+    año,
+    mes,
+    1 - desplazamiento
+  );
+
+  return Array.from(
+    { length: 42 },
+    (_, indice) => {
+      const fecha = new Date(inicio);
+      fecha.setDate(
+        inicio.getDate() + indice
+      );
+
+      return {
+        fecha: claveFechaLocal(fecha),
+        dia: fecha.getDate(),
+        delMes: fecha.getMonth() === mes,
+      };
+    }
+  );
+}
+
+function tituloTipoEvento(
+  tipo: TipoEventoCalendario
+): string {
+  if (tipo === "parcial") return "Parcial";
+  if (tipo === "tarea") return "Tarea";
+  if (tipo === "estudio") return "Estudio";
+  if (tipo === "proyecto") return "Proyecto";
+  return "Otro";
+}
+
+function quitarExtensionArchivo(
+  nombre: string
+): string {
+  return nombre.replace(/\.[^/.]+$/, "");
+}
+
 /* =====================================================
    COMPONENTE
 ===================================================== */
@@ -1004,9 +1194,112 @@ export default function Dashboard() {
   ] = useState(false);
 
   const [
+    hidratado,
+    setHidratado,
+  ] = useState(false);
+
+  const [
     notificacion,
     setNotificacion,
   ] = useState("");
+
+  /* CALENDARIO Y RECORDATORIOS */
+
+  const [
+    eventosCalendario,
+    setEventosCalendario,
+  ] = useState<EventoCalendario[]>([]);
+
+  const [
+    notificacionesCalendario,
+    setNotificacionesCalendario,
+  ] = useState<NotificacionCalendario[]>([]);
+
+  const [
+    cargandoCalendario,
+    setCargandoCalendario,
+  ] = useState(true);
+
+  const [
+    mesCalendario,
+    setMesCalendario,
+  ] = useState(
+    new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    )
+  );
+
+  const [
+    fechaSeleccionadaCalendario,
+    setFechaSeleccionadaCalendario,
+  ] = useState(
+    claveFechaLocal(new Date())
+  );
+
+  const [
+    mostrarModalCalendario,
+    setMostrarModalCalendario,
+  ] = useState(false);
+
+  const [
+    materialParaCalendario,
+    setMaterialParaCalendario,
+  ] = useState<Material | null>(null);
+
+  const [
+    tituloEvento,
+    setTituloEvento,
+  ] = useState("");
+
+  const [
+    tipoEvento,
+    setTipoEvento,
+  ] = useState<TipoEventoCalendario>("parcial");
+
+  const [
+    fechaEvento,
+    setFechaEvento,
+  ] = useState("");
+
+  const [
+    horaEvento,
+    setHoraEvento,
+  ] = useState("");
+
+  const [
+    notasEvento,
+    setNotasEvento,
+  ] = useState("");
+
+  const [
+    recordatorioActivo,
+    setRecordatorioActivo,
+  ] = useState(true);
+
+  const [
+    recordatorioDias,
+    setRecordatorioDias,
+  ] = useState(1);
+
+  const [
+    guardandoEvento,
+    setGuardandoEvento,
+  ] = useState(false);
+
+  const [
+    notificacionesAbiertas,
+    setNotificacionesAbiertas,
+  ] = useState(false);
+
+  /* =====================================================
+     HIDRATACIÓN
+  ===================================================== */
+
+  useEffect(() => {
+    setHidratado(true);
+  }, []);
 
   /* =====================================================
      INICIAR
@@ -1029,6 +1322,9 @@ export default function Dashboard() {
             usuarioId
           ),
           obtenerChatsRecientes(
+            usuarioId
+          ),
+          obtenerCalendario(
             usuarioId
           ),
         ]);
@@ -2109,6 +2405,368 @@ export default function Dashboard() {
     };
 
   /* =====================================================
+     CALENDARIO
+  ===================================================== */
+
+  const obtenerCalendario =
+    async (
+      usuarioId: string
+    ) => {
+      try {
+        setCargandoCalendario(true);
+
+        const [
+          eventosRespuesta,
+          notificacionesRespuesta,
+        ] = await Promise.all([
+          supabase
+            .from("calendar_events")
+            .select("*")
+            .eq(
+              "usuario_id",
+              usuarioId
+            )
+            .order(
+              "fecha_evento",
+              { ascending: true }
+            ),
+
+          supabase
+            .from("calendar_notifications")
+            .select("*")
+            .eq(
+              "usuario_id",
+              usuarioId
+            )
+            .order(
+              "creado_en",
+              { ascending: false }
+            )
+            .limit(20),
+        ]);
+
+        if (eventosRespuesta.error) {
+          console.warn(
+            "No se cargó el calendario:",
+            eventosRespuesta.error.message
+          );
+        } else {
+          setEventosCalendario(
+            (eventosRespuesta.data || []).map(
+              (evento) =>
+                normalizarEventoCalendario(
+                  evento as Record<
+                    string,
+                    unknown
+                  >
+                )
+            )
+          );
+        }
+
+        if (
+          notificacionesRespuesta.error
+        ) {
+          console.warn(
+            "No se cargaron notificaciones:",
+            notificacionesRespuesta.error
+              .message
+          );
+        } else {
+          setNotificacionesCalendario(
+            (
+              notificacionesRespuesta.data ||
+              []
+            ).map((item) =>
+              normalizarNotificacionCalendario(
+                item as Record<
+                  string,
+                  unknown
+                >
+              )
+            )
+          );
+        }
+      } finally {
+        setCargandoCalendario(false);
+      }
+    };
+
+  const abrirCalendarioPara =
+    (
+      material: Material | null = null,
+      fechaInicial?: string
+    ) => {
+      const mañana = new Date();
+      mañana.setDate(
+        mañana.getDate() + 1
+      );
+
+      setMaterialParaCalendario(
+        material
+      );
+
+      setTituloEvento(
+        material
+          ? `Estudiar ${quitarExtensionArchivo(
+              material.nombre_archivo
+            )}`
+          : ""
+      );
+
+      setTipoEvento(
+        material
+          ? "estudio"
+          : "parcial"
+      );
+
+      setFechaEvento(
+        fechaInicial ||
+          claveFechaLocal(mañana)
+      );
+
+      setHoraEvento("18:00");
+      setNotasEvento("");
+      setRecordatorioActivo(true);
+      setRecordatorioDias(1);
+      setMostrarModalCalendario(true);
+      setNotificacionesAbiertas(false);
+    };
+
+  const guardarEventoCalendario =
+    async () => {
+      if (
+        !tituloEvento.trim() ||
+        !fechaEvento
+      ) {
+        mostrarNotificacion(
+          "Agrega un título y una fecha."
+        );
+        return;
+      }
+
+      try {
+        setGuardandoEvento(true);
+
+        const {
+          data: { user },
+        } =
+          await supabase.auth.getUser();
+
+        if (!user) {
+          router.replace("/Login");
+          return;
+        }
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("calendar_events")
+          .insert({
+            usuario_id: user.id,
+            material_id:
+              materialParaCalendario?.id ||
+              null,
+            titulo: tituloEvento.trim(),
+            tipo: tipoEvento,
+            fecha_evento: fechaEvento,
+            hora_evento:
+              horaEvento || null,
+            notas: notasEvento.trim(),
+            recordatorio_activo:
+              recordatorioActivo,
+            recordatorio_dias_antes:
+              recordatorioDias,
+          })
+          .select("*")
+          .single();
+
+        if (error) {
+          throw new Error(
+            error.message
+          );
+        }
+
+        if (data) {
+          const nuevoEvento =
+            normalizarEventoCalendario(
+              data as Record<
+                string,
+                unknown
+              >
+            );
+
+          setEventosCalendario(
+            (actuales) =>
+              [...actuales, nuevoEvento].sort(
+                (a, b) =>
+                  a.fecha_evento.localeCompare(
+                    b.fecha_evento
+                  )
+              )
+          );
+
+          setFechaSeleccionadaCalendario(
+            nuevoEvento.fecha_evento
+          );
+
+          const fechaNueva =
+            new Date(
+              `${nuevoEvento.fecha_evento}T12:00:00`
+            );
+
+          setMesCalendario(
+            new Date(
+              fechaNueva.getFullYear(),
+              fechaNueva.getMonth(),
+              1
+            )
+          );
+        }
+
+        setMostrarModalCalendario(false);
+        setMaterialParaCalendario(null);
+
+        mostrarNotificacion(
+          recordatorioActivo
+            ? "Fecha agregada. Te recordaremos cuando se acerque."
+            : "Fecha agregada al calendario."
+        );
+      } catch (error) {
+        console.error(
+          "Error guardando fecha:",
+          error
+        );
+
+        mostrarNotificacion(
+          error instanceof Error
+            ? error.message
+            : "No se pudo guardar la fecha."
+        );
+      } finally {
+        setGuardandoEvento(false);
+      }
+    };
+
+  const eliminarEventoCalendario =
+    async (
+      evento: EventoCalendario
+    ) => {
+      try {
+        const {
+          data: { user },
+        } =
+          await supabase.auth.getUser();
+
+        if (!user) return;
+
+        const { error } =
+          await supabase
+            .from("calendar_events")
+            .delete()
+            .eq("id", evento.id)
+            .eq(
+              "usuario_id",
+              user.id
+            );
+
+        if (error) {
+          throw new Error(
+            error.message
+          );
+        }
+
+        setEventosCalendario(
+          (actuales) =>
+            actuales.filter(
+              (item) =>
+                item.id !== evento.id
+            )
+        );
+
+        mostrarNotificacion(
+          "Fecha eliminada."
+        );
+      } catch (error) {
+        mostrarNotificacion(
+          error instanceof Error
+            ? error.message
+            : "No se pudo eliminar la fecha."
+        );
+      }
+    };
+
+  const marcarNotificacionLeida =
+    async (
+      notificacionId: string
+    ) => {
+      const { error } =
+        await supabase
+          .from("calendar_notifications")
+          .update({
+            leida: true,
+          })
+          .eq(
+            "id",
+            notificacionId
+          );
+
+      if (!error) {
+        setNotificacionesCalendario(
+          (actuales) =>
+            actuales.map(
+              (item) =>
+                item.id ===
+                notificacionId
+                  ? {
+                      ...item,
+                      leida: true,
+                    }
+                  : item
+            )
+        );
+      }
+    };
+
+  const marcarTodasLeidas =
+    async () => {
+      const {
+        data: { user },
+      } =
+        await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { error } =
+        await supabase
+          .from("calendar_notifications")
+          .update({
+            leida: true,
+          })
+          .eq(
+            "usuario_id",
+            user.id
+          )
+          .eq(
+            "leida",
+            false
+          );
+
+      if (!error) {
+        setNotificacionesCalendario(
+          (actuales) =>
+            actuales.map(
+              (item) => ({
+                ...item,
+                leida: true,
+              })
+            )
+        );
+      }
+    };
+
+  /* =====================================================
      SUBIR MATERIAL
   ===================================================== */
 
@@ -2801,6 +3459,21 @@ export default function Dashboard() {
      INTERFAZ
   ===================================================== */
 
+  if (!hidratado) {
+    return (
+      <main className="min-h-screen bg-[#F5F9FF] text-[#10233F] dark:bg-[#07111F] dark:text-white">
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#DDEAF7] border-t-[#55A8E8] dark:border-slate-700 dark:border-t-[#7771E8]" />
+            <p className="text-sm font-bold text-[#6085A5] dark:text-slate-300">
+              Cargando Raccoon Study...
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F5F9FF] text-[#10233F] transition-colors duration-500 dark:bg-[#07111F] dark:text-white">
       {menuAbierto && (
@@ -3054,18 +3727,125 @@ export default function Dashboard() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                mostrarNotificacion(
-                  "No tienes notificaciones nuevas."
-                )
-              }
-              className="flex h-10 w-10 items-center justify-center rounded-full text-[#55A8E8] transition hover:bg-[#EFF8FF] dark:hover:bg-slate-800"
-              aria-label="Notificaciones"
-            >
-              <Bell size={21} />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotificacionesAbiertas(
+                    !notificacionesAbiertas
+                  );
+                  setPerfilAbierto(false);
+                }}
+                className="relative flex h-10 w-10 items-center justify-center rounded-full text-[#55A8E8] transition hover:bg-[#EFF8FF] dark:hover:bg-slate-800"
+                aria-label="Notificaciones"
+              >
+                <Bell size={21} />
+
+                {notificacionesCalendario.filter(
+                  (item) => !item.leida
+                ).length > 0 && (
+                  <span className="absolute right-0.5 top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#FF5868] px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#0D1828]">
+                    {Math.min(
+                      9,
+                      notificacionesCalendario.filter(
+                        (item) => !item.leida
+                      ).length
+                    )}
+                  </span>
+                )}
+              </button>
+
+              {notificacionesAbiertas && (
+                <div className="absolute right-0 top-14 z-[80] w-[min(92vw,380px)] overflow-hidden rounded-[22px] border border-[#E3EBF5] bg-white shadow-2xl dark:border-slate-700 dark:bg-[#111E31]">
+                  <div className="flex items-center justify-between border-b border-[#EDF2F7] px-5 py-4 dark:border-slate-700">
+                    <div>
+                      <h3 className="font-black">
+                        Notificaciones
+                      </h3>
+                      <p className="mt-0.5 text-[11px] text-[#7890A8] dark:text-slate-400">
+                        Fechas y recordatorios de estudio
+                      </p>
+                    </div>
+
+                    {notificacionesCalendario.some(
+                      (item) => !item.leida
+                    ) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void marcarTodasLeidas()
+                        }
+                        className="text-[11px] font-black text-[#1687D9]"
+                      >
+                        Marcar leídas
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-[360px] overflow-y-auto p-2">
+                    {notificacionesCalendario.length ===
+                    0 ? (
+                      <div className="px-5 py-9 text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF7FF] text-[#55A8E8] dark:bg-[#17304B]">
+                          <Bell size={23} />
+                        </div>
+
+                        <p className="mt-3 text-sm font-black">
+                          Todo al día
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-[#7890A8] dark:text-slate-400">
+                          Tus recordatorios aparecerán aquí cuando se acerque una fecha.
+                        </p>
+                      </div>
+                    ) : (
+                      notificacionesCalendario.map(
+                        (item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              void marcarNotificacionLeida(
+                                item.id
+                              )
+                            }
+                            className={`mb-1 w-full rounded-2xl p-3 text-left transition hover:bg-[#F5F9FD] dark:hover:bg-slate-800 ${
+                              item.leida
+                                ? "opacity-65"
+                                : "bg-[#F2F8FF] dark:bg-[#172840]"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#55A8E8] to-[#7652D9] text-white">
+                                <CalendarDays
+                                  size={17}
+                                />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-black">
+                                  {item.titulo}
+                                </p>
+
+                                <p className="mt-1 text-xs leading-5 text-[#6085A5] dark:text-slate-300">
+                                  {item.mensaje}
+                                </p>
+
+                                <p className="mt-1 text-[10px] text-[#93A5B7]">
+                                  {formatearFechaChat(
+                                    item.creado_en
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="relative">
               <button
@@ -3338,7 +4118,7 @@ export default function Dashboard() {
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-[#6085A5] dark:text-slate-400">
-                      Después de subirlo podrás elegir Pomodoro, Resumen, Quiz o Flashcards.
+                      Después de subirlo podrás elegir cómo estudiarlo y agregar una fecha al calendario.
                     </p>
                   </div>
 
@@ -3730,6 +4510,290 @@ export default function Dashboard() {
                 </p>
               </section>
 
+              {/* CALENDARIO */}
+
+              <section className="rounded-[24px] border border-[#E4EDF7] bg-white p-5 shadow-[0_12px_32px_rgba(36,76,125,0.05)] dark:border-[#26364D] dark:bg-[#111E31] sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CalendarDays
+                        size={20}
+                        className="text-[#7652D9]"
+                      />
+
+                      <h2 className="text-xl font-black">
+                        Calendario
+                      </h2>
+                    </div>
+
+                    <p className="mt-1 text-[11px] text-[#7890A8] dark:text-slate-400">
+                      Parciales, tareas y sesiones de estudio.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      abrirCalendarioPara()
+                    }
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#55A8E8] to-[#7652D9] text-white shadow-lg shadow-[#7652D9]/20"
+                    aria-label="Agregar fecha"
+                  >
+                    <Plus size={19} />
+                  </button>
+                </div>
+
+                <div className="mt-5 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMesCalendario(
+                        new Date(
+                          mesCalendario.getFullYear(),
+                          mesCalendario.getMonth() -
+                            1,
+                          1
+                        )
+                      )
+                    }
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6085A5] hover:bg-[#F1F7FD] dark:hover:bg-slate-800"
+                    aria-label="Mes anterior"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <p className="text-sm font-black capitalize">
+                    {mesCalendario.toLocaleDateString(
+                      "es-PA",
+                      {
+                        month: "long",
+                        year: "numeric",
+                      }
+                    )}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMesCalendario(
+                        new Date(
+                          mesCalendario.getFullYear(),
+                          mesCalendario.getMonth() +
+                            1,
+                          1
+                        )
+                      )
+                    }
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6085A5] hover:bg-[#F1F7FD] dark:hover:bg-slate-800"
+                    aria-label="Mes siguiente"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-7 gap-1 text-center">
+                  {[
+                    "L",
+                    "M",
+                    "X",
+                    "J",
+                    "V",
+                    "S",
+                    "D",
+                  ].map((dia) => (
+                    <span
+                      key={dia}
+                      className="py-1 text-[10px] font-black text-[#8AA0B6]"
+                    >
+                      {dia}
+                    </span>
+                  ))}
+
+                  {obtenerDiasMesCalendario(
+                    mesCalendario
+                  ).map((dia) => {
+                    const eventosDia =
+                      eventosCalendario.filter(
+                        (evento) =>
+                          evento.fecha_evento ===
+                          dia.fecha
+                      );
+
+                    const seleccionado =
+                      fechaSeleccionadaCalendario ===
+                      dia.fecha;
+
+                    const hoy =
+                      claveFechaLocal(
+                        new Date()
+                      ) === dia.fecha;
+
+                    return (
+                      <button
+                        key={dia.fecha}
+                        type="button"
+                        onClick={() =>
+                          setFechaSeleccionadaCalendario(
+                            dia.fecha
+                          )
+                        }
+                        className={`
+                          relative flex aspect-square min-h-8 items-center justify-center rounded-xl text-[11px] font-bold transition
+                          ${
+                            seleccionado
+                              ? "bg-gradient-to-br from-[#55A8E8] to-[#7652D9] text-white shadow-md"
+                              : hoy
+                                ? "bg-[#EAF5FF] text-[#1687D9] dark:bg-[#17304B]"
+                                : dia.delMes
+                                  ? "hover:bg-[#F3F8FD] dark:hover:bg-slate-800"
+                                  : "text-[#BCC8D3] opacity-55"
+                          }
+                        `}
+                      >
+                        {dia.dia}
+
+                        {eventosDia.length >
+                          0 && (
+                          <span
+                            className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${
+                              seleccionado
+                                ? "bg-white"
+                                : eventosDia.some(
+                                      (evento) =>
+                                        evento.tipo ===
+                                        "parcial"
+                                    )
+                                  ? "bg-[#FF5868]"
+                                  : "bg-[#7652D9]"
+                            }`}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 border-t border-[#EDF2F7] pt-4 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black">
+                      {new Date(
+                        `${fechaSeleccionadaCalendario}T12:00:00`
+                      ).toLocaleDateString(
+                        "es-PA",
+                        {
+                          day: "numeric",
+                          month: "long",
+                        }
+                      )}
+                    </p>
+
+                    {cargandoCalendario && (
+                      <LoaderCircle
+                        size={14}
+                        className="animate-spin text-[#55A8E8]"
+                      />
+                    )}
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {eventosCalendario.filter(
+                      (evento) =>
+                        evento.fecha_evento ===
+                        fechaSeleccionadaCalendario
+                    ).length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          abrirCalendarioPara(
+                            null,
+                            fechaSeleccionadaCalendario
+                          )
+                        }
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#C9DAEA] px-3 py-3 text-xs font-bold text-[#6085A5] transition hover:border-[#55A8E8] hover:text-[#1687D9] dark:border-slate-700"
+                      >
+                        <CalendarPlus
+                          size={15}
+                        />
+                        Agregar algo para este día
+                      </button>
+                    ) : (
+                      eventosCalendario
+                        .filter(
+                          (evento) =>
+                            evento.fecha_evento ===
+                            fechaSeleccionadaCalendario
+                        )
+                        .map((evento) => (
+                          <div
+                            key={evento.id}
+                            className="group flex items-center gap-3 rounded-xl bg-[#F6FAFD] p-3 dark:bg-[#16253A]"
+                          >
+                            <div
+                              className={`h-9 w-1 shrink-0 rounded-full ${
+                                evento.tipo ===
+                                "parcial"
+                                  ? "bg-[#FF5868]"
+                                  : evento.tipo ===
+                                      "tarea"
+                                    ? "bg-[#FFAA2B]"
+                                    : evento.tipo ===
+                                        "proyecto"
+                                      ? "bg-[#7652D9]"
+                                      : "bg-[#55A8E8]"
+                              }`}
+                            />
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-black uppercase tracking-wide text-[#7890A8]">
+                                  {tituloTipoEvento(
+                                    evento.tipo
+                                  )}
+                                </span>
+
+                                {evento.recordatorio_activo && (
+                                  <Mail
+                                    size={11}
+                                    className="text-[#7652D9]"
+                                  />
+                                )}
+                              </div>
+
+                              <p className="mt-0.5 truncate text-xs font-black">
+                                {evento.titulo}
+                              </p>
+
+                              {evento.hora_evento && (
+                                <p className="mt-0.5 text-[10px] text-[#7890A8]">
+                                  {evento.hora_evento.slice(
+                                    0,
+                                    5
+                                  )}
+                                </p>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void eliminarEventoCalendario(
+                                  evento
+                                )
+                              }
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#A2B0BE] opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:hover:bg-red-950/30"
+                              aria-label="Eliminar fecha"
+                            >
+                              <Trash2
+                                size={14}
+                              />
+                            </button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+              </section>
+
               {/* IA */}
 
               <section className="relative overflow-hidden rounded-[25px] bg-gradient-to-br from-[#F1EDFF] via-[#F7F4FF] to-[#EEF8FF] p-7 dark:from-[#28243E] dark:via-[#24263F] dark:to-[#1C304D]">
@@ -4097,6 +5161,47 @@ export default function Dashboard() {
                 />
               </div>
 
+              <div className="mt-6 rounded-[22px] border border-[#D8E7F5] bg-gradient-to-r from-[#F4FBFF] via-white to-[#F4F0FF] p-4 dark:border-slate-700 dark:from-[#152941] dark:via-[#182437] dark:to-[#27243F] sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#DDF3FF] to-[#EAE2FF] text-[#7652D9]">
+                      <CalendarPlus
+                        size={21}
+                      />
+                    </div>
+
+                    <div>
+                      <p className="font-black">
+                        ¿Este material tiene una fecha?
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-[#6085A5] dark:text-slate-300">
+                        Agrega el parcial, entrega o día de estudio a tu calendario y activa un recordatorio por correo.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMostrarOpcionesEstudio(
+                        false
+                      );
+
+                      abrirCalendarioPara(
+                        materialParaAccion
+                      );
+                    }}
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#7652D9]/15"
+                  >
+                    <CalendarPlus
+                      size={17}
+                    />
+                    Agregar fecha
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-6 flex flex-col gap-3 border-t border-[#E7EDF5] pt-5 sm:flex-row sm:justify-between dark:border-slate-700">
                 <button
                   type="button"
@@ -4130,6 +5235,275 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+      {/* MODAL CALENDARIO */}
+
+      {mostrarModalCalendario && (
+        <div className="fixed inset-0 z-[240] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-2xl dark:bg-[#182437]">
+            <div className="relative overflow-hidden bg-gradient-to-r from-[#E8F7FF] via-[#F3F0FF] to-[#FFF3E4] px-6 py-6 dark:from-[#17304B] dark:via-[#292543] dark:to-[#3B2A22]">
+              <div className="absolute -right-10 -top-16 h-36 w-36 rounded-full bg-[#7652D9]/10" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarModalCalendario(
+                    false
+                  );
+                  setMaterialParaCalendario(
+                    null
+                  );
+                }}
+                className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/75 text-[#6085A5] shadow-sm dark:bg-slate-800"
+                aria-label="Cerrar"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="relative flex items-center gap-4 pr-10">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#55A8E8] to-[#7652D9] text-white shadow-lg">
+                  <CalendarPlus
+                    size={27}
+                  />
+                </div>
+
+                <div>
+                  <h2 className="text-2xl font-black">
+                    Agregar al calendario
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-5 text-[#6085A5] dark:text-slate-300">
+                    Guarda la fecha y decide cuándo quieres recibir el recordatorio.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-h-[72vh] overflow-y-auto p-6">
+              {materialParaCalendario && (
+                <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#F3F8FD] p-3 dark:bg-[#15263B]">
+                  <FileText
+                    size={19}
+                    className="shrink-0 text-[#55A8E8]"
+                  />
+
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[#7890A8]">
+                      Material asociado
+                    </p>
+
+                    <p className="mt-0.5 truncate text-xs font-black">
+                      {materialParaCalendario.nombre_archivo}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <label className="block">
+                <span className="text-xs font-black">
+                  Título
+                </span>
+
+                <input
+                  value={tituloEvento}
+                  onChange={(evento) =>
+                    setTituloEvento(
+                      evento.target.value
+                    )
+                  }
+                  placeholder="Ej. Parcial de Biología"
+                  className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#FAFCFF] px-4 py-3 text-sm font-semibold outline-none focus:border-[#7652D9] dark:border-slate-700 dark:bg-[#111E31] dark:text-white"
+                />
+              </label>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label>
+                  <span className="text-xs font-black">
+                    Tipo
+                  </span>
+
+                  <select
+                    value={tipoEvento}
+                    onChange={(evento) =>
+                      setTipoEvento(
+                        evento.target
+                          .value as TipoEventoCalendario
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#FAFCFF] px-4 py-3 text-sm font-semibold outline-none focus:border-[#7652D9] dark:border-slate-700 dark:bg-[#111E31] dark:text-white"
+                  >
+                    <option value="parcial">
+                      Parcial
+                    </option>
+                    <option value="tarea">
+                      Tarea / entrega
+                    </option>
+                    <option value="estudio">
+                      Sesión de estudio
+                    </option>
+                    <option value="proyecto">
+                      Proyecto
+                    </option>
+                    <option value="otro">
+                      Otro
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span className="text-xs font-black">
+                    Fecha
+                  </span>
+
+                  <input
+                    type="date"
+                    value={fechaEvento}
+                    onChange={(evento) =>
+                      setFechaEvento(
+                        evento.target.value
+                      )
+                    }
+                    min={claveFechaLocal(
+                      new Date()
+                    )}
+                    className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#FAFCFF] px-4 py-3 text-sm font-semibold outline-none focus:border-[#7652D9] dark:border-slate-700 dark:bg-[#111E31] dark:text-white"
+                  />
+                </label>
+              </div>
+
+              <label className="mt-4 block">
+                <span className="text-xs font-black">
+                  Hora opcional
+                </span>
+
+                <input
+                  type="time"
+                  value={horaEvento}
+                  onChange={(evento) =>
+                    setHoraEvento(
+                      evento.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#FAFCFF] px-4 py-3 text-sm font-semibold outline-none focus:border-[#7652D9] dark:border-slate-700 dark:bg-[#111E31] dark:text-white"
+                />
+              </label>
+
+              <label className="mt-4 block">
+                <span className="text-xs font-black">
+                  Nota opcional
+                </span>
+
+                <textarea
+                  rows={3}
+                  value={notasEvento}
+                  onChange={(evento) =>
+                    setNotasEvento(
+                      evento.target.value
+                    )
+                  }
+                  placeholder="Ej. Estudiar capítulos 1 al 4"
+                  className="mt-2 w-full resize-none rounded-xl border border-[#DCE6F0] bg-[#FAFCFF] px-4 py-3 text-sm outline-none focus:border-[#7652D9] dark:border-slate-700 dark:bg-[#111E31] dark:text-white"
+                />
+              </label>
+
+              <div className="mt-5 rounded-2xl border border-[#DDD5FF] bg-[#F7F4FF] p-4 dark:border-[#493D70] dark:bg-[#28243E]">
+                <label className="flex cursor-pointer items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E9E2FF] text-[#7652D9] dark:bg-[#372E5A]">
+                      <Mail size={19} />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-black">
+                        Recordatorio por correo
+                      </p>
+
+                      <p className="mt-0.5 text-[11px] text-[#6085A5] dark:text-slate-300">
+                        Raccoon te avisará antes de la fecha.
+                      </p>
+                    </div>
+                  </div>
+
+                  <input
+                    type="checkbox"
+                    checked={recordatorioActivo}
+                    onChange={(evento) =>
+                      setRecordatorioActivo(
+                        evento.target.checked
+                      )
+                    }
+                    className="h-5 w-5 accent-[#7652D9]"
+                  />
+                </label>
+
+                {recordatorioActivo && (
+                  <label className="mt-4 block">
+                    <span className="text-[11px] font-black text-[#6754B9] dark:text-violet-300">
+                      Avisarme
+                    </span>
+
+                    <select
+                      value={recordatorioDias}
+                      onChange={(evento) =>
+                        setRecordatorioDias(
+                          Number(
+                            evento.target.value
+                          )
+                        )
+                      }
+                      className="mt-2 w-full rounded-xl border border-[#D8D0FF] bg-white px-4 py-3 text-sm font-semibold outline-none dark:border-[#493D70] dark:bg-[#111E31] dark:text-white"
+                    >
+                      <option value={0}>
+                        El mismo día
+                      </option>
+                      <option value={1}>
+                        1 día antes
+                      </option>
+                      <option value={2}>
+                        2 días antes
+                      </option>
+                      <option value={3}>
+                        3 días antes
+                      </option>
+                      <option value={7}>
+                        1 semana antes
+                      </option>
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void guardarEventoCalendario()
+                }
+                disabled={
+                  guardandoEvento ||
+                  !tituloEvento.trim() ||
+                  !fechaEvento
+                }
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-[#7652D9]/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {guardandoEvento ? (
+                  <LoaderCircle
+                    size={18}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <CalendarPlus
+                    size={18}
+                  />
+                )}
+
+                {guardandoEvento
+                  ? "Guardando..."
+                  : "Guardar en calendario"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VISOR INTERNO */}
 

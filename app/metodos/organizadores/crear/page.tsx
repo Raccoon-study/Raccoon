@@ -22,6 +22,10 @@ import {
   Columns3,
   Crown,
   FileText,
+  FolderOpen,
+  Search,
+  RefreshCw,
+  Cloud,
   GitBranch,
   Home,
   Library,
@@ -87,6 +91,19 @@ interface OpcionOrganizador {
   color: string;
   fondo: string;
 }
+
+interface Material {
+  id: string;
+  nombre_archivo: string;
+  url_archivo: string;
+  progreso: number;
+  fecha_subida: string;
+  usuario_id: string;
+}
+
+type ModoMaterial =
+  | "existentes"
+  | "nuevo";
 
 /* =====================================================
    MENÚ
@@ -262,6 +279,102 @@ function nombrePlan(
   return "Plan gratuito";
 }
 
+function obtenerExtension(
+  nombre: string
+): string {
+  return (
+    nombre
+      .split(".")
+      .pop()
+      ?.toLowerCase() || ""
+  );
+}
+
+function formatearFecha(
+  fecha: string
+): string {
+  const valor =
+    new Date(fecha);
+
+  if (
+    Number.isNaN(
+      valor.getTime()
+    )
+  ) {
+    return "Reciente";
+  }
+
+  return valor.toLocaleDateString(
+    "es-PA",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }
+  );
+}
+
+function normalizarMaterial(
+  dato: Record<string, unknown>
+): Material {
+  return {
+    id:
+      String(
+        dato.id || ""
+      ),
+
+    nombre_archivo:
+      typeof dato.nombre_archivo ===
+      "string"
+        ? dato.nombre_archivo
+        : "Material sin nombre",
+
+    url_archivo:
+      typeof dato.url_archivo ===
+      "string"
+        ? dato.url_archivo
+        : "",
+
+    progreso:
+      Number.isFinite(
+        Number(
+          dato.progreso
+        )
+      )
+        ? Number(
+            dato.progreso
+          )
+        : 0,
+
+    fecha_subida:
+      typeof dato.fecha_subida ===
+      "string"
+        ? dato.fecha_subida
+        : new Date().toISOString(),
+
+    usuario_id:
+      typeof dato.usuario_id ===
+      "string"
+        ? dato.usuario_id
+        : "",
+  };
+}
+
+function materialCompatible(
+  material: Material
+): boolean {
+  return [
+    "pdf",
+    "docx",
+    "pptx",
+    "txt",
+  ].includes(
+    obtenerExtension(
+      material.nombre_archivo
+    )
+  );
+}
+
 /* =====================================================
    COMPONENTE
 ===================================================== */
@@ -351,6 +464,48 @@ export default function CrearOrganizadorPage() {
     );
 
   const [
+    materiales,
+    setMateriales,
+  ] =
+    useState<Material[]>(
+      []
+    );
+
+  const [
+    cargandoMateriales,
+    setCargandoMateriales,
+  ] =
+    useState(true);
+
+  const [
+    materialSeleccionado,
+    setMaterialSeleccionado,
+  ] =
+    useState<Material | null>(
+      null
+    );
+
+  const [
+    modoMaterial,
+    setModoMaterial,
+  ] =
+    useState<ModoMaterial>(
+      "existentes"
+    );
+
+  const [
+    busquedaMaterial,
+    setBusquedaMaterial,
+  ] =
+    useState("");
+
+  const [
+    subiendoMaterial,
+    setSubiendoMaterial,
+  ] =
+    useState(false);
+
+  const [
     tipo,
     setTipo,
   ] =
@@ -401,7 +556,16 @@ export default function CrearOrganizadorPage() {
 
         leerParametros();
 
-        await obtenerUsuarioYPlan();
+        const usuarioId =
+          await obtenerUsuarioYPlan();
+
+        if (
+          usuarioId
+        ) {
+          await obtenerMateriales(
+            usuarioId
+          );
+        }
       };
 
     void iniciar();
@@ -735,19 +899,266 @@ export default function CrearOrganizadorPage() {
       ]
     );
 
+  const materialesFiltrados =
+    useMemo(
+      () => {
+        const termino =
+          busquedaMaterial
+            .trim()
+            .toLowerCase();
+
+        return materiales.filter(
+          (
+            material
+          ) =>
+            !termino ||
+            material.nombre_archivo
+              .toLowerCase()
+              .includes(
+                termino
+              )
+        );
+      },
+      [
+        materiales,
+        busquedaMaterial,
+      ]
+    );
+
+  const hayMaterial =
+    Boolean(
+      archivo ||
+      materialSeleccionado
+    );
+
   /* ===================================================
-     ARCHIVO
+     MATERIALES
   =================================================== */
 
-  const seleccionarArchivo =
+  const obtenerMateriales =
+    async (
+      usuarioId: string
+    ) => {
+      try {
+        setCargandoMateriales(
+          true
+        );
+
+        const {
+          data,
+          error,
+        } =
+          await supabase
+            .from(
+              "materiales"
+            )
+            .select(
+              "*"
+            )
+            .eq(
+              "usuario_id",
+              usuarioId
+            )
+            .order(
+              "fecha_subida",
+              {
+                ascending:
+                  false,
+              }
+            );
+
+        if (
+          error
+        ) {
+          throw new Error(
+            error.message
+          );
+        }
+
+        const lista =
+          (
+            data || []
+          ).map(
+            (
+              material
+            ) =>
+              normalizarMaterial(
+                material as Record<
+                  string,
+                  unknown
+                >
+              )
+          );
+
+        setMateriales(
+          lista
+        );
+
+        const params =
+          new URLSearchParams(
+            window.location.search
+          );
+
+        const materialParam =
+          params.get(
+            "material"
+          );
+
+        let idPendiente =
+          materialParam ||
+          "";
+
+        const guardado =
+          localStorage.getItem(
+            "raccoon-material-seleccionado"
+          );
+
+        if (
+          !idPendiente &&
+          guardado
+        ) {
+          try {
+            const pendiente =
+              JSON.parse(
+                guardado
+              ) as {
+                id?: string;
+                material_id?: string;
+              };
+
+            idPendiente =
+              pendiente.material_id ||
+              pendiente.id ||
+              "";
+          } catch {
+            // Ignora un valor local inválido.
+          }
+        }
+
+        if (
+          idPendiente
+        ) {
+          const encontrado =
+            lista.find(
+              (
+                material
+              ) =>
+                material.id ===
+                idPendiente
+            );
+
+          if (
+            encontrado &&
+            materialCompatible(
+              encontrado
+            )
+          ) {
+            seleccionarMaterialExistente(
+              encontrado,
+              false
+            );
+          }
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          "Error cargando materiales:",
+          error
+        );
+
+        mostrarNotificacion(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar tus materiales."
+        );
+      } finally {
+        setCargandoMateriales(
+          false
+        );
+      }
+    };
+
+  const seleccionarMaterialExistente =
     (
+      material: Material,
+      notificar = true
+    ) => {
+      if (
+        !materialCompatible(
+          material
+        )
+      ) {
+        mostrarNotificacion(
+          "Este material no es compatible con Organizadores Visuales."
+        );
+
+        return;
+      }
+
+      setMaterialSeleccionado(
+        material
+      );
+
+      setArchivo(
+        null
+      );
+
+      setModoMaterial(
+        "existentes"
+      );
+
+      setMensajeProceso(
+        ""
+      );
+
+      localStorage.setItem(
+        "raccoon-material-seleccionado",
+        JSON.stringify({
+          id:
+            material.id,
+
+          material_id:
+            material.id,
+
+          titulo:
+            material.nombre_archivo,
+
+          nombre_archivo:
+            material.nombre_archivo,
+
+          url_archivo:
+            material.url_archivo,
+
+          progreso:
+            material.progreso,
+
+          fecha_subida:
+            material.fecha_subida,
+
+          origen:
+            "organizadores",
+        })
+      );
+
+      if (
+        notificar
+      ) {
+        mostrarNotificacion(
+          "Material seleccionado."
+        );
+      }
+    };
+
+  const seleccionarArchivo =
+    async (
       evento: React.ChangeEvent<HTMLInputElement>
     ) => {
       if (
         !esPremium
       ) {
-        mostrarNotificacion(
-          "Necesitas Raccoon Premium para crear organizadores visuales."
+        router.push(
+          "/suscripcion"
         );
 
         return;
@@ -757,10 +1168,16 @@ export default function CrearOrganizadorPage() {
         evento.target.files?.[0];
 
       if (
-        !nuevoArchivo
+        !nuevoArchivo ||
+        subiendoMaterial
       ) {
         return;
       }
+
+      const extension =
+        obtenerExtension(
+          nuevoArchivo.name
+        );
 
       const extensionesPermitidas =
         [
@@ -770,20 +1187,27 @@ export default function CrearOrganizadorPage() {
           "txt",
         ];
 
-      const extension =
-        nuevoArchivo.name
-          .split(".")
-          .pop()
-          ?.toLowerCase();
-
       if (
-        !extension ||
         !extensionesPermitidas.includes(
           extension
         )
       ) {
         mostrarNotificacion(
-          "Solo puedes subir archivos PDF, DOCX, PPTX o TXT."
+          "Solo puedes usar PDF, DOCX, PPTX o TXT."
+        );
+
+        evento.target.value =
+          "";
+
+        return;
+      }
+
+      if (
+        nuevoArchivo.size ===
+        0
+      ) {
+        mostrarNotificacion(
+          "El archivo está vacío."
         );
 
         evento.target.value =
@@ -811,12 +1235,304 @@ export default function CrearOrganizadorPage() {
         return;
       }
 
-      setArchivo(
-        nuevoArchivo
-      );
+      let rutaStorage =
+        "";
+
+      try {
+        setSubiendoMaterial(
+          true
+        );
+
+        setMensajeProceso(
+          "Guardando el material en tu biblioteca..."
+        );
+
+        const {
+          data: {
+            user,
+          },
+        } =
+          await supabase.auth.getUser();
+
+        if (
+          !user
+        ) {
+          router.replace(
+            "/Login"
+          );
+
+          return;
+        }
+
+        const nombreSeguro =
+          nuevoArchivo.name
+            .normalize(
+              "NFD"
+            )
+            .replace(
+              /[\u0300-\u036f]/g,
+              ""
+            )
+            .replace(
+              /[^a-zA-Z0-9._-]/g,
+              "_"
+            );
+
+        const identificador =
+          typeof crypto !==
+            "undefined" &&
+          "randomUUID" in
+            crypto
+            ? crypto.randomUUID()
+            : Date.now().toString();
+
+        rutaStorage =
+          `${user.id}/${identificador}-${nombreSeguro}`;
+
+        const {
+          error:
+            errorStorage,
+        } =
+          await supabase.storage
+            .from(
+              "materiales"
+            )
+            .upload(
+              rutaStorage,
+              nuevoArchivo,
+              {
+                upsert:
+                  false,
+
+                cacheControl:
+                  "3600",
+
+                contentType:
+                  nuevoArchivo.type ||
+                  "application/octet-stream",
+              }
+            );
+
+        if (
+          errorStorage
+        ) {
+          throw new Error(
+            `No se pudo subir el archivo: ${errorStorage.message}`
+          );
+        }
+
+        const {
+          data:
+            urlData,
+        } =
+          supabase.storage
+            .from(
+              "materiales"
+            )
+            .getPublicUrl(
+              rutaStorage
+            );
+
+        const {
+          data:
+            materialInsertado,
+          error:
+            errorBaseDatos,
+        } =
+          await supabase
+            .from(
+              "materiales"
+            )
+            .insert({
+              usuario_id:
+                user.id,
+
+              nombre_archivo:
+                nuevoArchivo.name,
+
+              url_archivo:
+                urlData.publicUrl,
+
+              progreso:
+                0,
+            })
+            .select(
+              "*"
+            )
+            .single();
+
+        if (
+          errorBaseDatos
+        ) {
+          await supabase.storage
+            .from(
+              "materiales"
+            )
+            .remove(
+              [
+                rutaStorage,
+              ]
+            );
+
+          throw new Error(
+            `No se pudo guardar el material: ${errorBaseDatos.message}`
+          );
+        }
+
+        if (
+          !materialInsertado
+        ) {
+          throw new Error(
+            "No se recibió la información del material."
+          );
+        }
+
+        const nuevoMaterial =
+          normalizarMaterial(
+            materialInsertado as Record<
+              string,
+              unknown
+            >
+          );
+
+        setMateriales(
+          (
+            anteriores
+          ) => [
+            nuevoMaterial,
+            ...anteriores,
+          ]
+        );
+
+        setArchivo(
+          nuevoArchivo
+        );
+
+        setMaterialSeleccionado(
+          nuevoMaterial
+        );
+
+        localStorage.setItem(
+          "raccoon-material-seleccionado",
+          JSON.stringify({
+            id:
+              nuevoMaterial.id,
+
+            material_id:
+              nuevoMaterial.id,
+
+            titulo:
+              nuevoMaterial.nombre_archivo,
+
+            nombre_archivo:
+              nuevoMaterial.nombre_archivo,
+
+            url_archivo:
+              nuevoMaterial.url_archivo,
+
+            progreso:
+              nuevoMaterial.progreso,
+
+            fecha_subida:
+              nuevoMaterial.fecha_subida,
+
+            origen:
+              "organizadores",
+          })
+        );
+
+        setMensajeProceso(
+          ""
+        );
+
+        mostrarNotificacion(
+          "Material guardado y seleccionado."
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Error subiendo material:",
+          error
+        );
+
+        mostrarNotificacion(
+          error instanceof Error
+            ? error.message
+            : "No se pudo subir el material."
+        );
+
+        setArchivo(
+          null
+        );
+      } finally {
+        setSubiendoMaterial(
+          false
+        );
+
+        evento.target.value =
+          "";
+      }
+    };
+
+  const obtenerArchivoParaIA =
+    async (): Promise<
+      File | null
+    > => {
+      if (
+        archivo
+      ) {
+        return archivo;
+      }
+
+      if (
+        !materialSeleccionado
+      ) {
+        return null;
+      }
+
+      if (
+        !materialSeleccionado.url_archivo
+      ) {
+        throw new Error(
+          "El material seleccionado no tiene una URL válida."
+        );
+      }
 
       setMensajeProceso(
-        ""
+        "Preparando tu material guardado..."
+      );
+
+      const respuesta =
+        await fetch(
+          materialSeleccionado.url_archivo,
+          {
+            cache:
+              "no-store",
+          }
+        );
+
+      if (
+        !respuesta.ok
+      ) {
+        throw new Error(
+          "No se pudo descargar el material guardado."
+        );
+      }
+
+      const blob =
+        await respuesta.blob();
+
+      return new File(
+        [
+          blob,
+        ],
+        materialSeleccionado.nombre_archivo,
+        {
+          type:
+            blob.type ||
+            "application/octet-stream",
+        }
       );
     };
 
@@ -830,17 +1546,18 @@ export default function CrearOrganizadorPage() {
         !esPremium
       ) {
         router.push(
-          "/suscripciones"
+          "/suscripcion"
         );
 
         return;
       }
 
       if (
-        !archivo
+        !archivo &&
+        !materialSeleccionado
       ) {
         mostrarNotificacion(
-          "Primero sube un material para que Raccoon IA pueda analizarlo."
+          "Selecciona uno de tus materiales o sube uno nuevo."
         );
 
         return;
@@ -872,12 +1589,23 @@ export default function CrearOrganizadorPage() {
           return;
         }
 
+        const archivoIA =
+          await obtenerArchivoParaIA();
+
+        if (
+          !archivoIA
+        ) {
+          throw new Error(
+            "No se pudo preparar el material."
+          );
+        }
+
         const formData =
           new FormData();
 
         formData.append(
           "archivo",
-          archivo
+          archivoIA
         );
 
         const respuesta =
@@ -989,17 +1717,18 @@ export default function CrearOrganizadorPage() {
         !esPremium
       ) {
         router.push(
-          "/suscripciones"
+          "/suscripcion"
         );
 
         return;
       }
 
       if (
-        !archivo
+        !archivo &&
+        !materialSeleccionado
       ) {
         mostrarNotificacion(
-          "Primero debes subir un material."
+          "Selecciona uno de tus materiales o sube uno nuevo."
         );
 
         return;
@@ -1035,12 +1764,23 @@ export default function CrearOrganizadorPage() {
           return;
         }
 
+        const archivoIA =
+          await obtenerArchivoParaIA();
+
+        if (
+          !archivoIA
+        ) {
+          throw new Error(
+            "No se pudo preparar el material."
+          );
+        }
+
         const formData =
           new FormData();
 
         formData.append(
           "archivo",
-          archivo
+          archivoIA
         );
 
         formData.append(
@@ -1052,6 +1792,15 @@ export default function CrearOrganizadorPage() {
           "nivel",
           nivel
         );
+
+        if (
+          materialSeleccionado
+        ) {
+          formData.append(
+            "material_id",
+            materialSeleccionado.id
+          );
+        }
 
         setProgreso(
           30
@@ -1097,7 +1846,7 @@ export default function CrearOrganizadorPage() {
             403
           ) {
             router.push(
-              "/suscripciones"
+              "/suscripcion"
             );
 
             return;
@@ -1128,6 +1877,9 @@ export default function CrearOrganizadorPage() {
           "¡Tu organizador está listo! 🎉"
         );
 
+        const nombreMaterial =
+          archivoIA.name;
+
         sessionStorage.setItem(
           "organizador-generado",
           JSON.stringify(
@@ -1137,8 +1889,19 @@ export default function CrearOrganizadorPage() {
 
         sessionStorage.setItem(
           "organizador-archivo",
-          archivo.name
+          nombreMaterial
         );
+
+        if (
+          materialSeleccionado
+        ) {
+          sessionStorage.setItem(
+            "organizador-material",
+            JSON.stringify(
+              materialSeleccionado
+            )
+          );
+        }
 
         window.setTimeout(
           () => {
@@ -2346,206 +3109,742 @@ export default function CrearOrganizadorPage() {
                       <div
                         className="
                           flex
-                          items-center
-                          gap-3
+                          flex-col
+                          gap-4
+                          sm:flex-row
+                          sm:items-center
+                          sm:justify-between
                         "
                       >
                         <div
                           className="
                             flex
-                            h-11
-                            w-11
                             items-center
-                            justify-center
-                            rounded-xl
-                            bg-gradient-to-br
-                            from-[#5E6CF2]
-                            to-[#7652D9]
-                            text-sm
-                            font-black
-                            text-white
+                            gap-3
                           "
                         >
-                          1
-                        </div>
-
-                        <div>
-                          <h3
+                          <div
                             className="
-                              text-lg
+                              flex
+                              h-11
+                              w-11
+                              items-center
+                              justify-center
+                              rounded-xl
+                              bg-gradient-to-br
+                              from-[#5E6CF2]
+                              to-[#7652D9]
+                              text-sm
                               font-black
+                              text-white
                             "
                           >
-                            Sube tu material
-                          </h3>
+                            1
+                          </div>
 
-                          <p
-                            className="
-                              text-xs
-                              text-[#7489A1]
-                              dark:text-slate-400
-                            "
-                          >
-                            PDF, DOCX, PPTX o TXT · máximo 20 MB
-                          </p>
+                          <div>
+                            <h3
+                              className="
+                                text-lg
+                                font-black
+                              "
+                            >
+                              Elige tu material
+                            </h3>
+
+                            <p
+                              className="
+                                text-xs
+                                text-[#7489A1]
+                                dark:text-slate-400
+                              "
+                            >
+                              Usa uno que ya subiste o agrega uno nuevo
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      <label
-                        htmlFor="archivo-organizador"
-                        className={`
-                          mt-5
-                          flex
-                          min-h-[220px]
-                          cursor-pointer
-                          flex-col
-                          items-center
-                          justify-center
-                          rounded-[24px]
-                          border-2
-                          border-dashed
-                          px-5
-                          text-center
-                          transition-all
-                          duration-300
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const {
+                              data: {
+                                user,
+                              },
+                            } =
+                              await supabase.auth.getUser();
 
-                          ${
-                            archivo
-                              ? `
-                                border-emerald-300
-                                bg-gradient-to-br
-                                from-emerald-50
-                                via-white
-                                to-blue-50
-                                dark:from-emerald-950/20
-                                dark:via-[#101B2C]
-                                dark:to-blue-950/20
-                              `
-                              : `
-                                border-[#AFC3FF]
-                                bg-gradient-to-br
-                                from-[#FAFBFF]
-                                to-[#F9F5FF]
-                                hover:-translate-y-0.5
-                                hover:border-[#7652D9]
-                                hover:shadow-md
-                                dark:border-slate-600
-                                dark:from-[#0E1929]
-                                dark:to-[#17172B]
-                              `
+                            if (
+                              user
+                            ) {
+                              await obtenerMateriales(
+                                user.id
+                              );
+                            }
+                          }}
+                          disabled={
+                            cargandoMateriales
                           }
-                        `}
-                      >
-                        <div
-                          className={`
-                            flex
-                            h-16
-                            w-16
+                          className="
+                            inline-flex
                             items-center
                             justify-center
-                            rounded-full
-                            shadow-sm
+                            gap-2
+                            rounded-xl
+                            border
+                            border-[#DDE6F0]
+                            bg-white
+                            px-4
+                            py-2.5
+                            text-xs
+                            font-black
+                            text-[#52708F]
+                            transition
+                            hover:bg-[#F5F8FC]
+                            disabled:opacity-50
+                            dark:border-slate-700
+                            dark:bg-[#0E1929]
+                            dark:text-slate-300
+                          "
+                        >
+                          <RefreshCw
+                            size={15}
+                            className={
+                              cargandoMateriales
+                                ? "animate-spin"
+                                : ""
+                            }
+                          />
+
+                          Actualizar
+                        </button>
+                      </div>
+
+                      <div
+                        className="
+                          mt-5
+                          grid
+                          grid-cols-2
+                          gap-2
+                          rounded-[16px]
+                          bg-[#F4F7FB]
+                          p-1.5
+                          dark:bg-[#0E1929]
+                        "
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setModoMaterial(
+                              "existentes"
+                            )
+                          }
+                          className={`
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+                            rounded-xl
+                            px-4
+                            py-3
+                            text-xs
+                            font-black
+                            transition
 
                             ${
-                              archivo
+                              modoMaterial ===
+                              "existentes"
                                 ? `
-                                  bg-emerald-100
-                                  text-emerald-600
+                                  bg-white
+                                  text-[#3978F6]
+                                  shadow-sm
+                                  dark:bg-[#19283C]
+                                  dark:text-blue-300
                                 `
                                 : `
-                                  bg-[#ECE7FF]
-                                  text-[#7652D9]
-                                  dark:bg-violet-950/30
+                                  text-[#7489A1]
+                                  dark:text-slate-400
                                 `
                             }
                           `}
                         >
-                          {archivo ? (
-                            <CircleCheckBig
-                              size={30}
-                            />
-                          ) : (
-                            <Upload
-                              size={30}
-                            />
-                          )}
-                        </div>
+                          <FolderOpen
+                            size={16}
+                          />
 
-                        <p
-                          className="
-                            mt-4
-                            max-w-full
-                            break-words
-                            text-base
-                            font-black
-                          "
-                        >
-                          {archivo
-                            ? archivo.name
-                            : "Arrastra tu archivo aquí"}
-                        </p>
+                          Mis materiales
+                        </button>
 
-                        <p
-                          className="
-                            mt-1
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setModoMaterial(
+                              "nuevo"
+                            )
+                          }
+                          className={`
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+                            rounded-xl
+                            px-4
+                            py-3
                             text-xs
-                            text-[#8494A8]
-                            dark:text-slate-400
-                          "
+                            font-black
+                            transition
+
+                            ${
+                              modoMaterial ===
+                              "nuevo"
+                                ? `
+                                  bg-white
+                                  text-[#7652D9]
+                                  shadow-sm
+                                  dark:bg-[#19283C]
+                                  dark:text-violet-300
+                                `
+                                : `
+                                  text-[#7489A1]
+                                  dark:text-slate-400
+                                `
+                            }
+                          `}
                         >
-                          {archivo
-                            ? "Tu material está listo para analizar"
-                            : "o selecciónalo desde tu dispositivo"}
-                        </p>
+                          <Upload
+                            size={16}
+                          />
 
-                        {!archivo && (
-                          <span
-                            className="
-                              mt-4
-                              rounded-xl
-                              bg-gradient-to-r
-                              from-[#4169F2]
-                              to-[#7652D9]
-                              px-5
-                              py-2.5
-                              text-xs
-                              font-black
-                              text-white
-                              shadow-[0_8px_18px_rgba(93,82,217,0.22)]
-                            "
-                          >
-                            Seleccionar archivo
-                          </span>
-                        )}
-                      </label>
+                          Subir nuevo
+                        </button>
+                      </div>
 
-                      <input
-                        id="archivo-organizador"
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.docx,.pptx,.txt"
-                        onChange={
-                          seleccionarArchivo
-                        }
-                      />
-
-                      {archivo && (
+                      {modoMaterial ===
+                        "existentes" && (
                         <div
                           className="
-                            mt-4
+                            mt-5
+                          "
+                        >
+                          <div
+                            className="
+                              relative
+                            "
+                          >
+                            <Search
+                              size={17}
+                              className="
+                                absolute
+                                left-4
+                                top-1/2
+                                -translate-y-1/2
+                                text-[#8A9CB0]
+                              "
+                            />
+
+                            <input
+                              value={
+                                busquedaMaterial
+                              }
+                              onChange={(
+                                evento
+                              ) =>
+                                setBusquedaMaterial(
+                                  evento.target.value
+                                )
+                              }
+                              placeholder="Buscar entre tus materiales..."
+                              className="
+                                w-full
+                                rounded-[15px]
+                                border
+                                border-[#DEE6EF]
+                                bg-[#FAFCFF]
+                                py-3
+                                pl-11
+                                pr-4
+                                text-sm
+                                text-[#17304E]
+                                outline-none
+                                transition
+                                focus:border-[#6D69F2]
+                                dark:border-slate-700
+                                dark:bg-[#0E1929]
+                                dark:text-white
+                              "
+                            />
+                          </div>
+
+                          {cargandoMateriales ? (
+                            <div
+                              className="
+                                flex
+                                min-h-[180px]
+                                items-center
+                                justify-center
+                              "
+                            >
+                              <div
+                                className="
+                                  text-center
+                                "
+                              >
+                                <LoaderCircle
+                                  size={28}
+                                  className="
+                                    mx-auto
+                                    animate-spin
+                                    text-[#7652D9]
+                                  "
+                                />
+
+                                <p
+                                  className="
+                                    mt-3
+                                    text-xs
+                                    font-bold
+                                    text-[#7A8EA5]
+                                  "
+                                >
+                                  Cargando tus materiales...
+                                </p>
+                              </div>
+                            </div>
+                          ) : materialesFiltrados.length ===
+                            0 ? (
+                            <div
+                              className="
+                                mt-4
+                                rounded-[20px]
+                                border
+                                border-dashed
+                                border-[#D7E1EC]
+                                bg-[#FAFCFF]
+                                p-8
+                                text-center
+                                dark:border-slate-700
+                                dark:bg-[#0E1929]
+                              "
+                            >
+                              <FolderOpen
+                                size={30}
+                                className="
+                                  mx-auto
+                                  text-[#8EA0B4]
+                                "
+                              />
+
+                              <p
+                                className="
+                                  mt-3
+                                  text-sm
+                                  font-black
+                                "
+                              >
+                                No encontramos materiales
+                              </p>
+
+                              <p
+                                className="
+                                  mt-1
+                                  text-xs
+                                  text-[#7B8EA4]
+                                  dark:text-slate-400
+                                "
+                              >
+                                Sube uno nuevo y quedará guardado para usarlo después.
+                              </p>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setModoMaterial(
+                                    "nuevo"
+                                  )
+                                }
+                                className="
+                                  mt-4
+                                  rounded-xl
+                                  bg-[#7652D9]
+                                  px-5
+                                  py-2.5
+                                  text-xs
+                                  font-black
+                                  text-white
+                                "
+                              >
+                                Subir material
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              className="
+                                mt-4
+                                grid
+                                max-h-[360px]
+                                gap-3
+                                overflow-y-auto
+                                pr-1
+                                sm:grid-cols-2
+                              "
+                            >
+                              {materialesFiltrados.map(
+                                (
+                                  material
+                                ) => {
+                                  const seleccionado =
+                                    materialSeleccionado?.id ===
+                                    material.id;
+
+                                  const compatible =
+                                    materialCompatible(
+                                      material
+                                    );
+
+                                  const extension =
+                                    obtenerExtension(
+                                      material.nombre_archivo
+                                    ).toUpperCase();
+
+                                  return (
+                                    <button
+                                      key={
+                                        material.id
+                                      }
+                                      type="button"
+                                      disabled={
+                                        !compatible
+                                      }
+                                      onClick={() =>
+                                        seleccionarMaterialExistente(
+                                          material
+                                        )
+                                      }
+                                      className={`
+                                        relative
+                                        min-w-0
+                                        rounded-[18px]
+                                        border
+                                        p-4
+                                        text-left
+                                        transition-all
+
+                                        ${
+                                          seleccionado
+                                            ? `
+                                              border-[#6D69F2]
+                                              bg-gradient-to-br
+                                              from-[#F2EEFF]
+                                              to-[#EDF6FF]
+                                              shadow-[0_10px_24px_rgba(86,79,215,0.12)]
+                                              dark:from-violet-950/25
+                                              dark:to-blue-950/20
+                                            `
+                                            : `
+                                              border-[#E2E9F1]
+                                              bg-white
+                                              hover:-translate-y-0.5
+                                              hover:border-[#B9C9DD]
+                                              hover:shadow-md
+                                              dark:border-slate-700
+                                              dark:bg-[#0E1929]
+                                            `
+                                        }
+
+                                        ${
+                                          !compatible
+                                            ? "cursor-not-allowed opacity-50"
+                                            : ""
+                                        }
+                                      `}
+                                    >
+                                      {seleccionado && (
+                                        <span
+                                          className="
+                                            absolute
+                                            right-3
+                                            top-3
+                                            flex
+                                            h-6
+                                            w-6
+                                            items-center
+                                            justify-center
+                                            rounded-full
+                                            bg-[#7652D9]
+                                            text-white
+                                          "
+                                        >
+                                          <Check
+                                            size={13}
+                                          />
+                                        </span>
+                                      )}
+
+                                      <div
+                                        className="
+                                          flex
+                                          items-start
+                                          gap-3
+                                        "
+                                      >
+                                        <div
+                                          className="
+                                            flex
+                                            h-11
+                                            w-11
+                                            shrink-0
+                                            items-center
+                                            justify-center
+                                            rounded-xl
+                                            bg-[#EAF3FF]
+                                            text-[#3978F6]
+                                            dark:bg-blue-950/30
+                                            dark:text-blue-300
+                                          "
+                                        >
+                                          <FileText
+                                            size={20}
+                                          />
+                                        </div>
+
+                                        <div
+                                          className="
+                                            min-w-0
+                                            pr-7
+                                          "
+                                        >
+                                          <p
+                                            className="
+                                              truncate
+                                              text-sm
+                                              font-black
+                                            "
+                                          >
+                                            {
+                                              material.nombre_archivo
+                                            }
+                                          </p>
+
+                                          <div
+                                            className="
+                                              mt-2
+                                              flex
+                                              flex-wrap
+                                              items-center
+                                              gap-2
+                                              text-[10px]
+                                              text-[#8395AA]
+                                              dark:text-slate-400
+                                            "
+                                          >
+                                            <span
+                                              className="
+                                                rounded-full
+                                                bg-[#EEF4FB]
+                                                px-2
+                                                py-1
+                                                font-black
+                                                text-[#58718E]
+                                                dark:bg-slate-800
+                                                dark:text-slate-300
+                                              "
+                                            >
+                                              {
+                                                extension ||
+                                                "FILE"
+                                              }
+                                            </span>
+
+                                            <span>
+                                              {
+                                                formatearFecha(
+                                                  material.fecha_subida
+                                                )
+                                              }
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {!compatible && (
+                                        <p
+                                          className="
+                                            mt-3
+                                            text-[10px]
+                                            font-bold
+                                            text-amber-600
+                                            dark:text-amber-300
+                                          "
+                                        >
+                                          Formato no compatible con esta herramienta.
+                                        </p>
+                                      )}
+                                    </button>
+                                  );
+                                }
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {modoMaterial ===
+                        "nuevo" && (
+                        <div
+                          className="
+                            mt-5
+                          "
+                        >
+                          <label
+                            htmlFor="archivo-organizador"
+                            className={`
+                              flex
+                              min-h-[230px]
+                              cursor-pointer
+                              flex-col
+                              items-center
+                              justify-center
+                              rounded-[24px]
+                              border-2
+                              border-dashed
+                              px-5
+                              text-center
+                              transition-all
+
+                              ${
+                                subiendoMaterial
+                                  ? `
+                                    cursor-wait
+                                    border-violet-300
+                                    bg-violet-50
+                                    dark:bg-violet-950/20
+                                  `
+                                  : `
+                                    border-[#AFC3FF]
+                                    bg-gradient-to-br
+                                    from-[#FAFBFF]
+                                    to-[#F9F5FF]
+                                    hover:-translate-y-0.5
+                                    hover:border-[#7652D9]
+                                    hover:shadow-md
+                                    dark:border-slate-600
+                                    dark:from-[#0E1929]
+                                    dark:to-[#17172B]
+                                  `
+                              }
+                            `}
+                          >
+                            <div
+                              className="
+                                flex
+                                h-16
+                                w-16
+                                items-center
+                                justify-center
+                                rounded-full
+                                bg-[#ECE7FF]
+                                text-[#7652D9]
+                                shadow-sm
+                                dark:bg-violet-950/30
+                              "
+                            >
+                              {subiendoMaterial ? (
+                                <LoaderCircle
+                                  size={30}
+                                  className="animate-spin"
+                                />
+                              ) : (
+                                <Cloud
+                                  size={30}
+                                />
+                              )}
+                            </div>
+
+                            <p
+                              className="
+                                mt-4
+                                text-base
+                                font-black
+                              "
+                            >
+                              {subiendoMaterial
+                                ? "Guardando tu material..."
+                                : "Sube un material nuevo"}
+                            </p>
+
+                            <p
+                              className="
+                                mt-1
+                                text-xs
+                                text-[#8494A8]
+                                dark:text-slate-400
+                              "
+                            >
+                              Se guardará en tu cuenta para que puedas reutilizarlo después
+                            </p>
+
+                            {!subiendoMaterial && (
+                              <span
+                                className="
+                                  mt-4
+                                  rounded-xl
+                                  bg-gradient-to-r
+                                  from-[#4169F2]
+                                  to-[#7652D9]
+                                  px-5
+                                  py-2.5
+                                  text-xs
+                                  font-black
+                                  text-white
+                                "
+                              >
+                                Seleccionar archivo
+                              </span>
+                            )}
+
+                            <p
+                              className="
+                                mt-3
+                                text-[10px]
+                                text-[#98A6B7]
+                              "
+                            >
+                              PDF, DOCX, PPTX o TXT · máximo 20 MB
+                            </p>
+                          </label>
+
+                          <input
+                            id="archivo-organizador"
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.docx,.pptx,.txt"
+                            onChange={
+                              seleccionarArchivo
+                            }
+                            disabled={
+                              subiendoMaterial
+                            }
+                          />
+                        </div>
+                      )}
+
+                      {materialSeleccionado && (
+                        <div
+                          className="
+                            mt-5
                             flex
                             flex-col
                             gap-3
-                            rounded-2xl
+                            rounded-[18px]
                             border
-                            border-[#E4EAF2]
-                            bg-[#FAFCFF]
+                            border-emerald-200
+                            bg-emerald-50/70
                             p-4
                             sm:flex-row
                             sm:items-center
                             sm:justify-between
-                            dark:border-slate-700
-                            dark:bg-[#0E1929]
+                            dark:border-emerald-900/40
+                            dark:bg-emerald-950/20
                           "
                         >
                           <div
@@ -2565,12 +3864,14 @@ export default function CrearOrganizadorPage() {
                                 items-center
                                 justify-center
                                 rounded-xl
-                                bg-red-100
-                                text-red-500
+                                bg-emerald-100
+                                text-emerald-600
+                                dark:bg-emerald-950/40
+                                dark:text-emerald-300
                               "
                             >
-                              <FileText
-                                size={19}
+                              <CircleCheckBig
+                                size={20}
                               />
                             </div>
 
@@ -2581,42 +3882,46 @@ export default function CrearOrganizadorPage() {
                             >
                               <p
                                 className="
+                                  text-[10px]
+                                  font-black
+                                  uppercase
+                                  tracking-[0.12em]
+                                  text-emerald-600
+                                  dark:text-emerald-300
+                                "
+                              >
+                                Material seleccionado
+                              </p>
+
+                              <p
+                                className="
                                   truncate
                                   text-sm
                                   font-black
                                 "
                               >
                                 {
-                                  archivo.name
+                                  materialSeleccionado.nombre_archivo
                                 }
-                              </p>
-
-                              <p
-                                className="
-                                  text-[10px]
-                                  text-[#8091A5]
-                                  dark:text-slate-400
-                                "
-                              >
-                                {(
-                                  archivo.size /
-                                  1024 /
-                                  1024
-                                ).toFixed(
-                                  2
-                                )}{" "}
-                                MB
                               </p>
                             </div>
                           </div>
 
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              setMaterialSeleccionado(
+                                null
+                              );
+
                               setArchivo(
                                 null
-                              )
-                            }
+                              );
+
+                              localStorage.removeItem(
+                                "raccoon-material-seleccionado"
+                              );
+                            }}
                             className="
                               rounded-xl
                               px-4
@@ -2716,7 +4021,7 @@ export default function CrearOrganizadorPage() {
                           }
                           disabled={
                             recomendando ||
-                            !archivo
+                            !hayMaterial
                           }
                           className="
                             inline-flex
@@ -3103,6 +4408,220 @@ export default function CrearOrganizadorPage() {
                           }
                         )}
                       </div>
+
+                      <div
+                        className="
+                          mt-6
+                          border-t
+                          border-[#E4EAF2]
+                          pt-5
+                          dark:border-slate-700
+                        "
+                      >
+                        <div
+                          className="
+                            flex
+                            flex-col
+                            gap-3
+                            rounded-[20px]
+                            bg-gradient-to-r
+                            from-[#F3F0FF]
+                            via-[#EFF5FF]
+                            to-[#ECFAFF]
+                            p-4
+                            dark:from-violet-950/20
+                            dark:via-blue-950/20
+                            dark:to-cyan-950/20
+                          "
+                        >
+                          <div
+                            className="
+                              flex
+                              items-center
+                              justify-between
+                              gap-3
+                            "
+                          >
+                            <div
+                              className="
+                                min-w-0
+                              "
+                            >
+                              <p
+                                className="
+                                  text-xs
+                                  font-black
+                                  text-[#7652D9]
+                                  dark:text-violet-200
+                                "
+                              >
+                                Todo listo para crear
+                              </p>
+
+                              <p
+                                className="
+                                  mt-1
+                                  truncate
+                                  text-[10px]
+                                  text-[#71859D]
+                                  dark:text-slate-400
+                                "
+                              >
+                                {materialSeleccionado
+                                  ? materialSeleccionado.nombre_archivo
+                                  : "Selecciona un material para continuar"}
+                              </p>
+                            </div>
+
+                            <Sparkles
+                              size={22}
+                              className="
+                                shrink-0
+                                text-[#7652D9]
+                              "
+                            />
+                          </div>
+
+                          {mensajeProceso && (
+                            <div
+                              className="
+                                rounded-xl
+                                border
+                                border-violet-100
+                                bg-white/70
+                                p-3
+                                text-xs
+                                font-bold
+                                leading-5
+                                text-[#7652D9]
+                                dark:border-violet-900/30
+                                dark:bg-black/10
+                                dark:text-violet-200
+                              "
+                            >
+                              {
+                                mensajeProceso
+                              }
+                            </div>
+                          )}
+
+                          {generando && (
+                            <div>
+                              <div
+                                className="
+                                  flex
+                                  items-center
+                                  justify-between
+                                  text-[10px]
+                                  font-black
+                                  text-[#617892]
+                                  dark:text-slate-300
+                                "
+                              >
+                                <span
+                                  className="
+                                    flex
+                                    items-center
+                                    gap-2
+                                  "
+                                >
+                                  <LoaderCircle
+                                    size={14}
+                                    className="animate-spin"
+                                  />
+
+                                  Generando organizador...
+                                </span>
+
+                                <span>
+                                  {
+                                    progreso
+                                  }
+                                  %
+                                </span>
+                              </div>
+
+                              <div
+                                className="
+                                  mt-2
+                                  h-2.5
+                                  overflow-hidden
+                                  rounded-full
+                                  bg-white
+                                  dark:bg-slate-700
+                                "
+                              >
+                                <div
+                                  className="
+                                    h-full
+                                    rounded-full
+                                    bg-gradient-to-r
+                                    from-[#3978F6]
+                                    via-[#5E63F2]
+                                    to-[#7652D9]
+                                    transition-all
+                                    duration-500
+                                  "
+                                  style={{
+                                    width:
+                                      `${progreso}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={
+                              generarOrganizador
+                            }
+                            disabled={
+                              generando ||
+                              subiendoMaterial ||
+                              !hayMaterial
+                            }
+                            className="
+                              flex
+                              w-full
+                              items-center
+                              justify-center
+                              gap-2
+                              rounded-[16px]
+                              bg-gradient-to-r
+                              from-[#357AF7]
+                              via-[#5A68F1]
+                              to-[#7C4FE5]
+                              px-5
+                              py-4
+                              text-sm
+                              font-black
+                              text-white
+                              shadow-[0_12px_30px_rgba(93,82,217,0.28)]
+                              transition
+                              hover:-translate-y-0.5
+                              hover:brightness-110
+                              disabled:cursor-not-allowed
+                              disabled:opacity-50
+                            "
+                          >
+                            {generando ? (
+                              <LoaderCircle
+                                size={18}
+                                className="animate-spin"
+                              />
+                            ) : (
+                              <Sparkles
+                                size={18}
+                              />
+                            )}
+
+                            {generando
+                              ? "Creando..."
+                              : "Generar mi organizador"}
+                          </button>
+                        </div>
+                      </div>
                     </section>
                   </div>
 
@@ -3256,6 +4775,8 @@ export default function CrearOrganizadorPage() {
 
                     {/* PREPARACIÓN */}
 
+                    {/* PREPARACIÓN */}
+
                     <section
                       className="
                         rounded-[28px]
@@ -3298,11 +4819,9 @@ export default function CrearOrganizadorPage() {
                         {[
                           {
                             nombre:
-                              "Material cargado",
+                              "Material seleccionado",
                             listo:
-                              Boolean(
-                                archivo
-                              ),
+                              hayMaterial,
                           },
                           {
                             nombre:
@@ -3385,149 +4904,39 @@ export default function CrearOrganizadorPage() {
                         )}
                       </div>
 
-                      {mensajeProceso && (
-                        <div
-                          className="
-                            mt-5
-                            rounded-xl
-                            border
-                            border-violet-100
-                            bg-[#F4F0FF]
-                            p-3
-                            text-xs
-                            font-bold
-                            leading-5
-                            text-[#7652D9]
-                            dark:border-violet-900/30
-                            dark:bg-violet-950/20
-                            dark:text-violet-200
-                          "
-                        >
-                          {
-                            mensajeProceso
-                          }
-                        </div>
-                      )}
-
-                      {generando && (
-                        <div
-                          className="
-                            mt-5
-                          "
-                        >
-                          <div
-                            className="
-                              flex
-                              items-center
-                              justify-between
-                              text-xs
-                              font-bold
-                              text-[#617892]
-                              dark:text-slate-300
-                            "
-                          >
-                            <span
-                              className="
-                                flex
-                                items-center
-                                gap-2
-                              "
-                            >
-                              <LoaderCircle
-                                size={15}
-                                className="animate-spin"
-                              />
-
-                              Generando...
-                            </span>
-
-                            <span>
-                              {
-                                progreso
-                              }
-                              %
-                            </span>
-                          </div>
-
-                          <div
-                            className="
-                              mt-3
-                              h-2.5
-                              overflow-hidden
-                              rounded-full
-                              bg-[#E6ECF4]
-                              dark:bg-slate-700
-                            "
-                          >
-                            <div
-                              className="
-                                h-full
-                                rounded-full
-                                bg-gradient-to-r
-                                from-[#3978F6]
-                                via-[#5E63F2]
-                                to-[#7652D9]
-                                transition-all
-                                duration-500
-                              "
-                              style={{
-                                width:
-                                  `${progreso}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={
-                          generarOrganizador
-                        }
-                        disabled={
-                          generando ||
-                          !archivo
-                        }
+                      <div
                         className="
-                          mt-5
-                          flex
-                          w-full
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-[16px]
-                          bg-gradient-to-r
-                          from-[#357AF7]
-                          via-[#5A68F1]
-                          to-[#7C4FE5]
-                          px-5
-                          py-4
-                          text-sm
-                          font-black
-                          text-white
-                          shadow-[0_12px_30px_rgba(93,82,217,0.28)]
-                          transition
-                          hover:-translate-y-0.5
-                          hover:brightness-110
-                          disabled:cursor-not-allowed
-                          disabled:opacity-50
+                          mt-4
+                          rounded-xl
+                          bg-[#F3F7FC]
+                          p-3
+                          dark:bg-[#0E1929]
                         "
                       >
-                        {generando ? (
-                          <LoaderCircle
-                            size={18}
-                            className="animate-spin"
-                          />
-                        ) : (
-                          <Sparkles
-                            size={18}
-                          />
-                        )}
+                        <p
+                          className="
+                            text-[10px]
+                            font-black
+                            uppercase
+                            tracking-[0.12em]
+                            text-[#8A9BB0]
+                          "
+                        >
+                          Material actual
+                        </p>
 
-                        {generando
-                          ? "Creando..."
-                          : "Generar mi organizador"}
-                      </button>
+                        <p
+                          className="
+                            mt-1
+                            break-words
+                            text-xs
+                            font-black
+                          "
+                        >
+                          {materialSeleccionado?.nombre_archivo ||
+                            "Ninguno seleccionado"}
+                        </p>
+                      </div>
                     </section>
                   </aside>
                 </section>

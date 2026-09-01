@@ -1580,7 +1580,7 @@ export default function BibliotecaPage() {
   ===================================================== */
 
   return (
-    <main className="min-h-screen bg-[#F7F9FF] text-[#10233F] transition-colors duration-500 dark:bg-[#101827] dark:text-white">
+    <main className="min-h-screen bg-[#FBFCFF] text-[#10233F] transition-colors duration-500 dark:bg-[#0C1524] dark:text-white">
       {/* OVERLAY MÓVIL */}
 
       {menuAbierto && (
@@ -1598,8 +1598,8 @@ export default function BibliotecaPage() {
 
       <aside
         className={`
-          fixed left-0 top-0 z-50 flex h-screen w-[250px]
-          flex-col border-r border-[#DDEAF7] bg-white
+          fixed left-0 top-0 z-50 flex h-screen w-[238px]
+          flex-col border-r border-[#E4EAF3] bg-white
           transition-transform duration-300
           dark:border-slate-700 dark:bg-[#151F30]
           ${
@@ -1658,7 +1658,7 @@ export default function BibliotecaPage() {
                   flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition
                   ${
                     activo
-                      ? "bg-[#EDEAFF] font-black text-[#6548E8] dark:bg-[#302B58]"
+                      ? "bg-gradient-to-r from-[#EEF6FF] to-[#F3EEFF] font-black text-[#6548E8] shadow-sm dark:from-[#243650] dark:to-[#302B58]"
                       : "font-semibold text-[#253650] hover:bg-[#F0F8FF] hover:text-[#1687D9] dark:text-slate-200 dark:hover:bg-slate-800"
                   }
                 `}
@@ -1736,10 +1736,10 @@ export default function BibliotecaPage() {
 
       {/* CONTENIDO */}
 
-      <div className="lg:ml-[250px]">
+      <div className="lg:ml-[238px]">
         {/* HEADER */}
 
-        <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#DDEAF7] bg-white/90 px-4 backdrop-blur-xl dark:border-slate-700 dark:bg-[#151F30]/90 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#E4EAF3] bg-white/95 px-4 backdrop-blur-xl dark:border-slate-700 dark:bg-[#151F30]/90 sm:px-6">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -1865,10 +1865,10 @@ export default function BibliotecaPage() {
           </div>
         )}
 
-        <div className="mx-auto max-w-[1450px] px-4 py-6 pb-24 sm:px-6">
+        <div className="mx-auto max-w-[1540px] px-4 py-5 pb-24 sm:px-6 xl:px-7">
           {/* HERO */}
 
-          <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-r from-[#F0ECFF] via-[#F8F7FF] to-[#EBF7FF] p-7 dark:from-[#28243E] dark:via-[#24263F] dark:to-[#1C304D] sm:p-9">
+          <section className="relative overflow-hidden rounded-[28px] border border-[#E6EAF6] bg-gradient-to-r from-[#F2EDFF] via-[#F8F7FF] to-[#EAF6FF] px-7 py-7 shadow-[0_14px_40px_rgba(92,91,190,0.08)] dark:border-slate-700 dark:from-[#28243E] dark:via-[#24263F] dark:to-[#1C304D] sm:px-9 sm:py-8">
             <div className="absolute -right-16 -top-20 h-60 w-60 rounded-full bg-[#7652D9]/10" />
 
             <div className="relative flex flex-col items-center justify-between gap-6 md:flex-row">
@@ -1890,9 +1890,9 @@ export default function BibliotecaPage() {
               <Image
                 src="/raccoon.png"
                 alt="Raccoon leyendo"
-                width={185}
-                height={185}
-                className="object-contain"
+                width={205}
+                height={205}
+                className="h-[170px] w-[210px] object-contain drop-shadow-[0_14px_18px_rgba(72,74,145,0.16)] sm:h-[190px]"
               />
             </div>
           </section>
@@ -1903,9 +1903,9 @@ export default function BibliotecaPage() {
             onSubmit={
               buscarDesdeFormulario
             }
-            className="relative z-10 mx-auto -mt-5 flex max-w-4xl flex-col gap-3 rounded-[22px] bg-white p-3 shadow-xl dark:bg-[#182437] sm:flex-row"
+            className="relative z-10 mt-3 flex w-full flex-col gap-3 rounded-[22px] border border-[#E5EAF2] bg-white p-3 shadow-[0_10px_30px_rgba(38,70,110,0.08)] dark:border-slate-700 dark:bg-[#182437] sm:flex-row"
           >
-            <div className="flex flex-1 items-center gap-3 rounded-xl bg-[#F5F8FC] px-4 dark:bg-slate-800">
+            <div className="flex flex-1 items-center gap-3 rounded-xl border border-[#E6EBF3] bg-[#FBFCFE] px-4 dark:border-slate-700 dark:bg-slate-800">
               <Search className="shrink-0 text-[#8AA4BE]" />
 
               <input
@@ -1927,7 +1927,7 @@ export default function BibliotecaPage() {
                   !mostrarFiltros
                 )
               }
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#F1EDFF] px-5 py-3 font-black text-[#7652D9] dark:bg-[#302747]"
+              className="flex items-center justify-center gap-2 rounded-xl border border-[#DED8FF] bg-[#F7F4FF] px-6 py-3 font-black text-[#7652D9] transition hover:bg-[#EFEAFF] dark:border-[#514B75] dark:bg-[#302747]"
             >
               <SlidersHorizontal size={18} />
               Filtros
@@ -1935,7 +1935,7 @@ export default function BibliotecaPage() {
 
             <button
               type="submit"
-              className="rounded-xl bg-gradient-to-r from-[#356AF2] to-[#7652D9] px-7 py-3 font-black text-white"
+              className="flex min-w-[150px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#356AF2] to-[#7652D9] px-7 py-3 font-black text-white shadow-lg shadow-[#7652D9]/15 transition hover:-translate-y-0.5"
             >
               Buscar
             </button>
@@ -2036,7 +2036,7 @@ export default function BibliotecaPage() {
 
           {/* CATEGORÍAS */}
 
-          <section className="mt-8">
+          <section className="mt-6">
             <div className="mb-5">
               <h2 className="text-2xl font-black">
                 Categorías populares
@@ -2047,7 +2047,7 @@ export default function BibliotecaPage() {
               </p>
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-3">
+            <div className="flex gap-3 overflow-x-auto pb-4 [scrollbar-width:thin] [scrollbar-color:#B9C8DD_transparent]">
               {CATEGORIAS.map(
                 (categoria) => {
                   const Icono =
@@ -2069,16 +2069,16 @@ export default function BibliotecaPage() {
                         )
                       }
                       className={`
-                        min-w-[180px] rounded-2xl border-2 p-4 text-left transition
+                        min-w-[142px] rounded-[18px] border p-4 text-center transition
                         ${
                           activa
-                            ? "border-[#7652D9] bg-[#F6F2FF] shadow-md dark:bg-[#302747]"
-                            : "border-transparent bg-white hover:-translate-y-1 hover:shadow-md dark:bg-[#182437]"
+                            ? "border-[#7652D9] bg-white shadow-[0_8px_24px_rgba(118,82,217,0.12)] dark:bg-[#302747]"
+                            : "border-[#E8EDF4] bg-white hover:-translate-y-1 hover:border-[#D8D0FF] hover:shadow-md dark:border-slate-700 dark:bg-[#182437]"
                         }
                       `}
                     >
                       <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-xl ${categoria.estilo}`}
+                        className={`mx-auto flex h-12 w-12 items-center justify-center rounded-xl ${categoria.estilo}`}
                       >
                         <Icono size={21} />
                       </div>
@@ -2101,7 +2101,7 @@ export default function BibliotecaPage() {
 
           {/* TABS */}
 
-          <div className="mt-7 flex w-fit gap-2 rounded-2xl bg-white p-2 shadow-sm dark:bg-[#182437]">
+          <div className="mt-5 flex w-full flex-wrap gap-1 rounded-[18px] border border-[#E8EDF4] bg-white p-1.5 shadow-sm dark:border-slate-700 dark:bg-[#182437]">
             <button
               type="button"
               onClick={() =>
@@ -2110,7 +2110,7 @@ export default function BibliotecaPage() {
                 )
               }
               className={`
-                flex items-center gap-2 rounded-xl px-5 py-3 font-black
+                flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-black
                 ${
                   tabActiva ===
                   "explorar"
@@ -2131,7 +2131,7 @@ export default function BibliotecaPage() {
                 )
               }
               className={`
-                flex items-center gap-2 rounded-xl px-5 py-3 font-black
+                flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-black
                 ${
                   tabActiva ===
                   "favoritos"
@@ -2151,7 +2151,7 @@ export default function BibliotecaPage() {
 
           {/* RESULTADOS */}
 
-          <div className="mt-7 grid gap-7 xl:grid-cols-[1fr_330px]">
+          <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
             <div>
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
@@ -2211,7 +2211,7 @@ export default function BibliotecaPage() {
               {cargandoLibros &&
               tabActiva ===
                 "explorar" ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                   {Array.from({
                     length: 6,
                   }).map(
@@ -2255,7 +2255,7 @@ export default function BibliotecaPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                   {librosMostrados.map(
                     (libro) => (
                       <TarjetaLibro
@@ -2313,176 +2313,155 @@ export default function BibliotecaPage() {
 
             {/* PANEL DERECHO */}
 
-            <aside className="space-y-6">
-              <section className="rounded-[25px] bg-white p-6 shadow-sm dark:bg-[#182437]">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFEAF0] text-[#E04E76]">
-                    <Heart size={23} />
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-bold text-[#6085A5]">
-                      Mi biblioteca
-                    </p>
-
-                    <h2 className="text-xl font-black">
-                      {favoritos.length}{" "}
-                      {favoritos.length ===
-                      1
-                        ? "favorito"
-                        : "favoritos"}
-                    </h2>
-                  </div>
+            <aside className="space-y-5">
+              <section className="overflow-hidden rounded-[22px] border border-[#E6EBF3] bg-white shadow-sm dark:border-slate-700 dark:bg-[#182437]">
+                <div className="flex items-center gap-2 px-5 pb-3 pt-5">
+                  <BookOpen size={20} className="text-[#7652D9]" />
+                  <h2 className="font-black">Mi biblioteca</h2>
                 </div>
 
-                {!esPremium && (
-                  <>
-                    <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-[#E7EDF5] dark:bg-slate-700">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#E04E76] to-[#7652D9]"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (
-                              favoritos.length /
-                              12
-                            ) *
-                              100
-                          )}%`,
-                        }}
-                      />
-                    </div>
+                <button
+                  type="button"
+                  onClick={() => setTabActiva("favoritos")}
+                  className="flex w-full items-center justify-between border-t border-[#EDF1F6] px-5 py-4 text-left transition hover:bg-[#FAFBFF] dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#E04E76]">
+                      <Heart size={18} />
+                    </span>
+                    <span className="text-sm font-bold">Favoritos</span>
+                  </span>
+                  <span className="flex items-center gap-2 font-black">
+                    {favoritos.length}
+                    <ArrowRight size={15} className="text-[#91A2B5]" />
+                  </span>
+                </button>
 
-                    <p className="mt-2 text-xs text-[#6085A5]">
-                      {favoritos.length}/12 espacios gratuitos
-                    </p>
-                  </>
-                )}
+                <div className="flex w-full items-center justify-between border-t border-[#EDF1F6] px-5 py-4 dark:border-slate-700">
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EFF5FF] text-[#3478E5]">
+                      <BookMarked size={18} />
+                    </span>
+                    <span className="text-sm font-bold">Vistas disponibles</span>
+                  </span>
+                  <span className="font-black">
+                    {libros.filter((libro) => libro.vistaDisponible).length}
+                  </span>
+                </div>
 
-                {esPremium && (
-                  <div className="mt-5 flex items-center gap-2 rounded-xl bg-[#FFF5D9] p-3 text-sm font-black text-[#A97900] dark:bg-[#4B3D1E]">
-                    <Crown size={17} />
-                    Favoritos ilimitados
-                  </div>
-                )}
+                <div className="flex w-full items-center justify-between border-t border-[#EDF1F6] px-5 py-4 dark:border-slate-700">
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0F8FF] text-[#1687D9]">
+                      <BookOpen size={18} />
+                    </span>
+                    <span className="text-sm font-bold">Resultados</span>
+                  </span>
+                  <span className="font-black">
+                    {totalResultados.toLocaleString("es-PA")}
+                  </span>
+                </div>
               </section>
 
-              <section className="rounded-[25px] bg-white p-6 shadow-sm dark:bg-[#182437]">
+              <section className="rounded-[22px] border border-[#E6EBF3] bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#182437]">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-black">
-                    Favoritos recientes
-                  </h2>
-
-                  <BookMarked
-                    size={20}
-                    className="text-[#7652D9]"
-                  />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-[#D4931C]">
+                      Tus lecturas
+                    </p>
+                    <h2 className="mt-1 text-lg font-black">
+                      Favoritos recientes
+                    </h2>
+                  </div>
+                  <BookMarked size={20} className="text-[#D4931C]" />
                 </div>
 
-                {favoritos.length ===
-                0 ? (
-                  <div className="mt-5 rounded-2xl bg-[#F8FBFD] p-6 text-center dark:bg-slate-800">
+                {favoritos.length === 0 ? (
+                  <div className="mt-4 rounded-2xl bg-[#F8FBFD] p-5 text-center dark:bg-slate-800">
                     <Heart className="mx-auto text-[#9CB1C7]" />
-
                     <p className="mt-3 text-sm font-bold">
                       Guarda tus próximas lecturas.
                     </p>
                   </div>
                 ) : (
                   <div className="mt-4 space-y-3">
-                    {favoritos
-                      .slice(0, 4)
-                      .map(
-                        (favorito) => (
-                          <button
-                            key={
-                              favorito.libro_id
-                            }
-                            type="button"
-                            onClick={() =>
-                              setLibroActivo(
-                                favorito.libro
-                              )
-                            }
-                            className="flex w-full items-center gap-3 rounded-xl border border-[#E7EDF5] p-3 text-left transition hover:border-[#7652D9] dark:border-slate-700"
-                          >
-                            {favorito.libro
-                              .miniatura ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={
-                                  favorito.libro
-                                    .miniatura
-                                }
-                                alt={
-                                  favorito.libro
-                                    .titulo
-                                }
-                                className="h-16 w-11 rounded object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-16 w-11 items-center justify-center rounded bg-[#EDE9FF]">
-                                <BookOpen size={18} />
-                              </div>
-                            )}
+                    {favoritos.slice(0, 2).map((favorito) => (
+                      <button
+                        key={favorito.libro_id}
+                        type="button"
+                        onClick={() => setLibroActivo(favorito.libro)}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-[#E7EDF5] p-3 text-left transition hover:border-[#7652D9] hover:shadow-sm dark:border-slate-700"
+                      >
+                        {favorito.libro.miniatura ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={favorito.libro.miniatura}
+                            alt={favorito.libro.titulo}
+                            className="h-16 w-11 rounded-md object-cover shadow-sm"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-11 items-center justify-center rounded-md bg-[#EDE9FF]">
+                            <BookOpen size={18} />
+                          </div>
+                        )}
 
-                            <div className="min-w-0">
-                              <p className="line-clamp-2 text-sm font-black">
-                                {
-                                  favorito.libro
-                                    .titulo
-                                }
-                              </p>
-
-                              <p className="mt-1 truncate text-xs text-[#6085A5]">
-                                {
-                                  favorito.libro
-                                    .autores[0]
-                                }
-                              </p>
-                            </div>
-                          </button>
-                        )
-                      )}
+                        <div className="min-w-0">
+                          <p className="line-clamp-2 text-sm font-black">
+                            {favorito.libro.titulo}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-[#6085A5]">
+                            {favorito.libro.autores[0]}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </section>
 
+              <section className="relative overflow-hidden rounded-[22px] border border-[#E1E8F5] bg-gradient-to-br from-[#F4F8FF] to-[#EDF4FF] p-5 dark:border-slate-700 dark:from-[#1A2940] dark:to-[#182437]">
+                <Sparkles size={20} className="text-[#3478E5]" />
+                <h2 className="mt-3 font-black text-[#3478E5]">
+                  Consejo del día
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[#5D7894] dark:text-slate-300">
+                  Explora una categoría diferente y guarda los libros que quieras revisar después.
+                </p>
+                <Image
+                  src="/raccoon.png"
+                  alt="Raccoon"
+                  width={76}
+                  height={76}
+                  className="absolute -bottom-2 -right-1 object-contain opacity-95"
+                />
+              </section>
+
               <section
                 className={`
-                  relative overflow-hidden rounded-[25px] p-6 text-white
+                  relative overflow-hidden rounded-[22px] p-5 text-white shadow-sm
                   ${
                     esPremium
-                      ? "bg-gradient-to-br from-[#F2B93B] to-[#7652D9]"
-                      : "bg-gradient-to-br from-[#55A8E8] to-[#7652D9]"
+                      ? "bg-gradient-to-br from-[#F2B93B] via-[#E6A834] to-[#7771E8]"
+                      : "bg-gradient-to-br from-[#55A8E8] to-[#7771E8]"
                   }
                 `}
               >
                 <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/15" />
-
-                <Crown size={30} />
-
-                <h2 className="mt-4 text-xl font-black">
-                  {esPremium
-                    ? "Biblioteca Premium"
-                    : "Mejora tu biblioteca"}
+                <Crown size={26} />
+                <h2 className="mt-3 text-lg font-black">
+                  {esPremium ? "Premium activo" : "Raccoon Premium"}
                 </h2>
-
-                <p className="mt-2 text-sm leading-6 text-white/85">
+                <p className="mt-1 text-xs text-white/85">
                   {esPremium
-                    ? "Tienes resultados ampliados, novedades y favoritos ilimitados."
-                    : "Desbloquea más resultados, novedades y favoritos ilimitados."}
+                    ? "Disfruta tu biblioteca sin límites."
+                    : "Desbloquea más resultados y favoritos."}
                 </p>
 
                 <Link
                   href="/suscripcion"
-                  className="relative mt-5 flex items-center justify-center gap-2 rounded-xl bg-white py-3 font-black text-[#7652D9]"
+                  className="relative mt-4 flex items-center justify-center gap-2 rounded-xl bg-white/95 py-3 text-sm font-black text-[#7652D9]"
                 >
-                  {esPremium
-                    ? "Administrar plan"
-                    : "Ver Premium"}
-
-                  <ArrowRight size={17} />
+                  {esPremium ? "Administrar plan" : "Ver Premium"}
+                  <ArrowRight size={16} />
                 </Link>
               </section>
             </aside>
@@ -2490,7 +2469,7 @@ export default function BibliotecaPage() {
 
           {/* RECOMENDACIÓN */}
 
-          <section className="mt-8 overflow-hidden rounded-[28px] bg-gradient-to-r from-[#F1EDFF] to-[#EAF8FF] p-7 dark:from-[#28243E] dark:to-[#1C304D]">
+          <section className="mt-7 overflow-hidden rounded-[24px] border border-[#E5E7F5] bg-gradient-to-r from-[#F3EEFF] to-[#EAF8FF] p-6 dark:from-[#28243E] dark:to-[#1C304D]">
             <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
               <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
                 <Image
@@ -2898,123 +2877,88 @@ function TarjetaLibro({
   onFavorito: () => void;
 }) {
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[22px] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:bg-[#182437]">
-      <div className="relative flex h-[260px] items-center justify-center overflow-hidden bg-gradient-to-br from-[#F1EDFF] to-[#EAF8FF] p-5 dark:from-[#28243E] dark:to-[#1C304D]">
-        {libro.miniatura ||
-        libro.portada ? (
+    <article className="group flex min-h-[190px] overflow-hidden rounded-[18px] border border-[#E7ECF3] bg-white p-3 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#DCD4FF] hover:shadow-lg dark:border-slate-700 dark:bg-[#182437]">
+      <div className="relative flex w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-br from-[#F1EDFF] to-[#EAF8FF] p-2 dark:from-[#28243E] dark:to-[#1C304D]">
+        {libro.miniatura || libro.portada ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={
-              libro.portada ||
-              libro.miniatura
-            }
+            src={libro.portada || libro.miniatura}
             alt={libro.titulo}
-            className="h-full max-w-[175px] rounded-lg object-cover shadow-xl transition duration-300 group-hover:scale-105"
+            className="h-[150px] w-[92px] rounded-md object-cover shadow-md transition duration-300 group-hover:scale-[1.03]"
             onError={(evento) => {
-              evento.currentTarget.src =
-                "/raccoon.png";
+              evento.currentTarget.src = "/raccoon.png";
             }}
           />
         ) : (
-          <BookOpen
-            size={65}
-            className="text-[#7652D9]"
-          />
+          <BookOpen size={48} className="text-[#7652D9]" />
         )}
-
-        <button
-          type="button"
-          onClick={(evento) => {
-            evento.stopPropagation();
-            onFavorito();
-          }}
-          disabled={guardando}
-          className={`
-            absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition
-            ${
-              favorito
-                ? "bg-[#E04E76] text-white"
-                : "bg-white text-[#6085A5] hover:text-[#E04E76] dark:bg-slate-800"
-            }
-          `}
-          aria-label={
-            favorito
-              ? "Eliminar favorito"
-              : "Guardar favorito"
-          }
-        >
-          {guardando ? (
-            <LoaderCircle
-              size={18}
-              className="animate-spin"
-            />
-          ) : (
-            <Heart
-              size={19}
-              fill={
-                favorito
-                  ? "currentColor"
-                  : "none"
-              }
-            />
-          )}
-        </button>
 
         {libro.embebible && (
-          <span className="absolute bottom-4 left-4 rounded-full bg-[#DDF7EA] px-3 py-1.5 text-xs font-black text-[#258A5B] shadow-sm">
+          <span className="absolute bottom-2 left-2 rounded-full bg-[#DDF7EA] px-2 py-1 text-[9px] font-black text-[#258A5B] shadow-sm">
             Leer aquí
-          </span>
-        )}
-
-        {libro.accesoCompleto && (
-          <span className="absolute bottom-4 right-4 rounded-full bg-[#EAF1FF] px-3 py-1.5 text-xs font-black text-[#1769E0] shadow-sm">
-            Completo
           </span>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <span className="w-fit rounded-full bg-[#F1EDFF] px-3 py-1 text-xs font-black text-[#7652D9] dark:bg-[#302747]">
-          {libro.categorias[0] ||
-            "General"}
-        </span>
+      <div className="flex min-w-0 flex-1 flex-col px-3 py-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="line-clamp-1 rounded-full bg-[#F1EDFF] px-2.5 py-1 text-[10px] font-black text-[#7652D9] dark:bg-[#302747]">
+            {libro.categorias[0] || "General"}
+          </span>
 
-        <h3 className="mt-3 line-clamp-2 text-lg font-black leading-6">
+          <button
+            type="button"
+            onClick={(evento) => {
+              evento.stopPropagation();
+              onFavorito();
+            }}
+            disabled={guardando}
+            className={`
+              flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition
+              ${
+                favorito
+                  ? "border-[#FFD0DC] bg-[#FFF0F4] text-[#E04E76]"
+                  : "border-[#E5EAF1] bg-white text-[#7890A9] hover:border-[#FFD0DC] hover:text-[#E04E76] dark:border-slate-600 dark:bg-slate-800"
+              }
+            `}
+            aria-label={favorito ? "Eliminar favorito" : "Guardar favorito"}
+          >
+            {guardando ? (
+              <LoaderCircle size={15} className="animate-spin" />
+            ) : (
+              <Heart
+                size={16}
+                fill={favorito ? "currentColor" : "none"}
+              />
+            )}
+          </button>
+        </div>
+
+        <h3 className="mt-2 line-clamp-2 text-[15px] font-black leading-5">
           {libro.titulo}
         </h3>
 
-        <p className="mt-2 line-clamp-1 text-sm text-[#6085A5]">
-          {libro.autores.join(
-            ", "
-          )}
+        <p className="mt-1 line-clamp-1 text-xs text-[#6085A5]">
+          {libro.autores.join(", ")}
         </p>
 
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center gap-1 text-sm font-black text-[#D89A00]">
-            <Star
-              size={16}
-              fill="currentColor"
-            />
-
-            {libro.valoracion
-              ? libro.valoracion
-              : "—"}
-          </div>
-
-          <span className="text-xs text-[#8AA4BE]">
-            {añoPublicacion(
-              libro.fechaPublicacion
-            )}
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          <span className="flex items-center gap-1 font-black text-[#D89A00]">
+            <Star size={13} fill="currentColor" />
+            {libro.valoracion ? libro.valoracion : "—"}
+          </span>
+          <span className="text-[#9AAABC]">
+            {añoPublicacion(libro.fechaPublicacion)}
           </span>
         </div>
 
         <button
           type="button"
           onClick={onAbrir}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#F1EDFF] py-3 font-black text-[#7652D9] transition group-hover:bg-[#7652D9] group-hover:text-white dark:bg-[#302747]"
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#F1EDFF] to-[#EEF5FF] py-2.5 text-xs font-black text-[#7652D9] transition hover:from-[#7652D9] hover:to-[#4B7DF4] hover:text-white dark:from-[#302747] dark:to-[#233B60]"
         >
           Ver libro
-          <ArrowRight size={16} />
+          <ArrowRight size={14} />
         </button>
       </div>
     </article>
