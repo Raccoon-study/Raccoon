@@ -77,6 +77,24 @@ type IdiomaType =
   | "Español"
   | "English";
 
+
+type MascotaType =
+  | "rocco"
+  | "riccie";
+
+type LookUnlock =
+  | "free"
+  | "level"
+  | "premium";
+
+interface LookRaccoon {
+  id: string;
+  nombre: string;
+  imagen: string;
+  desbloqueo: LookUnlock;
+  nivelMinimo?: number;
+}
+
 interface UsuarioPerfil {
   nombre: string;
   correo: string;
@@ -175,6 +193,153 @@ const diasSemana = [
   "V",
   "S",
   "D",
+];
+
+
+const looksRocco: LookRaccoon[] = [
+  {
+    id: "azul-clasico",
+    nombre: "Azul clásico",
+    imagen: "/vestuario/rocco/01-azul-clasico.png",
+    desbloqueo: "free",
+    nivelMinimo: 1,
+  },
+  {
+    id: "deportivo",
+    nombre: "Deportivo",
+    imagen: "/vestuario/rocco/02-deportivo.png",
+    desbloqueo: "level",
+    nivelMinimo: 2,
+  },
+  {
+    id: "escolar",
+    nombre: "Escolar",
+    imagen: "/vestuario/rocco/03-escolar.png",
+    desbloqueo: "level",
+    nivelMinimo: 3,
+  },
+  {
+    id: "urbano",
+    nombre: "Urbano",
+    imagen: "/vestuario/rocco/04-urbano.png",
+    desbloqueo: "level",
+    nivelMinimo: 4,
+  },
+  {
+    id: "universitario",
+    nombre: "Universitario",
+    imagen: "/vestuario/rocco/05-universitario.png",
+    desbloqueo: "level",
+    nivelMinimo: 5,
+  },
+  {
+    id: "denim",
+    nombre: "Denim",
+    imagen: "/vestuario/rocco/06-denim.png",
+    desbloqueo: "level",
+    nivelMinimo: 6,
+  },
+  {
+    id: "amarillo",
+    nombre: "Sudadera amarilla",
+    imagen: "/vestuario/rocco/07-amarillo.png",
+    desbloqueo: "level",
+    nivelMinimo: 7,
+  },
+  {
+    id: "turquesa",
+    nombre: "Sudadera turquesa",
+    imagen: "/vestuario/rocco/08-turquesa.png",
+    desbloqueo: "level",
+    nivelMinimo: 8,
+  },
+  {
+    id: "premium",
+    nombre: "Look Premium",
+    imagen: "/vestuario/rocco/09-premium.png",
+    desbloqueo: "premium",
+    nivelMinimo: 9,
+  },
+  {
+    id: "maestro",
+    nombre: "Rocco Maestro",
+    imagen: "/vestuario/rocco/10-racha.png",
+    desbloqueo: "level",
+    nivelMinimo: 10,
+  },
+];
+
+const looksRiccie: LookRaccoon[] = [
+  {
+    id: "rosa-casual",
+    nombre: "Conjunto rosa",
+    imagen: "riccie_01_rosa_casual.png",
+    desbloqueo: "free",
+    nivelMinimo: 1,
+  },
+  {
+    id: "lila-deportivo",
+    nombre: "Lila deportivo",
+    imagen: "riccie_02_lila_deportivo.png",
+    desbloqueo: "level",
+    nivelMinimo: 2,
+  },
+  {
+    id: "overol-escolar",
+    nombre: "Overol escolar",
+    imagen: "riccie_03_overol_escolar.png",
+    desbloqueo: "level",
+    nivelMinimo: 3,
+  },
+  {
+    id: "vestido-morado",
+    nombre: "Vestido morado",
+    imagen: "riccie_04_vestido_morado.png",
+    desbloqueo: "level",
+    nivelMinimo: 4,
+  },
+  {
+    id: "chaqueta-rosa",
+    nombre: "Chaqueta rosa",
+    imagen: "riccie_05_chaqueta_rosa.png",
+    desbloqueo: "level",
+    nivelMinimo: 5,
+  },
+  {
+    id: "denim",
+    nombre: "Chaqueta denim",
+    imagen: "riccie_06_denim.png",
+    desbloqueo: "level",
+    nivelMinimo: 6,
+  },
+  {
+    id: "amarilla",
+    nombre: "Sudadera amarilla",
+    imagen: "riccie_07_amarilla.png",
+    desbloqueo: "level",
+    nivelMinimo: 7,
+  },
+  {
+    id: "turquesa",
+    nombre: "Sudadera turquesa",
+    imagen: "riccie_08_turquesa.png",
+    desbloqueo: "level",
+    nivelMinimo: 8,
+  },
+  {
+    id: "flores-premium",
+    nombre: "Vestido flores Premium",
+    imagen: "riccie_09_flores_premium.png",
+    desbloqueo: "level",
+    nivelMinimo: 9,
+  },
+  {
+    id: "maestra",
+    nombre: "Riccie Maestra",
+    imagen: "riccie_10_arcoiris.png",
+    desbloqueo: "level",
+    nivelMinimo: 10,
+  },
 ];
 
 const zonasHorarias = [
@@ -667,7 +832,70 @@ export default function PerfilScreen() {
     setMostrarObjetivo,
   ] = useState(false);
 
+  const [
+    mostrarVestuario,
+    setMostrarVestuario,
+  ] = useState(false);
+
+  const [
+    mostrarControlParental,
+    setMostrarControlParental,
+  ] = useState(false);
+
+  const [
+    mascotaSeleccionada,
+    setMascotaSeleccionada,
+  ] = useState<MascotaType>("rocco");
+
+  const [
+    lookSeleccionado,
+    setLookSeleccionado,
+  ] = useState("azul-clasico");
+
+  const [
+    avatarRaccoon,
+    setAvatarRaccoon,
+  ] = useState(
+    "/vestuario/rocco/01-azul-clasico.png"
+  );
+
+  const [
+    guardandoVestuario,
+    setGuardandoVestuario,
+  ] = useState(false);
+
+  const [
+    controlParentalActivo,
+    setControlParentalActivo,
+  ] = useState(false);
+
+  const [
+    correoTutor,
+    setCorreoTutor,
+  ] = useState("");
+
+  const [
+    limiteEstudioMinutos,
+    setLimiteEstudioMinutos,
+  ] = useState(120);
+
+  const [
+    horaSilencioInicio,
+    setHoraSilencioInicio,
+  ] = useState("22:00");
+
+  const [
+    horaSilencioFin,
+    setHoraSilencioFin,
+  ] = useState("06:00");
+
+  const [
+    guardandoParental,
+    setGuardandoParental,
+  ] = useState(false);
+
   /* DISEÑO */
+
 
   const [
     menuAbierto,
@@ -804,16 +1032,27 @@ export default function PerfilScreen() {
       setCargandoPlan(true);
 
       const {
-        data: { user },
-      } =
-        await supabase.auth.getUser();
-
-      const {
         data: { session },
+        error: errorSesion,
       } =
         await supabase.auth.getSession();
 
-      if (!user || !session) {
+      if (errorSesion) {
+        console.warn(
+          "No se pudo recuperar la sesión:",
+          errorSesion.message
+        );
+        mostrarNotificacion(
+          "No se pudo conectar con Supabase. Intenta iniciar sesión nuevamente."
+        );
+        router.replace("/Login");
+        return null;
+      }
+
+      const user =
+        session?.user ?? null;
+
+      if (!user) {
         router.replace("/Login");
         return null;
       }
@@ -871,6 +1110,77 @@ export default function PerfilScreen() {
       setFotoPerfil(avatar);
       setAvatarPath(rutaAvatar);
 
+      const mascotaMetadata =
+        metadata.raccoon_character === "riccie"
+          ? "riccie"
+          : "rocco";
+
+      const lookMetadata =
+        typeof metadata.raccoon_look === "string" &&
+        metadata.raccoon_look.trim()
+          ? metadata.raccoon_look
+          : mascotaMetadata === "riccie"
+            ? "rosa-casual"
+            : "azul-clasico";
+
+      setMascotaSeleccionada(
+        mascotaMetadata
+      );
+
+      setLookSeleccionado(
+        lookMetadata
+      );
+
+      const avatarRaccoonMetadata =
+        typeof metadata.raccoon_avatar === "string" &&
+        metadata.raccoon_avatar.trim()
+          ? metadata.raccoon_avatar
+          : mascotaMetadata === "riccie"
+            ? "/vestuario/riccie/01-rosa-casual.png"
+            : "/vestuario/rocco/01-azul-clasico.png";
+
+      setAvatarRaccoon(
+        avatarRaccoonMetadata
+      );
+
+      if (
+        esObjeto(
+          metadata.parental_control
+        )
+      ) {
+        setControlParentalActivo(
+          metadata.parental_control.enabled === true
+        );
+
+        setCorreoTutor(
+          typeof metadata.parental_control.parent_email === "string"
+            ? metadata.parental_control.parent_email
+            : ""
+        );
+
+        setLimiteEstudioMinutos(
+          Math.max(
+            30,
+            numeroSeguro(
+              metadata.parental_control.study_limit_minutes,
+              120
+            )
+          )
+        );
+
+        setHoraSilencioInicio(
+          typeof metadata.parental_control.quiet_start === "string"
+            ? metadata.parental_control.quiet_start
+            : "22:00"
+        );
+
+        setHoraSilencioFin(
+          typeof metadata.parental_control.quiet_end === "string"
+            ? metadata.parental_control.quiet_end
+            : "06:00"
+        );
+      }
+
       const premiumMetadata =
         metadata.premium === true ||
         metadata.is_premium ===
@@ -892,6 +1202,17 @@ export default function PerfilScreen() {
       );
 
       try {
+        const accessToken =
+          session?.access_token;
+
+        if (!accessToken) {
+          router.replace(
+            "/Login"
+          );
+
+          return null;
+        }
+
         const respuesta =
           await fetch(
             "/api/suscripciones",
@@ -900,7 +1221,7 @@ export default function PerfilScreen() {
 
               headers: {
                 Authorization:
-                  `Bearer ${session.access_token}`,
+                  `Bearer ${accessToken}`,
               },
 
               cache: "no-store",
@@ -942,7 +1263,7 @@ export default function PerfilScreen() {
 
       return user.id;
     } catch (error) {
-      console.error(
+      console.warn(
         "Error cargando usuario:",
         error
       );
@@ -1543,9 +1864,19 @@ export default function PerfilScreen() {
       setGuardandoPerfil(true);
 
       const {
-        data: { user },
+        data: { session },
+        error: errorSesion,
       } =
-        await supabase.auth.getUser();
+        await supabase.auth.getSession();
+
+      if (errorSesion) {
+        throw new Error(
+          errorSesion.message
+        );
+      }
+
+      const user =
+        session?.user ?? null;
 
       if (!user) {
         router.replace("/Login");
@@ -1698,13 +2029,35 @@ export default function PerfilScreen() {
         `${urlData.publicUrl}?v=${Date.now()}`;
 
       const {
-        data: { user },
+        data: { session },
+        error: errorSesion,
       } =
-        await supabase.auth.getUser();
+        await supabase.auth.getSession();
+
+      if (errorSesion) {
+        await supabase.storage
+          .from("avatars")
+          .remove([
+            nuevaRuta,
+          ]);
+
+        throw new Error(
+          errorSesion.message
+        );
+      }
+
+      const user =
+        session?.user ?? null;
 
       if (!user) {
+        await supabase.storage
+          .from("avatars")
+          .remove([
+            nuevaRuta,
+          ]);
+
         throw new Error(
-          "No se encontró el usuario."
+          "Tu sesión expiró. Inicia sesión nuevamente."
         );
       }
 
@@ -1775,6 +2128,260 @@ export default function PerfilScreen() {
   }
 
   /* =====================================================
+     VESTUARIO RACCOON
+  ===================================================== */
+
+  function lookDesbloqueado(
+    look: LookRaccoon
+  ): boolean {
+    const nivelRequerido =
+      Math.max(
+        1,
+        look.nivelMinimo || 1
+      );
+
+    if (
+      nivel < nivelRequerido
+    ) {
+      return false;
+    }
+
+    if (
+      look.desbloqueo === "premium"
+    ) {
+      return esPremium;
+    }
+
+    return true;
+  }
+
+  async function guardarVestuario(
+    look: LookRaccoon
+  ) {
+    if (
+      !lookDesbloqueado(look)
+    ) {
+      mostrarNotificacion(
+        look.desbloqueo === "premium" &&
+        nivel >= (look.nivelMinimo || 1)
+          ? "Este look es exclusivo de Premium."
+          : `Necesitas llegar al nivel ${look.nivelMinimo || 1} para desbloquear este look.`
+      );
+
+      return;
+    }
+
+    try {
+      setGuardandoVestuario(true);
+
+      const {
+        data: { session },
+        error: errorSesion,
+      } =
+        await supabase.auth.getSession();
+
+      if (errorSesion) {
+        throw new Error(
+          errorSesion.message
+        );
+      }
+
+      const user =
+        session?.user ?? null;
+
+      if (!user) {
+        router.replace("/Login");
+        return;
+      }
+
+      const metadataActual = {
+        ...(user.user_metadata || {}),
+      };
+
+      const {
+        error,
+      } =
+        await supabase.auth.updateUser({
+          data: {
+            ...metadataActual,
+            raccoon_character:
+              mascotaSeleccionada,
+            raccoon_look:
+              look.id,
+            raccoon_avatar:
+              look.imagen,
+          },
+        });
+
+      if (error) {
+        throw new Error(
+          error.message
+        );
+      }
+
+      setLookSeleccionado(
+        look.id
+      );
+
+      setAvatarRaccoon(
+        look.imagen
+      );
+
+      mostrarNotificacion(
+        `${look.nombre} equipado correctamente.`
+      );
+    } catch (error) {
+      console.error(
+        "Error guardando vestuario:",
+        error
+      );
+
+      mostrarNotificacion(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el vestuario."
+      );
+    } finally {
+      setGuardandoVestuario(false);
+    }
+  }
+
+  /* =====================================================
+     CONTROL PARENTAL
+  ===================================================== */
+
+  async function guardarControlParental() {
+    if (
+      controlParentalActivo &&
+      correoTutor.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        correoTutor.trim()
+      )
+    ) {
+      mostrarNotificacion(
+        "Escribe un correo válido para el tutor."
+      );
+
+      return;
+    }
+
+    try {
+      setGuardandoParental(true);
+
+      const {
+        data: { session },
+        error: errorSesion,
+      } =
+        await supabase.auth.getSession();
+
+      if (errorSesion) {
+        throw new Error(
+          errorSesion.message
+        );
+      }
+
+      const user =
+        session?.user ?? null;
+
+      if (!user) {
+        router.replace("/Login");
+        return;
+      }
+
+      const metadataActual = {
+        ...(user.user_metadata || {}),
+      };
+
+      const {
+        error,
+      } =
+        await supabase.auth.updateUser({
+          data: {
+            ...metadataActual,
+            parental_control: {
+              enabled:
+                controlParentalActivo,
+              parent_email:
+                correoTutor.trim(),
+              study_limit_minutes:
+                limiteEstudioMinutos,
+              quiet_start:
+                horaSilencioInicio,
+              quiet_end:
+                horaSilencioFin,
+              progress_email:
+                true,
+              progress_frequency:
+                "weekly",
+            },
+          },
+        });
+
+      if (error) {
+        throw new Error(
+          error.message
+        );
+      }
+
+      if (
+        controlParentalActivo &&
+        correoTutor.trim()
+      ) {
+        try {
+          const accessToken =
+            session?.access_token;
+
+          if (accessToken) {
+            await fetch(
+              "/api/control-parental/progreso",
+              {
+                method: "POST",
+                headers: {
+                  Authorization:
+                    `Bearer ${accessToken}`,
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  enviarAhora: true,
+                }),
+              }
+            );
+          }
+        } catch (error) {
+          console.warn(
+            "No se pudo enviar el primer reporte parental:",
+            error
+          );
+        }
+      }
+
+      setMostrarControlParental(
+        false
+      );
+
+      mostrarNotificacion(
+        controlParentalActivo
+          ? "Control parental guardado. El tutor recibirá un resumen semanal del progreso."
+          : "Control parental desactivado."
+      );
+    } catch (error) {
+      console.error(
+        "Error guardando control parental:",
+        error
+      );
+
+      mostrarNotificacion(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el control parental."
+      );
+    } finally {
+      setGuardandoParental(false);
+    }
+  }
+
+  /* =====================================================
      CAMBIAR PREFERENCIAS
   ===================================================== */
 
@@ -1829,9 +2436,16 @@ export default function PerfilScreen() {
   ===================================================== */
 
   async function cerrarSesion() {
-    await supabase.auth.signOut();
-
-    router.push("/Login");
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch (error) {
+      console.warn(
+        "No se pudo notificar el cierre de sesión a Supabase:",
+        error instanceof Error ? error.message : error
+      );
+    } finally {
+      router.push("/Login");
+    }
   }
 
   /* =====================================================
@@ -2054,7 +2668,7 @@ export default function PerfilScreen() {
   ===================================================== */
 
   return (
-    <main className="min-h-screen bg-[#F5FAFF] text-[#10233F] transition-colors duration-500 dark:bg-[#101827] dark:text-white">
+    <main className="min-h-screen bg-[#FBFCFF] text-[#10233F] transition-colors duration-500 dark:bg-[#0C1524] dark:text-white">
       {/* OVERLAY MÓVIL */}
 
       {menuAbierto && (
@@ -2388,7 +3002,7 @@ export default function PerfilScreen() {
         <div className="mx-auto max-w-[1450px] px-4 py-6 pb-28 sm:px-6 lg:px-8">
           {/* TARJETA DE PERFIL */}
 
-          <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-r from-[#EAF8FF] via-[#F7F5FF] to-[#EFEAFF] p-6 shadow-sm dark:from-[#1C304D] dark:via-[#24263F] dark:to-[#28243E] sm:p-8">
+          <section className="relative overflow-hidden rounded-[28px] border border-[#DDE7F4] bg-gradient-to-r from-[#EAF6FF] via-[#F8F6FF] to-[#F0ECFF] p-6 shadow-[0_14px_38px_rgba(38,70,110,0.07)] dark:border-slate-700 dark:from-[#1C304D] dark:via-[#24263F] dark:to-[#28243E] sm:p-8">
             <div className="absolute -right-16 -top-20 h-60 w-60 rounded-full bg-[#7652D9]/10" />
 
             <div className="relative flex flex-col items-center gap-7 md:flex-row">
@@ -2509,6 +3123,19 @@ export default function PerfilScreen() {
                   <CreditCard size={18} />
                   Mi suscripción
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMostrarVestuario(
+                      true
+                    )
+                  }
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#D9D2FF] bg-[#F6F2FF] px-6 py-3 font-black text-[#7652D9] shadow-sm transition hover:-translate-y-1 hover:bg-[#EFE8FF] dark:border-[#514B75] dark:bg-[#302747]"
+                >
+                  <Sparkles size={18} />
+                  Personalizar Raccoon
+                </button>
               </div>
             </div>
           </section>
@@ -2532,9 +3159,9 @@ export default function PerfilScreen() {
               icono={Clock3}
               nombre="Tiempo estudiado"
               valor={formatearTiempo(
-                estadisticas.total_segundos
+                estadisticas.segundos_semana
               )}
-              descripcion="Tiempo acumulado"
+              descripcion="Esta semana"
               estilo="bg-[#EAF1FF] text-[#1769E0]"
             />
 
@@ -2681,6 +3308,22 @@ export default function PerfilScreen() {
                       />
                     </button>
                   </div>
+
+                  <FilaConfiguracion
+                    icono={ShieldCheck}
+                    titulo="Control parental"
+                    valor={
+                      controlParentalActivo
+                        ? "Activado"
+                        : "Opcional · desactivado"
+                    }
+                    estilo="bg-[#EAFBF1] text-[#258A5B]"
+                    onClick={() =>
+                      setMostrarControlParental(
+                        true
+                      )
+                    }
+                  />
                 </div>
               </section>
 
@@ -2861,6 +3504,58 @@ export default function PerfilScreen() {
             {/* COLUMNA DERECHA */}
 
             <aside className="space-y-7">
+              {/* TU RACCOON */}
+
+              <section className="relative overflow-hidden rounded-[28px] border border-[#E5EAF5] bg-gradient-to-br from-[#F5F1FF] via-white to-[#EAF7FF] p-6 shadow-sm dark:border-slate-700 dark:from-[#29233F] dark:via-[#1B2637] dark:to-[#18304A]">
+                <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#7652D9]/10" />
+
+                <div className="relative flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-[#7652D9]">
+                      Tu compañero
+                    </p>
+
+                    <h2 className="mt-1 text-xl font-black">
+                      {mascotaSeleccionada === "riccie"
+                        ? "Riccie"
+                        : "Rocco"}
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-5 text-[#6085A5] dark:text-slate-300">
+                      Nivel {nivel}. Los nuevos looks se desbloquean a medida que subes de nivel.
+                    </p>
+                  </div>
+
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={avatarRaccoon}
+                    alt={
+                      mascotaSeleccionada === "riccie"
+                        ? `Riccie · Nivel ${nivel}`
+                        : `Rocco · Nivel ${nivel}`
+                    }
+                    className="h-28 w-28 shrink-0 object-contain drop-shadow-[0_12px_16px_rgba(74,72,150,.18)]"
+                    onError={(evento) => {
+                      evento.currentTarget.src =
+                        "/raccoon.png";
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMostrarVestuario(
+                      true
+                    )
+                  }
+                  className="relative mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] py-3.5 text-sm font-black text-white shadow-md transition hover:-translate-y-0.5"
+                >
+                  <Sparkles size={17} />
+                  Abrir vestuario
+                </button>
+              </section>
+
               {/* NIVEL */}
 
               <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF8FF] via-[#F6F4FF] to-[#EFEAFF] p-7 shadow-sm dark:from-[#1C304D] dark:via-[#24263F] dark:to-[#28243E]">
@@ -3387,6 +4082,475 @@ export default function PerfilScreen() {
                 );
               }
             )}
+          </div>
+        </ModalBase>
+      )}
+
+      {/* MODAL VESTUARIO */}
+
+      {mostrarVestuario && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-[#070B18]/80 p-3 backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() =>
+              setMostrarVestuario(
+                false
+              )
+            }
+            className="absolute inset-0"
+            aria-label="Cerrar vestuario"
+          />
+
+          <section className="relative max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-[30px] border border-[#6956A5] bg-[#0E1425] p-5 text-white shadow-2xl sm:p-7">
+            <button
+              type="button"
+              onClick={() =>
+                setMostrarVestuario(
+                  false
+                )
+              }
+              className="absolute right-5 top-5 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+              aria-label="Cerrar"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-r from-[#151A32] via-[#141A31] to-[#1F1732] p-5 sm:p-6">
+              <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[#D44F9A]/10 blur-2xl" />
+              <div className="absolute left-1/3 top-6 h-32 w-32 rounded-full bg-[#7652D9]/10 blur-2xl" />
+
+              <div className="relative grid gap-6 md:grid-cols-[220px_1fr_260px] md:items-center">
+                <div className="flex justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={
+                      (
+                        mascotaSeleccionada === "riccie"
+                          ? looksRiccie
+                          : looksRocco
+                      ).find(
+                        (look) =>
+                          look.id ===
+                          lookSeleccionado
+                      )?.imagen ||
+                      avatarRaccoon ||
+                      "/raccoon.png"
+                    }
+                    alt="Raccoon personalizado"
+                    className="h-[230px] w-[210px] object-contain drop-shadow-[0_18px_25px_rgba(0,0,0,.35)]"
+                    onError={(evento) => {
+                      evento.currentTarget.src =
+                        "/raccoon.png";
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[#D64A98] px-4 py-2 text-sm font-black text-white">
+                    <Sparkles size={16} />
+                    Vestuario de Raccoon
+                  </span>
+
+                  <h2 className="mt-4 text-3xl font-black sm:text-4xl">
+                    Crea tu estilo ✦
+                  </h2>
+
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-[#C3CBE0]">
+                    Elige entre Rocco y Riccie. La ropa se desbloquea según tu nivel y puedes equipar cualquier look disponible.
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMascotaSeleccionada(
+                          "rocco"
+                        );
+
+                        setLookSeleccionado(
+                          "azul-clasico"
+                        );
+
+                        setAvatarRaccoon(
+                          "/vestuario/rocco/01-azul-clasico.png"
+                        );
+                      }}
+                      className={`rounded-full px-5 py-2.5 text-sm font-black transition ${
+                        mascotaSeleccionada === "rocco"
+                          ? "bg-[#4F7CF6] text-white"
+                          : "bg-white/10 text-white/80 hover:bg-white/15"
+                      }`}
+                    >
+                      Rocco
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMascotaSeleccionada(
+                          "riccie"
+                        );
+
+                        setLookSeleccionado(
+                          "rosa-casual"
+                        );
+
+                        setAvatarRaccoon(
+                          "/vestuario/riccie/01-rosa-casual.png"
+                        );
+                      }}
+                      className={`rounded-full px-5 py-2.5 text-sm font-black transition ${
+                        mascotaSeleccionada === "riccie"
+                          ? "bg-[#D64A98] text-white"
+                          : "bg-white/10 text-white/80 hover:bg-white/15"
+                      }`}
+                    >
+                      Riccie
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.15em] text-[#9DA8C6]">
+                    Cómo desbloquear
+                  </p>
+
+                  <div className="mt-4 space-y-3 text-sm font-bold">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">✨</span>
+                      Looks iniciales
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">⭐</span>
+                      Con tu nivel
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">💎</span>
+                      Exclusivos Premium
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {(
+                mascotaSeleccionada === "riccie"
+                  ? looksRiccie
+                  : looksRocco
+              ).map(
+                (look, indice) => {
+                  const desbloqueado =
+                    lookDesbloqueado(
+                      look
+                    );
+
+                  const activo =
+                    lookSeleccionado ===
+                    look.id;
+
+                  return (
+                    <button
+                      key={look.id}
+                      type="button"
+                      disabled={
+                        guardandoVestuario
+                      }
+                      onClick={() =>
+                        void guardarVestuario(
+                          look
+                        )
+                      }
+                      className={`group relative overflow-hidden rounded-[22px] border p-3 text-left transition ${
+                        activo
+                          ? "border-[#D64A98] bg-[#241C36] shadow-[0_0_0_2px_rgba(214,74,152,.18)]"
+                          : "border-[#343D59] bg-[#141B2C] hover:-translate-y-1 hover:border-[#6956A5]"
+                      }`}
+                    >
+                      <span className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#D64A98] text-xs font-black text-white">
+                        {indice + 1}
+                      </span>
+
+                      <span className="absolute right-3 top-3 z-10 text-lg">
+                        {!desbloqueado
+                          ? "🔒"
+                          : look.desbloqueo === "premium"
+                            ? "💎"
+                            : look.desbloqueo === "level"
+                              ? "⭐"
+                              : "✨"}
+                      </span>
+
+                      <div className="flex h-[210px] items-center justify-center rounded-[16px] bg-gradient-to-b from-[#1A2033] to-[#101626]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={
+                            look.imagen
+                          }
+                          alt={
+                            look.nombre
+                          }
+                          className={`h-[195px] w-full object-contain transition ${
+                            !desbloqueado
+                              ? "grayscale opacity-45"
+                              : "group-hover:scale-[1.03]"
+                          }`}
+                          onError={(evento) => {
+                            evento.currentTarget.src =
+                              "/raccoon.png";
+                          }}
+                        />
+                      </div>
+
+                      <p className="mt-3 text-center text-sm font-black">
+                        {look.nombre}
+                      </p>
+
+                      <p className="mt-1 text-center text-[10px] text-[#9DA8C6]">
+                        {look.desbloqueo === "premium"
+                          ? "Exclusivo Premium"
+                          : look.desbloqueo === "level"
+                            ? `Disponible desde nivel ${look.nivelMinimo || 1}`
+                            : `Disponible desde nivel ${look.nivelMinimo || 1}`}
+                      </p>
+
+                      {activo && (
+                        <span className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg bg-[#D64A98]/15 py-2 text-[11px] font-black text-[#FF8CCB]">
+                          <Check size={13} />
+                          Equipado
+                        </span>
+                      )}
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL CONTROL PARENTAL */}
+
+      {mostrarControlParental && (
+        <ModalBase
+          titulo="Control parental"
+          descripcion="Es opcional. Permite definir límites de uso y enviar al tutor un resumen semanal del progreso del estudiante."
+          icono={ShieldCheck}
+          onCerrar={() =>
+            setMostrarControlParental(
+              false
+            )
+          }
+        >
+          <div className="space-y-5">
+            <div className="flex items-center justify-between rounded-2xl border border-[#DDE8F2] bg-[#F8FBFE] p-4 dark:border-slate-700 dark:bg-slate-800">
+              <div>
+                <p className="font-black">
+                  Activar control parental
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[#6085A5] dark:text-slate-400">
+                  Puedes desactivarlo en cualquier momento.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setControlParentalActivo(
+                    !controlParentalActivo
+                  )
+                }
+                className={`relative h-7 w-12 rounded-full transition ${
+                  controlParentalActivo
+                    ? "bg-[#55A8E8]"
+                    : "bg-[#CBD5E1] dark:bg-slate-600"
+                }`}
+                aria-label="Activar control parental"
+              >
+                <span
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
+                    controlParentalActivo
+                      ? "left-6"
+                      : "left-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div
+              className={
+                controlParentalActivo
+                  ? "space-y-5"
+                  : "pointer-events-none space-y-5 opacity-45"
+              }
+            >
+              <div>
+                <label className="text-sm font-black">
+                  Correo del tutor
+                </label>
+
+                <input
+                  type="email"
+                  value={
+                    correoTutor
+                  }
+                  onChange={(evento) =>
+                    setCorreoTutor(
+                      evento.target.value
+                    )
+                  }
+                  placeholder="tutor@correo.com"
+                  className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#F8FBFE] px-4 py-3.5 outline-none focus:border-[#55A8E8] dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-black">
+                  Límite diario de estudio
+                </label>
+
+                <select
+                  value={
+                    limiteEstudioMinutos
+                  }
+                  onChange={(evento) =>
+                    setLimiteEstudioMinutos(
+                      Number(
+                        evento.target.value
+                      )
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#F8FBFE] px-4 py-3.5 outline-none dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <option value={60}>
+                    1 hora
+                  </option>
+                  <option value={120}>
+                    2 horas
+                  </option>
+                  <option value={180}>
+                    3 horas
+                  </option>
+                  <option value={240}>
+                    4 horas
+                  </option>
+                </select>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-black">
+                    Hora de descanso
+                  </label>
+
+                  <input
+                    type="time"
+                    value={
+                      horaSilencioInicio
+                    }
+                    onChange={(evento) =>
+                      setHoraSilencioInicio(
+                        evento.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#F8FBFE] px-4 py-3.5 outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-black">
+                    Reanudar uso
+                  </label>
+
+                  <input
+                    type="time"
+                    value={
+                      horaSilencioFin
+                    }
+                    onChange={(evento) =>
+                      setHoraSilencioFin(
+                        evento.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-[#DCE6F0] bg-[#F8FBFE] px-4 py-3.5 outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-[#FFF8E8] p-4 text-sm leading-6 text-[#8B6514] dark:bg-[#3A311C] dark:text-yellow-100">
+              Cuando está activo, el tutor recibe un resumen semanal con tiempo estudiado esta semana, nivel, racha, materiales completados, quizzes y avance general, usando las mismas métricas del Dashboard.
+            </div>
+
+            {controlParentalActivo && (
+              <div className="rounded-2xl border border-[#DDE8F2] bg-gradient-to-r from-[#F4FAFF] to-[#F6F2FF] p-4 dark:border-slate-700 dark:from-[#17263A] dark:to-[#26223D]">
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={18} className="text-[#7652D9]" />
+                  <p className="font-black">
+                    Resumen que recibirá el tutor
+                  </p>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl bg-white/80 p-3 dark:bg-slate-800">
+                    <p className="text-xs text-[#6085A5]">Esta semana</p>
+                    <p className="mt-1 font-black">
+                      {formatearTiempo(
+                        estadisticas.segundos_semana
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-white/80 p-3 dark:bg-slate-800">
+                    <p className="text-xs text-[#6085A5]">Nivel</p>
+                    <p className="mt-1 font-black">
+                      Nivel {nivel}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-white/80 p-3 dark:bg-slate-800">
+                    <p className="text-xs text-[#6085A5]">Racha</p>
+                    <p className="mt-1 font-black">
+                      {rachaActual} días
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-white/80 p-3 dark:bg-slate-800">
+                    <p className="text-xs text-[#6085A5]">Completados</p>
+                    <p className="mt-1 font-black">
+                      {estadisticas.materiales_completados} materiales
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                void guardarControlParental()
+              }
+              disabled={
+                guardandoParental
+              }
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7652D9] py-4 font-black text-white disabled:cursor-wait disabled:opacity-60"
+            >
+              {guardandoParental ? (
+                <LoaderCircle
+                  size={19}
+                  className="animate-spin"
+                />
+              ) : (
+                <Save size={19} />
+              )}
+
+              {guardandoParental
+                ? "Guardando..."
+                : "Guardar control parental"}
+            </button>
           </div>
         </ModalBase>
       )}

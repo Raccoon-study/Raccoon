@@ -288,7 +288,7 @@ const CATEGORIAS:
         "parques",
 
       nombre:
-        "Parques",
+        "Descanso",
 
       icono:
         Trees,
@@ -1097,7 +1097,7 @@ export default function LugaresPage() {
     mostrarMapa,
     setMostrarMapa,
   ] = useState(
-    false
+    true
   );
 
   /* =====================================================
@@ -2137,7 +2137,7 @@ export default function LugaresPage() {
     );
 
     setMostrarMapa(
-      false
+      true
     );
 
     void cargarResenasUsuario(
@@ -2752,7 +2752,7 @@ export default function LugaresPage() {
   ===================================================== */
 
   return (
-    <main className="min-h-screen bg-[#F7F9FE] text-[#111B44] transition-colors dark:bg-[#101827] dark:text-white">
+    <main className="min-h-screen bg-[#FBFCFF] text-[#111B44] transition-colors dark:bg-[#0C1524] dark:text-white">
       {/* OVERLAY MÓVIL */}
 
       {menuAbierto && (
@@ -2775,7 +2775,7 @@ export default function LugaresPage() {
       <aside
         className={`
           fixed left-0 top-0 z-50
-          flex h-screen w-[250px]
+          flex h-screen w-[228px]
           flex-col
           border-r border-[#E1E7F5]
           bg-white
@@ -2950,7 +2950,7 @@ export default function LugaresPage() {
           CONTENIDO
       ===================================================== */}
 
-      <div className="lg:ml-[250px]">
+      <div className="lg:ml-[228px]">
         {/* HEADER */}
 
         <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[#E1E7F5] bg-white/90 px-4 backdrop-blur-xl dark:border-slate-700 dark:bg-[#151F30]/90 sm:px-6">
@@ -2971,14 +2971,11 @@ export default function LugaresPage() {
 
             <div>
               <h2 className="font-black sm:text-lg">
-                Raccoon
-                <span className="text-[#5A47FF]">
-                  Study
-                </span>
+                Lugares
               </h2>
 
               <p className="hidden text-[10px] text-[#8090AB] sm:block">
-                Encuentra tu lugar ideal para estudiar
+                Estudia, concéntrate o toma un descanso.
               </p>
             </div>
           </div>
@@ -3057,28 +3054,42 @@ export default function LugaresPage() {
             GRID
         ===================================================== */}
 
-        <div className="grid min-h-[calc(100vh-76px)] xl:grid-cols-[minmax(500px,1fr)_minmax(430px,0.9fr)]">
+        <div className="grid min-h-[calc(100vh-76px)] xl:grid-cols-[minmax(520px,0.92fr)_minmax(560px,1.08fr)]">
           {/* =================================================
               IZQUIERDA
           ================================================= */}
 
-          <section className="border-r border-[#E1E7F5] p-4 dark:border-slate-700 sm:p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E8E5FF] to-[#E3F0FF] text-[#6B55F5]">
-                <MapPin
-                  size={27}
-                />
-              </div>
+          <section className="border-r border-[#E7EBF3] bg-[#FBFCFF] p-4 dark:border-slate-700 dark:bg-[#0F1929] sm:p-6">
+            <div className="relative overflow-hidden rounded-[28px] border border-[#E6E9F6] bg-gradient-to-r from-[#F0EBFF] via-[#F7F6FF] to-[#EAF6FF] px-6 py-6 shadow-[0_14px_35px_rgba(83,70,180,0.08)] dark:border-slate-700 dark:from-[#27233E] dark:via-[#21283A] dark:to-[#17304B] sm:px-7">
+              <div className="absolute -right-12 -top-14 h-44 w-44 rounded-full bg-white/35 dark:bg-white/5" />
+              <div className="absolute bottom-0 right-20 h-24 w-24 rounded-full bg-[#7C68FF]/10" />
 
-              <div>
-                <h1 className="text-2xl font-black sm:text-3xl">
-                  Lugares de estudio en Santiago
+              <div className="relative z-10 max-w-[67%]">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black text-[#6D55FF] shadow-sm dark:bg-slate-800/90">
+                  <MapPin size={14} />
+                  Explora Santiago de Veraguas
+                </span>
+
+                <h1 className="mt-4 text-2xl font-black leading-tight sm:text-[32px]">
+                  Encuentra tu lugar{" "}
+                  <span className="text-[#6D55FF]">
+                    perfecto
+                  </span>{" "}
+                  para estudiar
                 </h1>
 
-                <p className="mt-1 text-sm leading-6 text-[#52688B] dark:text-slate-300">
-                  Encuentra cafeterías, bibliotecas, parques y universidades en Santiago de Veraguas.
+                <p className="mt-3 text-sm leading-6 text-[#52688B] dark:text-slate-300">
+                  Descubre bibliotecas, cafeterías, universidades y espacios tranquilos para concentrarte o tomar un descanso.
                 </p>
               </div>
+
+              <Image
+                src="/raccoon.png"
+                alt="Raccoon buscando lugares"
+                width={170}
+                height={170}
+                className="absolute -bottom-3 right-2 h-[150px] w-[150px] object-contain drop-shadow-[0_12px_16px_rgba(79,69,150,0.16)] sm:right-5 sm:h-[170px] sm:w-[170px]"
+              />
             </div>
 
             {/* BUSCADOR */}
@@ -3087,9 +3098,9 @@ export default function LugaresPage() {
               onSubmit={
                 buscar
               }
-              className="mt-6 flex gap-3"
+              className="mt-4 flex gap-3 rounded-[20px] border border-[#E4E9F2] bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-[#182437]"
             >
-              <div className="flex flex-1 items-center gap-3 rounded-xl border border-[#DDE4F2] bg-white px-4 shadow-sm focus-within:border-[#6D55FF] dark:border-slate-700 dark:bg-[#182437]">
+              <div className="flex flex-1 items-center gap-3 rounded-xl bg-[#FAFBFE] px-4 focus-within:ring-2 focus-within:ring-[#6D55FF]/20 dark:bg-slate-800">
                 <Search
                   size={19}
                   className="shrink-0 text-[#8494B4]"
@@ -3106,7 +3117,7 @@ export default function LugaresPage() {
                       evento.target.value
                     )
                   }
-                  placeholder="Buscar cafeterías, bibliotecas..."
+                  placeholder="Buscar por nombre, lugar o característica..."
                   className="w-full bg-transparent py-4 text-sm outline-none"
                 />
 
@@ -3241,7 +3252,7 @@ export default function LugaresPage() {
 
             {/* CATEGORÍAS */}
 
-            <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:#C3CCDC_transparent]">
               {CATEGORIAS.map(
                 (item) => {
                   const Icono =
@@ -3271,7 +3282,7 @@ export default function LugaresPage() {
                         transition
                         ${
                           activa
-                            ? "border-[#6D55FF] bg-gradient-to-r from-[#6D55FF] to-[#8068FF] text-white shadow-md"
+                            ? "border-[#D8D0FF] bg-[#F2EEFF] text-[#5A47FF] shadow-sm dark:border-[#514B75] dark:bg-[#302B58]"
                             : "border-[#DDE4F2] bg-white text-[#52688B] hover:border-[#AFA4FF] dark:border-slate-700 dark:bg-[#182437] dark:text-slate-200"
                         }
                       `}
@@ -3366,7 +3377,7 @@ export default function LugaresPage() {
               DERECHA
           ================================================= */}
 
-          <section className="bg-white dark:bg-[#131D2D] xl:sticky xl:top-[76px] xl:h-[calc(100vh-76px)] xl:overflow-y-auto">
+          <section className="bg-[#FBFCFF] p-4 dark:bg-[#0F1929] xl:sticky xl:top-[76px] xl:h-[calc(100vh-76px)] xl:overflow-y-auto sm:p-5">
             {!lugarSeleccionado ? (
               <div className="flex min-h-[600px] flex-col items-center justify-center p-8 text-center">
                 {cargandoLugares ? (
@@ -3397,7 +3408,7 @@ export default function LugaresPage() {
               <>
                 {/* FOTO */}
 
-                <div className="relative h-[280px] overflow-hidden bg-gradient-to-br from-[#E9E6FF] to-[#E4F2FF]">
+                <div className="relative h-[300px] overflow-hidden rounded-t-[26px] border border-b-0 border-[#E4E9F2] bg-gradient-to-br from-[#E9E6FF] to-[#E4F2FF] dark:border-slate-700">
                   <FotoLugar
                     key={`${lugarSeleccionado.id}-${indiceFoto}`}
                     src={
@@ -3497,7 +3508,7 @@ export default function LugaresPage() {
 
                 {/* CONTENIDO */}
 
-                <div className="p-5 sm:p-6">
+                <div className="rounded-b-[26px] border border-[#E4E9F2] bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#131D2D] sm:p-6">
                   {cargandoDetalle && (
                     <div className="mb-4 flex items-center gap-2 rounded-xl bg-[#F4F1FF] p-3 text-sm font-black text-[#7652D9] dark:bg-[#302B58]">
                       <LoaderCircle
@@ -3569,23 +3580,20 @@ export default function LugaresPage() {
                     {/* BOTONES */}
 
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMostrarMapa(
-                            !mostrarMapa
-                          )
+<a
+                        href={
+                          lugarSeleccionado.mapaUrl ||
+                          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            `${lugarSeleccionado.nombre}, ${lugarSeleccionado.direccion}`
+                          )}`
                         }
+                        target="_blank"
+                        rel="noreferrer"
                         className="inline-flex h-11 items-center gap-2 self-start rounded-xl bg-[#5A47FF] px-4 text-sm font-black text-white shadow-md transition hover:bg-[#4936E8]"
                       >
-                        <Navigation
-                          size={16}
-                        />
-
-                        {mostrarMapa
-                          ? "Ocultar mapa"
-                          : "Ver mapa"}
-                      </button>
+                        <MapPin size={16} />
+                        Ver mapa
+                      </a>
 
                       <button
                         type="button"
@@ -3638,18 +3646,29 @@ export default function LugaresPage() {
 
                   {/* MAPA */}
 
-                  {mostrarMapa &&
-                    mapaEmbed && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-[#E1E7F5] shadow-sm dark:border-slate-700">
+                  {mapaEmbed && (
+                    <div className="mt-6">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <h3 className="font-black">Ubicación</h3>
+                          <p className="mt-1 text-xs text-[#8494B4]">
+                            Consulta siempre dónde se encuentra este lugar.
+                          </p>
+                        </div>
+                        <MapPin size={20} className="text-[#6D55FF]" />
+                      </div>
+
+                      <div className="overflow-hidden rounded-2xl border border-[#E1E7F5] bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
                       <iframe
                         src={
                           mapaEmbed
                         }
                         title={`Mapa de ${lugarSeleccionado.nombre}`}
-                        className="h-[310px] w-full border-0"
+                        className="h-[260px] w-full border-0 sm:h-[300px]"
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
                       />
+                      </div>
                     </div>
                   )}
 
@@ -3657,7 +3676,7 @@ export default function LugaresPage() {
 
                   {lugarSeleccionado.caracteristicas.length >
                     0 && (
-                    <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 2xl:grid-cols-6">
                       {lugarSeleccionado.caracteristicas.map(
                         (
                           caracteristica
@@ -3666,7 +3685,7 @@ export default function LugaresPage() {
                             key={
                               caracteristica
                             }
-                            className="rounded-xl border border-[#E8ECF5] bg-[#FAFBFF] p-3 text-center dark:border-slate-700 dark:bg-slate-800"
+                            className="rounded-2xl border border-[#E8ECF5] bg-[#FCFDFF] p-3 text-center transition hover:-translate-y-0.5 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800"
                           >
                             <CheckCircle2
                               size={20}
@@ -4432,8 +4451,8 @@ function TarjetaLugar({
         flex w-full
         flex-col gap-4
         rounded-2xl
-        border-2
-        bg-white p-3
+        border
+        bg-white p-2.5
         text-left
         transition
         hover:-translate-y-0.5
@@ -4442,12 +4461,12 @@ function TarjetaLugar({
         sm:flex-row
         ${
           seleccionado
-            ? "border-[#7866FF] shadow-md"
+            ? "border-[#7866FF] shadow-[0_8px_22px_rgba(120,102,255,0.10)]"
             : "border-[#E6EAF3] hover:border-[#AFA4FF] dark:border-slate-700"
         }
       `}
     >
-      <div className="h-[135px] w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[#EEE9FF] to-[#E5F5FF] sm:w-[155px]">
+      <div className="h-[120px] w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[#EEE9FF] to-[#E5F5FF] sm:w-[145px]">
         <FotoLugar
           src={
             lugar.foto

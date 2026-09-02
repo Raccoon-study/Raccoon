@@ -36,6 +36,11 @@ import {
   Sparkles,
   Sun,
   User,
+  Users,
+  Building2,
+  GraduationCap,
+  UserPlus,
+  Mail,
   X,
   Zap,
 } from "lucide-react";
@@ -46,7 +51,7 @@ import { supabase } from "../lib/supabase";
    TIPOS
 ===================================================== */
 
-type PlanType = "free" | "month" | "year";
+type PlanType = "free" | "month" | "year" | "group";
 
 interface ElementoMenu {
   nombre: string;
@@ -188,10 +193,10 @@ const planes: InformacionPlan[] = [
     id: "year",
     nombre: "Premium anual",
     subtitulo: "La mejor opción",
-    precio: "$69.99",
+    precio: "$49.99",
     periodo: "/año",
     descripcion:
-      "Disfruta de todas las funciones Premium durante un año completo.",
+      "Disfruta de todas las funciones Premium durante un año completo con un ahorro real frente al plan mensual.",
     insignia: "Recomendado",
     icono: Crown,
     caracteristicas: [
@@ -214,6 +219,45 @@ const planes: InformacionPlan[] = [
     },
   },
 ];
+
+
+const planGrupal = {
+  nombre: "Raccoon Grupo",
+  subtitulo: "Estudia acompañado",
+  precio: "$16.99",
+  periodo: "/mes",
+  detalle: "Hasta 5 cuentas",
+  descripcion:
+    "Un solo pago para un grupo de amigos, hermanos o compañeros de estudio. Cada integrante conserva su cuenta, progreso y materiales por separado.",
+  caracteristicas: [
+    "Hasta 5 cuentas Premium independientes",
+    "Todas las herramientas Premium",
+    "Progreso, materiales y quizzes separados",
+    "Rocco o Riccie y niveles individuales",
+    "Administrador del grupo",
+    "Un solo pago mensual",
+  ],
+};
+
+const planInstitucional = {
+  nombre: "Raccoon Instituciones",
+  subtitulo: "Para colegios y universidades",
+  precio: "Desde $1.99",
+  periodo: "/estudiante/mes",
+  detalle: "Planes desde 50 estudiantes",
+  descripcion:
+    "Una solución para colegios, universidades, programas educativos y organizaciones que necesitan gestionar estudiantes y revisar su progreso.",
+  caracteristicas: [
+    "Todo Raccoon Premium para estudiantes",
+    "Panel administrativo institucional",
+    "Gestión de estudiantes y grupos",
+    "Seguimiento de horas de estudio semanales",
+    "Resultados de quizzes y actividades",
+    "Reportes de progreso",
+    "Soporte prioritario",
+    "Precios especiales por volumen",
+  ],
+};
 
 /* =====================================================
    FUNCIONES AUXILIARES
@@ -241,6 +285,15 @@ function normalizarPlan(
     texto === "premium_anual"
   ) {
     return "year";
+  }
+
+  if (
+    texto === "group" ||
+    texto === "grupo" ||
+    texto === "group_plan" ||
+    texto === "premium_group"
+  ) {
+    return "group";
   }
 
   if (
@@ -298,6 +351,10 @@ function obtenerMensajeError(
 }
 
 function nombrePlan(plan: PlanType): string {
+  if (plan === "group") {
+    return "Raccoon Grupo";
+  }
+
   if (plan === "month") {
     return "Premium mensual";
   }
@@ -345,6 +402,36 @@ export default function SuscripcionPage() {
     setMostrarConfirmacionGratis,
   ] = useState(false);
 
+  const [
+    mostrarPlanGrupo,
+    setMostrarPlanGrupo,
+  ] = useState(false);
+
+  const [
+    mostrarPlanInstitucion,
+    setMostrarPlanInstitucion,
+  ] = useState(false);
+
+  const [
+    institucion,
+    setInstitucion,
+  ] = useState("");
+
+  const [
+    responsable,
+    setResponsable,
+  ] = useState("");
+
+  const [
+    correoInstitucional,
+    setCorreoInstitucional,
+  ] = useState("");
+
+  const [
+    cantidadEstudiantes,
+    setCantidadEstudiantes,
+  ] = useState("50");
+
   /* DISEÑO */
 
   const [menuAbierto, setMenuAbierto] =
@@ -361,7 +448,8 @@ export default function SuscripcionPage() {
 
   const esPremium =
     planActual === "month" ||
-    planActual === "year";
+    planActual === "year" ||
+    planActual === "group";
 
   /* =====================================================
      INICIAR
@@ -785,6 +873,12 @@ export default function SuscripcionPage() {
       return esPremium
         ? "Cambiar a mensual"
         : "Elegir Premium mensual";
+    }
+
+    if (plan === "group") {
+      return planActual === "group"
+        ? "Tu plan actual"
+        : "Elegir Raccoon Grupo";
     }
 
     return esPremium
@@ -1432,12 +1526,11 @@ export default function SuscripcionPage() {
               </span>
 
               <h2 className="mt-4 text-3xl font-black sm:text-4xl">
-                Los tres planes de Raccoon
+                Planes individuales
               </h2>
 
               <p className="mx-auto mt-3 max-w-2xl leading-7 text-[#6085A5] dark:text-slate-400">
-                Todos los planes se muestran juntos
-                para que puedas compararlos fácilmente.
+                Elige entre la versión gratuita o Premium según tu forma de estudiar.
               </p>
             </div>
 
@@ -1636,6 +1729,194 @@ export default function SuscripcionPage() {
             </div>
           </section>
 
+
+          {/* PLANES GRUPALES E INSTITUCIONALES */}
+
+          <section className="mt-10">
+            <div className="mb-6 text-center">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#E8F8F2] px-4 py-2 text-sm font-bold text-[#258A5B] dark:bg-[#1E3A32] dark:text-emerald-200">
+                <Users size={16} />
+                Planes para estudiar juntos
+              </span>
+
+              <h2 className="mt-4 text-3xl font-black sm:text-4xl">
+                Raccoon para grupos e instituciones
+              </h2>
+
+              <p className="mx-auto mt-3 max-w-2xl leading-7 text-[#6085A5] dark:text-slate-400">
+                Opciones pensadas para amigos, familias, colegios,
+                universidades y programas educativos.
+              </p>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <article className="relative overflow-hidden rounded-[30px] border-2 border-[#B8D8FF] bg-gradient-to-br from-[#EFF8FF] via-white to-[#F1EEFF] p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-[#365A7A] dark:from-[#17304A] dark:via-[#182437] dark:to-[#28243E] sm:p-8">
+                <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[#55A8E8]/10" />
+
+                <div className="relative flex items-start justify-between gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#DDF3FF] text-[#1687D9] dark:bg-[#1D3558]">
+                    <Users size={31} />
+                  </div>
+
+                  <span className="rounded-full bg-[#DDF3FF] px-3 py-1.5 text-xs font-black text-[#1687D9] dark:bg-[#1D3558] dark:text-blue-300">
+                    Hasta 5 cuentas
+                  </span>
+                </div>
+
+                <div className="relative mt-6">
+                  <p className="text-sm font-bold text-[#6085A5] dark:text-slate-400">
+                    {planGrupal.subtitulo}
+                  </p>
+
+                  <h3 className="mt-1 text-3xl font-black">
+                    {planGrupal.nombre}
+                  </h3>
+                </div>
+
+                <div className="relative mt-6 flex flex-wrap items-end gap-2">
+                  <span className="text-5xl font-black sm:text-6xl">
+                    {planGrupal.precio}
+                  </span>
+
+                  <span className="mb-2 text-sm font-semibold text-[#6085A5] dark:text-slate-400">
+                    {planGrupal.periodo}
+                  </span>
+                </div>
+
+                <div className="relative mt-3 w-fit rounded-full bg-[#DDF7EA] px-3 py-1.5 text-xs font-black text-[#258A5B]">
+                  ≈ $3.40 por persona usando 5 cuentas
+                </div>
+
+                <p className="relative mt-5 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
+                  {planGrupal.descripcion}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void solicitarCambioPlan("group")
+                  }
+                  disabled={
+                    planActual === "group" ||
+                    Boolean(planProcesando) ||
+                    cargandoPlan
+                  }
+                  className="relative mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] px-4 py-4 font-black text-white shadow-lg shadow-[#55A8E8]/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <UserPlus size={19} />
+                  {planProcesando === "group"
+                    ? "Procesando..."
+                    : planActual === "group"
+                      ? "Tu plan grupal"
+                      : "Elegir plan grupal"}
+                </button>
+
+                <div className="relative mt-7 border-t border-[#DDEAF7] pt-6 dark:border-slate-700">
+                  <p className="text-sm font-black">
+                    Incluye:
+                  </p>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {planGrupal.caracteristicas.map(
+                      (caracteristica) => (
+                        <div
+                          key={caracteristica}
+                          className="flex items-start gap-3"
+                        >
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#DDF3FF] text-[#1687D9] dark:bg-[#1D3558]">
+                            <CheckCircle2 size={14} />
+                          </div>
+
+                          <span className="text-sm leading-6 text-[#506C88] dark:text-slate-300">
+                            {caracteristica}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              </article>
+
+              <article className="relative overflow-hidden rounded-[30px] border-2 border-[#C8B9FF] bg-gradient-to-br from-[#F7F2FF] via-white to-[#EEFAF5] p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-[#5B4B8A] dark:from-[#2B2442] dark:via-[#182437] dark:to-[#17352C] sm:p-8">
+                <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-[#7652D9]/10" />
+
+                <div className="relative flex items-start justify-between gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E9E2FF] text-[#7652D9] dark:bg-[#3B3156]">
+                    <Building2 size={31} />
+                  </div>
+
+                  <span className="rounded-full bg-[#E9E2FF] px-3 py-1.5 text-xs font-black text-[#7652D9] dark:bg-[#3B3156] dark:text-purple-200">
+                    B2B · Educación
+                  </span>
+                </div>
+
+                <div className="relative mt-6">
+                  <p className="text-sm font-bold text-[#6085A5] dark:text-slate-400">
+                    {planInstitucional.subtitulo}
+                  </p>
+
+                  <h3 className="mt-1 text-3xl font-black">
+                    {planInstitucional.nombre}
+                  </h3>
+                </div>
+
+                <div className="relative mt-6 flex flex-wrap items-end gap-2">
+                  <span className="text-4xl font-black sm:text-5xl">
+                    {planInstitucional.precio}
+                  </span>
+
+                  <span className="mb-2 text-sm font-semibold text-[#6085A5] dark:text-slate-400">
+                    {planInstitucional.periodo}
+                  </span>
+                </div>
+
+                <div className="relative mt-3 w-fit rounded-full bg-[#FFF1C9] px-3 py-1.5 text-xs font-black text-[#A97900]">
+                  {planInstitucional.detalle}
+                </div>
+
+                <p className="relative mt-5 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
+                  {planInstitucional.descripcion}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMostrarPlanInstitucion(true)
+                  }
+                  className="relative mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7652D9] via-[#7771E8] to-[#55A8E8] px-4 py-4 font-black text-white shadow-lg shadow-[#7652D9]/20 transition hover:-translate-y-0.5"
+                >
+                  <GraduationCap size={20} />
+                  Solicitar plan institucional
+                </button>
+
+                <div className="relative mt-7 border-t border-[#E8E1F8] pt-6 dark:border-slate-700">
+                  <p className="text-sm font-black">
+                    Incluye:
+                  </p>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {planInstitucional.caracteristicas.map(
+                      (caracteristica) => (
+                        <div
+                          key={caracteristica}
+                          className="flex items-start gap-3"
+                        >
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#E9E2FF] text-[#7652D9] dark:bg-[#3B3156]">
+                            <CheckCircle2 size={14} />
+                          </div>
+
+                          <span className="text-sm leading-6 text-[#506C88] dark:text-slate-300">
+                            {caracteristica}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
           {/* BENEFICIOS PREMIUM */}
 
           <section className="mt-8 rounded-[30px] bg-gradient-to-r from-[#EAF8FF] via-[#F7F4FF] to-[#FFF8E8] p-6 dark:from-[#1D3558] dark:via-[#28243E] dark:to-[#332B1D] sm:p-8">
@@ -1711,6 +1992,291 @@ export default function SuscripcionPage() {
           </section>
         </div>
       </div>
+
+
+      {/* MODAL PLAN GRUPAL */}
+
+      {mostrarPlanGrupo && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl rounded-[28px] bg-white p-7 shadow-2xl dark:bg-[#182437]">
+            <button
+              type="button"
+              onClick={() =>
+                setMostrarPlanGrupo(false)
+              }
+              className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F5FA] text-[#6085A5] dark:bg-slate-700"
+              aria-label="Cerrar"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#DDF3FF] text-[#1687D9] dark:bg-[#1D3558]">
+              <Users size={31} />
+            </div>
+
+            <h2 className="mt-6 text-2xl font-black">
+              Raccoon Grupo
+            </h2>
+
+            <p className="mt-2 text-3xl font-black text-[#1687D9]">
+              $16.99
+              <span className="ml-1 text-sm font-semibold text-[#6085A5]">
+                /mes
+              </span>
+            </p>
+
+            <p className="mt-4 leading-7 text-[#6085A5] dark:text-slate-300">
+              Incluye hasta 5 cuentas Premium independientes.
+              Cada integrante conserva sus propios materiales,
+              progreso, quizzes y estadísticas.
+            </p>
+
+            <div className="mt-6 rounded-2xl bg-[#F4FAFF] p-4 dark:bg-slate-800">
+              <p className="font-black">Ideal para:</p>
+              <div className="mt-3 grid gap-2 text-sm text-[#6085A5] dark:text-slate-300 sm:grid-cols-2">
+                <span>• Amigos</span>
+                <span>• Hermanos</span>
+                <span>• Grupos universitarios</span>
+                <span>• Equipos de estudio</span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarPlanGrupo(false);
+                  mostrarNotificacion(
+                    "El plan grupal ya está agregado visualmente. El checkout grupal debe conectarse en el backend."
+                  );
+                }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] py-4 font-black text-white"
+              >
+                <UserPlus size={18} />
+                Continuar
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMostrarPlanGrupo(false)
+                }
+                className="flex-1 rounded-xl bg-[#F1F8FD] py-4 font-bold text-[#1687D9] dark:bg-slate-700 dark:text-blue-300"
+              >
+                Ahora no
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL INSTITUCIONES */}
+
+      {mostrarPlanInstitucion && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white p-7 shadow-2xl dark:bg-[#182437]">
+            <button
+              type="button"
+              onClick={() =>
+                setMostrarPlanInstitucion(false)
+              }
+              className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F5FA] text-[#6085A5] dark:bg-slate-700"
+              aria-label="Cerrar"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E9E2FF] text-[#7652D9] dark:bg-[#3B3156]">
+              <Building2 size={31} />
+            </div>
+
+            <h2 className="mt-6 text-2xl font-black">
+              Solicitar plan institucional
+            </h2>
+
+            <p className="mt-2 leading-7 text-[#6085A5] dark:text-slate-300">
+              Cuéntanos sobre tu institución. El precio se ajusta
+              según la cantidad de estudiantes y comienza desde
+              $1.99 por estudiante al mes.
+            </p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-black">
+                  Nombre de la institución
+                </label>
+                <input
+                  value={institucion}
+                  onChange={(evento) =>
+                    setInstitucion(evento.target.value)
+                  }
+                  placeholder="Colegio, universidad o programa"
+                  className="mt-2 w-full rounded-xl border border-[#DDEAF7] bg-[#F8FBFE] px-4 py-3.5 outline-none transition focus:border-[#7652D9] dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-black">
+                  Responsable
+                </label>
+                <input
+                  value={responsable}
+                  onChange={(evento) =>
+                    setResponsable(evento.target.value)
+                  }
+                  placeholder="Nombre y apellido"
+                  className="mt-2 w-full rounded-xl border border-[#DDEAF7] bg-[#F8FBFE] px-4 py-3.5 outline-none transition focus:border-[#7652D9] dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-black">
+                  Correo institucional
+                </label>
+                <input
+                  type="email"
+                  value={correoInstitucional}
+                  onChange={(evento) =>
+                    setCorreoInstitucional(evento.target.value)
+                  }
+                  placeholder="correo@institucion.edu"
+                  className="mt-2 w-full rounded-xl border border-[#DDEAF7] bg-[#F8FBFE] px-4 py-3.5 outline-none transition focus:border-[#7652D9] dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-black">
+                  Cantidad de estudiantes
+                </label>
+                <select
+                  value={cantidadEstudiantes}
+                  onChange={(evento) =>
+                    setCantidadEstudiantes(evento.target.value)
+                  }
+                  className="mt-2 w-full rounded-xl border border-[#DDEAF7] bg-[#F8FBFE] px-4 py-3.5 outline-none transition focus:border-[#7652D9] dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <option value="50">50 - 99</option>
+                  <option value="100">100 - 199</option>
+                  <option value="200">200 - 499</option>
+                  <option value="500">500 - 999</option>
+                  <option value="1000">1,000+</option>
+                </select>
+              </div>
+
+              <div className="rounded-xl bg-[#F7F2FF] p-4 dark:bg-[#302747]">
+                <p className="text-xs font-bold uppercase tracking-wide text-[#7652D9]">
+                  Precio orientativo
+                </p>
+                <p className="mt-1 text-lg font-black">
+                  Desde $2.99
+                </p>
+                <p className="text-xs text-[#6085A5] dark:text-slate-300">
+                  por estudiante / mes
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-[#E5EAF3] dark:border-slate-700">
+              <div className="grid grid-cols-2 bg-[#F7F9FD] px-4 py-3 text-xs font-black uppercase tracking-wide text-[#6085A5] dark:bg-slate-800">
+                <span>Estudiantes</span>
+                <span className="text-right">Precio mensual</span>
+              </div>
+
+              {[
+                ["50 - 199", "$2.99 / estudiante"],
+                ["200 - 499", "$2.49 / estudiante"],
+                ["500+", "$1.99 / estudiante"],
+              ].map(([rango, precio]) => (
+                <div
+                  key={rango}
+                  className="grid grid-cols-2 border-t border-[#E5EAF3] px-4 py-3 text-sm dark:border-slate-700"
+                >
+                  <span>{rango}</span>
+                  <span className="text-right font-black">{precio}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (
+                  !institucion.trim() ||
+                  !responsable.trim() ||
+                  !correoInstitucional.trim()
+                ) {
+                  mostrarNotificacion(
+                    "Completa los datos principales para enviar la solicitud."
+                  );
+                  return;
+                }
+
+                try {
+                  const {
+                    data: { session },
+                  } = await supabase.auth.getSession();
+
+                  const respuesta = await fetch(
+                    "/api/instituciones/solicitudes",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        ...(session?.access_token
+                          ? {
+                              Authorization:
+                                `Bearer ${session.access_token}`,
+                            }
+                          : {}),
+                      },
+                      body: JSON.stringify({
+                        institucion: institucion.trim(),
+                        responsable: responsable.trim(),
+                        correo: correoInstitucional.trim(),
+                        cantidad_estudiantes:
+                          Number(cantidadEstudiantes),
+                      }),
+                    }
+                  );
+
+                  const datos = await respuesta
+                    .json()
+                    .catch(() => null);
+
+                  if (!respuesta.ok) {
+                    throw new Error(
+                      esObjeto(datos) &&
+                      typeof datos.error === "string"
+                        ? datos.error
+                        : "No se pudo enviar la solicitud."
+                    );
+                  }
+
+                  setMostrarPlanInstitucion(false);
+                  setInstitucion("");
+                  setResponsable("");
+                  setCorreoInstitucional("");
+                  setCantidadEstudiantes("50");
+
+                  mostrarNotificacion(
+                    "Solicitud institucional enviada correctamente."
+                  );
+                } catch (error) {
+                  mostrarNotificacion(
+                    error instanceof Error
+                      ? error.message
+                      : "No se pudo enviar la solicitud."
+                  );
+                }
+              }}
+              className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7652D9] to-[#55A8E8] py-4 font-black text-white"
+            >
+              <Mail size={19} />
+              Solicitar cotización
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL CAMBIAR A GRATIS */}
 

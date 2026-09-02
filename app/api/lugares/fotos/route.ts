@@ -183,7 +183,7 @@ export async function GET(
         request.nextUrl
           .searchParams
           .get("width"),
-        1400
+        1200
       );
 
     const height =
@@ -191,7 +191,7 @@ export async function GET(
         request.nextUrl
           .searchParams
           .get("height"),
-        1000
+        800
       );
 
     if (!nombre) {
@@ -363,7 +363,7 @@ export async function GET(
           */
 
           "Cache-Control":
-            "private, max-age=300",
+            "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
 
           "X-Content-Type-Options":
             "nosniff",

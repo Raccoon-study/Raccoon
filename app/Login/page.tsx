@@ -454,7 +454,7 @@ export default function LoginPage() {
         "/Dashboard"
       );
     } catch (error) {
-      console.error(
+      console.warn(
         "Error login:",
         error
       );
@@ -488,6 +488,15 @@ export default function LoginPage() {
       ) {
         mostrarMensaje(
           "Debes confirmar tu correo antes de iniciar sesión.",
+          "error"
+        );
+      } else if (
+        mensajeError
+          .toLowerCase()
+          .includes("failed to fetch")
+      ) {
+        mostrarMensaje(
+          "No se pudo conectar con Supabase. Revisa que el proyecto esté activo y que la URL de .env.local sea la de tu proyecto actual.",
           "error"
         );
       } else {
@@ -966,43 +975,45 @@ export default function LoginPage() {
     */
 
     void (async () => {
-      const {
-        data: {
-          session,
-        },
-      } =
-        await supabase.auth
-          .getSession();
+      try {
+        const {
+          data: { session },
+          error: errorSesion,
+        } = await supabase.auth.getSession();
 
-      if (
-        !session?.user
-      ) {
-        return;
-      }
+        if (errorSesion) {
+          console.warn(
+            "No se pudo recuperar la sesión guardada:",
+            errorSesion.message
+          );
+          return;
+        }
 
-      if (
-        recovery
-      ) {
-        setModalNuevaPassword(
-          true
+        if (!session?.user) {
+          return;
+        }
+
+        if (recovery) {
+          setModalNuevaPassword(true);
+          return;
+        }
+
+        await sincronizarPerfil(session.user);
+
+        /*
+          Si volvió desde Google/Microsoft
+          o simplemente ya tenía sesión,
+          entra al Dashboard.
+        */
+        router.replace("/Dashboard");
+      } catch (error) {
+        // Evita que un fallo temporal de red de Supabase
+        // rompa toda la pantalla de Login en desarrollo.
+        console.warn(
+          "Supabase no respondió al comprobar la sesión:",
+          error instanceof Error ? error.message : error
         );
-
-        return;
       }
-
-      await sincronizarPerfil(
-        session.user
-      );
-
-      /*
-        Si volvió desde Google/Microsoft
-        o simplemente ya tenía sesión,
-        entra al Dashboard.
-      */
-
-      router.replace(
-        "/Dashboard"
-      );
     })();
 
     return () => {

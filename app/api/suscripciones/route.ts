@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 type PlanType =
   | "year"
   | "month"
+  | "group"
   | "free";
 
 interface SolicitudPlan {
@@ -40,8 +41,9 @@ const PRECIOS: Record<
   number
 > = {
   free: 0,
-  month: 0.99,
-  year: 9,
+  month: 5.99,
+  year: 49.99,
+  group: 16.99,
 };
 
 /* =====================================================
@@ -104,7 +106,8 @@ function esPlanValido(
   return (
     valor === "free" ||
     valor === "month" ||
-    valor === "year"
+    valor === "year" ||
+    valor === "group"
   );
 }
 
@@ -125,6 +128,16 @@ function normalizarPlan(
     texto === "premium_anual"
   ) {
     return "year";
+  }
+
+  if (
+    texto === "group" ||
+    texto === "grupo" ||
+    texto === "group_plan" ||
+    texto === "premium_group" ||
+    texto === "plan_grupal"
+  ) {
+    return "group";
   }
 
   if (
@@ -320,7 +333,8 @@ export async function GET(
 
     const premium =
       planActual === "month" ||
-      planActual === "year";
+      planActual === "year" ||
+      planActual === "group";
 
     return NextResponse.json(
       {
@@ -442,7 +456,7 @@ export async function POST(
         {
           success: false,
           error:
-            "Plan no válido. Debe ser free, month o year.",
+            "Plan no válido. Debe ser free, month, year o group.",
         },
         {
           status: 400,
@@ -458,7 +472,8 @@ export async function POST(
 
     const premium =
       plan === "month" ||
-      plan === "year";
+      plan === "year" ||
+      plan === "group";
 
     /*
       Busca si el usuario ya tiene
@@ -589,6 +604,13 @@ export async function POST(
             premium,
             is_premium: premium,
             es_premium: premium,
+
+            group_plan:
+              plan === "group",
+            group_limit:
+              plan === "group"
+                ? 5
+                : null,
           },
         }
       );
@@ -623,7 +645,9 @@ export async function POST(
           ? `Plan ${
               plan === "year"
                 ? "Premium anual"
-                : "Premium mensual"
+                : plan === "group"
+                  ? "Raccoon Grupo"
+                  : "Premium mensual"
             } activado correctamente.`
           : "Plan gratuito activado correctamente.",
 
@@ -637,6 +661,10 @@ export async function POST(
 
         amount,
         status: "active",
+        group_limit:
+          plan === "group"
+            ? 5
+            : null,
 
         data:
           suscripcionGuardada,

@@ -156,19 +156,19 @@ const CONSULTAS: Record<
   string
 > = {
   todos:
-    "lugares para estudiar en Santiago de Veraguas Panamá",
+    "lugares para estudiar, leer, trabajar tranquilo o descansar en Santiago de Veraguas Panamá",
 
   cafeterias:
-    "cafeterías en Santiago de Veraguas Panamá",
+    "cafeterías tranquilas para estudiar o reunirse en Santiago de Veraguas Panamá",
 
   bibliotecas:
-    "bibliotecas en Santiago de Veraguas Panamá",
+    "bibliotecas y espacios de lectura para estudiar en Santiago de Veraguas Panamá",
 
   parques:
-    "parques en Santiago de Veraguas Panamá",
+    "parques, plazas, jardines y lugares tranquilos para descansar en Santiago de Veraguas Panamá",
 
   universidades:
-    "universidades en Santiago de Veraguas Panamá",
+    "universidades, centros educativos y campus para estudiar en Santiago de Veraguas Panamá",
 
   otros:
     "lugares educativos en Santiago de Veraguas Panamá",
@@ -1083,8 +1083,9 @@ async function buscarLugares(
             },
           }),
 
-        cache:
-          "no-store",
+        next: {
+          revalidate: 300,
+        },
       }
     );
 
@@ -1171,7 +1172,7 @@ async function buscarLugares(
 
       headers: {
         "Cache-Control":
-          "no-store",
+          "public, s-maxage=300, stale-while-revalidate=600",
       },
     }
   );
@@ -1270,8 +1271,9 @@ async function obtenerDetalleLugar(
             fieldMask,
         },
 
-        cache:
-          "no-store",
+        next: {
+          revalidate: 300,
+        },
       }
     );
 
@@ -1360,7 +1362,7 @@ async function obtenerDetalleLugar(
     {
       headers: {
         "Cache-Control":
-          "no-store",
+          "public, s-maxage=300, stale-while-revalidate=600",
       },
     }
   );
