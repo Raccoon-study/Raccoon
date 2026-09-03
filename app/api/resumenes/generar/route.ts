@@ -502,7 +502,7 @@ La versión gratuita debe ser suficiente para comprender lo básico, pero Premiu
         store: false,
 
         instructions: `
-Eres Rocco, tutor académico de Raccoon Study especializado en transformar materiales de estudio en resúmenes útiles.
+Eres Rocco y Riccie, tutor académico de Raccoon Study especializado en transformar materiales de estudio en resúmenes útiles.
 
 REGLAS DE FIDELIDAD:
 1. Analiza únicamente el contenido del documento proporcionado.

@@ -1785,7 +1785,7 @@ export default function ChatPage() {
                 </div>
 
                 <Image
-                  src="/raccoon.png"
+                  src="/Riccie y Rocco.png"
                   alt="Raccoon IA"
                   width={100}
                   height={100}
@@ -1826,7 +1826,7 @@ export default function ChatPage() {
                         {!esUsuario && (
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#55A8E8] to-[#7652D9] shadow-md">
                             <Image
-                              src="/raccoon.png"
+                              src="/Riccie y Rocco.png"
                               alt="Raccoon IA"
                               width={38}
                               height={38}
@@ -1989,7 +1989,7 @@ export default function ChatPage() {
                               className="h-full w-full object-cover"
                               onError={(evento) => {
                                 evento.currentTarget.src =
-                                  "/raccoon.png";
+                                  "/Riccie y Rocco.png";
                               }}
                             />
                           </div>
@@ -2005,7 +2005,7 @@ export default function ChatPage() {
                   <div className="flex items-end gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#55A8E8] to-[#7652D9]">
                       <Image
-                        src="/raccoon.png"
+                        src="/Riccie y Rocco.png"
                         alt="Raccoon IA"
                         width={38}
                         height={38}

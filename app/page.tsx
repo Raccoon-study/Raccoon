@@ -647,7 +647,7 @@ export default function Home() {
             para elegir resúmenes guiados,
             cuestionarios interactivos, flashcards
             y planes adaptados a tu ritmo.
-            Además, cuentas con Roccoo, nuestro
+            Además, cuentas con Roccoo y Riccie, nuestro
             asistente inteligente, para acompañarte
             durante todo tu estudio.
           </p>
@@ -798,7 +798,7 @@ export default function Home() {
               icono={
                 <WandSparkles size={20} />
               }
-              titulo="Roccoo analiza"
+              titulo="Roccoo y Riccie analiza"
               texto="Entiende tu contenido"
             />
 
@@ -982,7 +982,7 @@ export default function Home() {
 
             <div>
               <p className="text-xs font-black">
-                Roccoo IA
+                Roccoo and Riccie IA
               </p>
 
               <p className="mt-1 text-[10px] text-[#7E8EA5]">
@@ -1212,7 +1212,7 @@ export default function Home() {
                 sm:text-base
               "
             >
-              Crea tu cuenta y deja que Roccoo transforme
+              Crea tu cuenta y deja que Roccoo o Riccie transformen
               tus materiales en una experiencia de estudio
               más rápida, organizada e interactiva.
             </p>

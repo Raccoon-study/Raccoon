@@ -200,14 +200,14 @@ const looksRocco: LookRaccoon[] = [
   {
     id: "azul-clasico",
     nombre: "Azul clásico",
-    imagen: "rocco/01-azul-clasico.png",
+    imagen: "rocco01-azul-clasico.png",
     desbloqueo: "free",
     nivelMinimo: 1,
   },
   {
     id: "deportivo",
     nombre: "Deportivo",
-    imagen: "rocco/02-deportivo.png",
+    imagen: "rocco02-deportivo.png",
     desbloqueo: "level",
     nivelMinimo: 2,
   },
@@ -221,7 +221,7 @@ const looksRocco: LookRaccoon[] = [
   {
     id: "urbano",
     nombre: "casual",
-    imagen: "04_mapache_camisa_cuadros.png",
+    imagen: "mapache_camisa_cuadros.png",
     desbloqueo: "level",
     nivelMinimo: 4,
   },
@@ -856,7 +856,7 @@ export default function PerfilScreen() {
     avatarRaccoon,
     setAvatarRaccoon,
   ] = useState(
-    "/vestuario/rocco/01-azul-clasico.png"
+    "rocco01-azul-clasico.png"
   );
 
   const [
@@ -1137,7 +1137,7 @@ export default function PerfilScreen() {
           ? metadata.raccoon_avatar
           : mascotaMetadata === "riccie"
             ? "/vestuario/riccie/01-rosa-casual.png"
-            : "/vestuario/rocco/01-azul-clasico.png";
+            : "rocco01-azul-clasico.png";
 
       setAvatarRaccoon(
         avatarRaccoonMetadata

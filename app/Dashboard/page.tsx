@@ -4014,10 +4014,10 @@ export default function Dashboard() {
                   </div>
 
                   <Image
-                    src="/raccoon.png"
+                    src="/Riccie y Rocco.png"
                     alt="Raccoon Study"
-                    width={180}
-                    height={180}
+                    width={240}
+                    height={240}
                     className="mx-auto w-[150px] object-contain sm:mx-0 sm:w-[180px]"
                   />
                 </div>
@@ -4455,7 +4455,7 @@ export default function Dashboard() {
 
                 <div className="mt-5 grid grid-cols-2 items-center gap-4 sm:flex sm:justify-between">
                   <Image
-                    src="/raccoon.png"
+                    src="/Riccie y Rocco.png"
                     alt="Nivel"
                     width={70}
                     height={70}
@@ -4824,10 +4824,10 @@ export default function Dashboard() {
 
                 <div className="relative mt-5 flex items-center justify-center">
                   <Image
-                    src="/raccoon.png"
+                    src="/Riccie y Rocco IA.png"
                     alt="Raccoon IA"
-                    width={120}
-                    height={120}
+                    width={200}
+                    height={200}
                     className="object-contain"
                   />
                 </div>

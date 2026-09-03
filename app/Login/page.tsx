@@ -1084,7 +1084,7 @@ export default function LoginPage() {
       >
         <div className="flex items-center gap-3">
           <Image
-            src="/raccoon.png"
+            src="/Riccie y Rocco.png"
             alt="Raccoon Study"
             width={46}
             height={46}
