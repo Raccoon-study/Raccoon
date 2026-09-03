@@ -27,33 +27,33 @@ const lideres = [
     cargo: "Diseño y Branding",
     descripcion:
       "Aporta creatividad, diseño e identidad visual al proyecto Raccoon Study.",
-    imagen: "/images/Marielis.jpg",
+    imagen: "marielis.png",
   },
   {
     nombre: "Jhulianys Urriola",
     cargo: "Programación",
     descripcion:
       "Participa en el desarrollo, programación y funcionamiento de Raccoon Study.",
-    imagen: "/images/Jhulianys.jpg",
+    imagen: "jhulianys.png",
   },
 ];
 
 const branding = [
-  "MARIELIS",
-  "EMMA",
-  "IAN M",
-  "IDALIZ BATISTA",
-  "JULI H",
-  "JOWMEY",
+  "Marielis Díaz",
+  "Idaliz Batista",
+  "Jowmey Castillo",
+  "Julianys Hernández",
+  "Ian Melendez",
+  "Emma Rodríguez",
 ];
 
 const programacion = [
-  "JHULI",
-  "CESS",
-  "MANUEL",
-  "RICHARD CORONEL",
-  "VALERIA SOLIS",
-  "DANIELA",
+  "Jhulianys Urriola",
+  "César Camarena",
+  "Richard Coronel",
+  "Daniela Guevara",
+  "Valeria Solis",
+  "Manuel Zeballos",
 ];
 
 const valores = [
