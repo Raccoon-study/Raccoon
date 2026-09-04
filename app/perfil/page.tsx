@@ -2362,8 +2362,8 @@ export default function PerfilScreen() {
 
       mostrarNotificacion(
         controlParentalActivo
-          ? "Control parental guardado. El tutor recibirá un resumen semanal del progreso."
-          : "Control parental desactivado."
+          ? "Informe parental guardado. El tutor recibirá un resumen semanal del progreso."
+          : "Informe parental desactivado."
       );
     } catch (error) {
       console.error(

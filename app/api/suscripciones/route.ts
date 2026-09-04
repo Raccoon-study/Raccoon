@@ -392,18 +392,33 @@ export async function POST(
     const body =
       await request.json();
 
+    const requestedPlan =
+      body?.plan;
+
     if (
-      body?.plan !== "free"
+      requestedPlan !== "free" &&
+      requestedPlan !== "month"
     ) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "Los planes Premium solo pueden activarse después de un pago confirmado por PayPal.",
+            "Premium anual solo puede activarse después de un pago confirmado por PayPal.",
         },
         { status: 403 }
       );
     }
+
+    const nuevoPlan: PlanType =
+      requestedPlan === "month"
+        ? "month"
+        : "free";
+
+    const nuevoMonto =
+      PRECIOS[nuevoPlan];
+
+    const nuevoPremium =
+      nuevoPlan === "month";
 
     const {
       data: existing,
@@ -435,8 +450,8 @@ export async function POST(
             "subscriptions"
           )
           .update({
-            plan: "free",
-            amount: 0,
+            plan: nuevoPlan,
+            amount: nuevoMonto,
             status:
               "active",
           })
@@ -465,8 +480,8 @@ export async function POST(
           .insert({
             usuario_id:
               user.id,
-            plan: "free",
-            amount: 0,
+            plan: nuevoPlan,
+            amount: nuevoMonto,
             status:
               "active",
           });
@@ -493,16 +508,17 @@ export async function POST(
         {
           app_metadata: {
             ...previousMetadata,
-            plan: "free",
+            plan: nuevoPlan,
             subscription:
-              "free",
+              nuevoPlan,
             tipo_plan:
-              "free",
-            premium: false,
+              nuevoPlan,
+            premium:
+              nuevoPremium,
             is_premium:
-              false,
+              nuevoPremium,
             es_premium:
-              false,
+              nuevoPremium,
             premium_started_at:
               null,
             premium_expires_at:
@@ -520,12 +536,16 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-        plan: "free",
-        premium: false,
-        amount: 0,
+        plan: nuevoPlan,
+        premium:
+          nuevoPremium,
+        amount:
+          nuevoMonto,
         status: "active",
         message:
-          "Plan gratuito activado.",
+          nuevoPremium
+            ? "Premium mensual activado."
+            : "Plan gratuito activado.",
       },
       { status: 200 }
     );

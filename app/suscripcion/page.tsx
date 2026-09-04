@@ -219,6 +219,7 @@ const planes: InformacionPlan[] = [
       etiqueta:
         "bg-[#E9E2FF] text-[#7652D9] dark:bg-[#3B3156] dark:text-purple-200",
     },
+    
   },
   {
     id: "year",
@@ -1085,6 +1086,72 @@ export default function SuscripcionPage() {
       : "Elegir Premium anual";
   };
 
+  const activarPremiumMensualDirecto = async () => {
+    if (planProcesando) {
+      return;
+    }
+
+    try {
+      setPlanProcesando("month");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace("/Login");
+        return;
+      }
+
+      const respuesta = await fetch(
+        "/api/suscripciones",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            plan: "month",
+          }),
+        }
+      );
+
+      const datos: unknown =
+        await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(
+          obtenerMensajeError(datos)
+        );
+      }
+
+      setPlanActual("month");
+
+      await supabase.auth.refreshSession();
+
+      mostrarNotificacion(
+        "¡Premium mensual activado!"
+      );
+
+      await cargarUsuarioYPlan();
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "Error activando Premium mensual:",
+        error
+      );
+
+      mostrarNotificacion(
+        error instanceof Error
+          ? error.message
+          : "No se pudo activar Premium mensual."
+      );
+    } finally {
+      setPlanProcesando(null);
+    }
+  };
+
   const seleccionarPlan = (
     plan: PlanType
   ) => {
@@ -1102,7 +1169,13 @@ export default function SuscripcionPage() {
       return;
     }
 
-    void iniciarPagoPayPal(plan);
+    if (plan === "month") {
+      void activarPremiumMensualDirecto();
+      return;
+    }
+
+    // Solo Premium anual utiliza PayPal.
+    void iniciarPagoPayPal("year");
   };
 
 
