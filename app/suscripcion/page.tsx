@@ -2,8 +2,9 @@
 
 import type { LucideIcon } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Script from "next/script";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -47,11 +48,40 @@ import {
 
 import { supabase } from "../lib/supabase";
 
+declare global {
+  interface Window {
+    paypal?: {
+      createInstance: (options: {
+        clientId: string;
+        components: string[];
+        pageType?: string;
+      }) => Promise<{
+        findEligibleMethods: (options?: {
+          currencyCode?: string;
+        }) => Promise<{
+          isEligible: (method: string) => boolean;
+        }>;
+        createPayPalOneTimePaymentSession: (options: {
+          onApprove: (data: { orderId: string }) => Promise<unknown>;
+          onCancel: () => void;
+          onError: (error: unknown) => void;
+        }) => Promise<{
+          start: (
+            options: { presentationMode: string },
+            createOrderPromise: Promise<{ orderId: string }>
+          ) => Promise<void>;
+        }>;
+      }>;
+    };
+  }
+}
+
+
 /* =====================================================
    TIPOS
 ===================================================== */
 
-type PlanType = "free" | "month" | "year" | "group";
+type PlanType = "free" | "month" | "year";
 
 interface ElementoMenu {
   nombre: string;
@@ -119,16 +149,17 @@ const elementosMenu: ElementoMenu[] = [
     href: "/biblioteca",
     icono: Library,
   },
+    {
+    nombre: "Lugares",
+    href: "/lugares",
+    icono: MapPin,
+  },
   {
     nombre: "Perfil",
     href: "/perfil",
     icono: User,
   },
-  {
-    nombre: "Lugares",
-    href: "/lugares",
-    icono: MapPin,
-  },
+
 ];
 
 const planes: InformacionPlan[] = [
@@ -193,7 +224,7 @@ const planes: InformacionPlan[] = [
     id: "year",
     nombre: "Premium anual",
     subtitulo: "La mejor opción",
-    precio: "$49.99",
+    precio: "$69.99",
     periodo: "/año",
     descripcion:
       "Disfruta de todas las funciones Premium durante un año completo con un ahorro real frente al plan mensual.",
@@ -221,23 +252,6 @@ const planes: InformacionPlan[] = [
 ];
 
 
-const planGrupal = {
-  nombre: "Raccoon Grupo",
-  subtitulo: "Estudia acompañado",
-  precio: "$16.99",
-  periodo: "/mes",
-  detalle: "Hasta 5 cuentas",
-  descripcion:
-    "Un solo pago para un grupo de amigos, hermanos o compañeros de estudio. Cada integrante conserva su cuenta, progreso y materiales por separado.",
-  caracteristicas: [
-    "Hasta 5 cuentas Premium independientes",
-    "Todas las herramientas Premium",
-    "Progreso, materiales y quizzes separados",
-    "Rocco o Riccie y niveles individuales",
-    "Administrador del grupo",
-    "Un solo pago mensual",
-  ],
-};
 
 const planInstitucional = {
   nombre: "Raccoon Instituciones",
@@ -287,14 +301,6 @@ function normalizarPlan(
     return "year";
   }
 
-  if (
-    texto === "group" ||
-    texto === "grupo" ||
-    texto === "group_plan" ||
-    texto === "premium_group"
-  ) {
-    return "group";
-  }
 
   if (
     texto === "month" ||
@@ -351,10 +357,6 @@ function obtenerMensajeError(
 }
 
 function nombrePlan(plan: PlanType): string {
-  if (plan === "group") {
-    return "Raccoon Grupo";
-  }
-
   if (plan === "month") {
     return "Premium mensual";
   }
@@ -397,14 +399,25 @@ export default function SuscripcionPage() {
     setPlanProcesando,
   ] = useState<PlanType | null>(null);
 
+
+  const paypalIniciandoRef = useRef(false);
+
+  const paypalClientId =
+    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+
+  const paypalMode =
+    process.env.NEXT_PUBLIC_PAYPAL_MODE ??
+    process.env.PAYPAL_MODE ??
+    "sandbox";
+
+  const paypalScript =
+    paypalMode === "live"
+      ? "https://www.paypal.com/web-sdk/v6/core"
+      : "https://www.sandbox.paypal.com/web-sdk/v6/core";
+
   const [
     mostrarConfirmacionGratis,
     setMostrarConfirmacionGratis,
-  ] = useState(false);
-
-  const [
-    mostrarPlanGrupo,
-    setMostrarPlanGrupo,
   ] = useState(false);
 
   const [
@@ -446,10 +459,34 @@ export default function SuscripcionPage() {
   const [notificacion, setNotificacion] =
     useState("");
 
+  const whatsappNumero =
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
+
+  const abrirWhatsAppRaccoon = () => {
+    const numero =
+      whatsappNumero.replace(/\D/g, "");
+
+    if (!numero) {
+      mostrarNotificacion(
+        "Falta configurar NEXT_PUBLIC_WHATSAPP_NUMBER."
+      );
+      return;
+    }
+
+    const mensaje = encodeURIComponent(
+      "Hola Raccoon Study 👋 Tengo una duda sobre los planes y suscripciones."
+    );
+
+    window.open(
+      `https://wa.me/${numero}?text=${mensaje}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
   const esPremium =
     planActual === "month" ||
-    planActual === "year" ||
-    planActual === "group";
+    planActual === "year";
 
   /* =====================================================
      INICIAR
@@ -716,21 +753,16 @@ export default function SuscripcionPage() {
   };
 
   /* =====================================================
-     CAMBIAR PLAN
+     CAMBIAR PLAN / PAYPAL
   ===================================================== */
 
-  const solicitarCambioPlan = async (
-    planDestino: PlanType
-  ) => {
-    if (
-      planProcesando ||
-      planDestino === planActual
-    ) {
+  const solicitarCambioGratis = async () => {
+    if (planProcesando) {
       return;
     }
 
     try {
-      setPlanProcesando(planDestino);
+      setPlanProcesando("free");
 
       const {
         data: { session },
@@ -745,40 +777,18 @@ export default function SuscripcionPage() {
         "/api/suscripciones",
         {
           method: "POST",
-
           headers: {
-            "Content-Type":
-              "application/json",
-
+            "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-
           body: JSON.stringify({
-            plan: planDestino,
+            plan: "free",
           }),
         }
       );
 
-      const tipoContenido =
-        respuesta.headers.get(
-          "content-type"
-        ) || "";
-
-      let datos: unknown;
-
-      if (
-        tipoContenido.includes(
-          "application/json"
-        )
-      ) {
-        datos = await respuesta.json();
-      } else {
-        datos = {
-          error:
-            (await respuesta.text()) ||
-            `Error ${respuesta.status}`,
-        };
-      }
+      const datos: unknown =
+        await respuesta.json();
 
       if (!respuesta.ok) {
         throw new Error(
@@ -786,67 +796,262 @@ export default function SuscripcionPage() {
         );
       }
 
-      const resultado =
-        esObjeto(datos)
-          ? (datos as RespuestaSuscripcion)
-          : {};
-
-      /*
-        Cuando existe una URL de pago,
-        se abre el proceso de checkout.
-      */
-
-      const urlPago =
-        obtenerUrlPago(resultado);
-
-      if (urlPago) {
-        window.location.assign(urlPago);
-        return;
-      }
-
-      /*
-        Si el servidor confirmó directamente
-        el cambio, actualizamos la interfaz.
-      */
-
-      const planConfirmado =
-        normalizarPlan(
-          resultado.plan ||
-            resultado.subscription ||
-            planDestino,
-          planDestino !== "free"
-        );
-
-      setPlanActual(planConfirmado);
-
+      setPlanActual("free");
       setMostrarConfirmacionGratis(false);
 
       await supabase.auth.refreshSession();
 
       mostrarNotificacion(
-        planConfirmado === "free"
-          ? "Ahora estás en el plan gratuito."
-          : `Tu plan cambió a ${nombrePlan(
-              planConfirmado
-            )}.`
+        "Ahora estás en el plan gratuito."
       );
 
       window.setTimeout(() => {
         void cargarUsuarioYPlan();
-      }, 700);
+      }, 500);
     } catch (error) {
       console.error(
-        "Error cambiando plan:",
+        "Error cambiando a gratuito:",
         error
       );
 
       mostrarNotificacion(
         error instanceof Error
           ? error.message
-          : "No se pudo cambiar el plan."
+          : "No se pudo cambiar al plan gratuito."
       );
     } finally {
       setPlanProcesando(null);
+    }
+  };
+
+  const iniciarPagoPayPal = async (
+    planDestino: "month" | "year"
+  ) => {
+    if (
+      paypalIniciandoRef.current ||
+      planProcesando ||
+      planDestino === planActual
+    ) {
+      return;
+    }
+
+    try {
+      paypalIniciandoRef.current = true;
+      setPlanProcesando(planDestino);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace("/Login");
+        return;
+      }
+
+      if (
+        !paypalClientId ||
+        paypalClientId ===
+          "TU_PAYPAL_CLIENT_ID"
+      ) {
+        throw new Error(
+          "Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID."
+        );
+      }
+
+      if (!window.paypal) {
+        throw new Error(
+          "PayPal todavía se está cargando. Inténtalo nuevamente en unos segundos."
+        );
+      }
+
+      const sdkInstance =
+        await window.paypal.createInstance({
+          clientId: paypalClientId,
+          components: [
+            "paypal-payments",
+          ],
+          pageType: "checkout",
+        });
+
+      const elegibilidad =
+        await sdkInstance.findEligibleMethods({
+          currencyCode: "USD",
+        });
+
+      if (
+        !elegibilidad.isEligible(
+          "paypal"
+        )
+      ) {
+        throw new Error(
+          "PayPal no está disponible para esta sesión."
+        );
+      }
+
+      const paymentSession =
+        await sdkInstance.createPayPalOneTimePaymentSession(
+          {
+            onApprove: async ({
+              orderId,
+            }) => {
+              try {
+                setPlanProcesando(
+                  planDestino
+                );
+
+                const respuestaCaptura =
+                  await fetch(
+                    "/api/paypal/capture-order",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type":
+                          "application/json",
+                        Authorization: `Bearer ${session.access_token}`,
+                      },
+                      body: JSON.stringify({
+                        orderId,
+                        plan: planDestino,
+                      }),
+                    }
+                  );
+
+                const datosCaptura: unknown =
+                  await respuestaCaptura.json();
+
+                if (
+                  !respuestaCaptura.ok
+                ) {
+                  throw new Error(
+                    obtenerMensajeError(
+                      datosCaptura
+                    )
+                  );
+                }
+
+                setPlanActual(
+                  planDestino
+                );
+
+                await supabase.auth.refreshSession();
+
+                mostrarNotificacion(
+                  planDestino ===
+                    "year"
+                    ? "¡Pago completado! Premium anual está activo."
+                    : "¡Pago completado! Premium mensual está activo."
+                );
+
+                await cargarUsuarioYPlan();
+                router.refresh();
+
+                return datosCaptura;
+              } catch (error) {
+                console.error(
+                  "Error capturando PayPal:",
+                  error
+                );
+
+                mostrarNotificacion(
+                  error instanceof Error
+                    ? error.message
+                    : "El pago no pudo confirmarse."
+                );
+
+                throw error;
+              } finally {
+                setPlanProcesando(
+                  null
+                );
+                paypalIniciandoRef.current =
+                  false;
+              }
+            },
+
+            onCancel: () => {
+              setPlanProcesando(null);
+              paypalIniciandoRef.current =
+                false;
+
+              mostrarNotificacion(
+                "Pago cancelado. No se realizó ningún cargo."
+              );
+            },
+
+            onError: (error) => {
+              console.error(
+                "PayPal error:",
+                error
+              );
+
+              setPlanProcesando(null);
+              paypalIniciandoRef.current =
+                false;
+
+              mostrarNotificacion(
+                "Ocurrió un error con PayPal. Inténtalo nuevamente."
+              );
+            },
+          }
+        );
+
+      const createOrderPromise =
+        fetch(
+          "/api/paypal/create-order",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              plan: planDestino,
+            }),
+          }
+        ).then(async (respuesta) => {
+          const datos: unknown =
+            await respuesta.json();
+
+          if (
+            !respuesta.ok ||
+            !esObjeto(datos) ||
+            typeof datos.id !==
+              "string"
+          ) {
+            throw new Error(
+              obtenerMensajeError(
+                datos
+              )
+            );
+          }
+
+          return {
+            orderId: datos.id,
+          };
+        });
+
+      await paymentSession.start(
+        {
+          presentationMode: "auto",
+        },
+        createOrderPromise
+      );
+    } catch (error) {
+      console.error(
+        "Error iniciando PayPal:",
+        error
+      );
+
+      setPlanProcesando(null);
+      paypalIniciandoRef.current =
+        false;
+
+      mostrarNotificacion(
+        error instanceof Error
+          ? error.message
+          : "No se pudo iniciar PayPal."
+      );
     }
   };
 
@@ -875,12 +1080,6 @@ export default function SuscripcionPage() {
         : "Elegir Premium mensual";
     }
 
-    if (plan === "group") {
-      return planActual === "group"
-        ? "Tu plan actual"
-        : "Elegir Raccoon Grupo";
-    }
-
     return esPremium
       ? "Cambiar a anual"
       : "Elegir Premium anual";
@@ -893,16 +1092,19 @@ export default function SuscripcionPage() {
       return;
     }
 
-    if (
-      plan === "free" &&
-      esPremium
-    ) {
-      setMostrarConfirmacionGratis(true);
+    if (plan === "free") {
+      if (esPremium) {
+        setMostrarConfirmacionGratis(true);
+        return;
+      }
+
+      void solicitarCambioGratis();
       return;
     }
 
-    void solicitarCambioPlan(plan);
+    void iniciarPagoPayPal(plan);
   };
+
 
   /* =====================================================
      SESIÓN
@@ -920,6 +1122,16 @@ export default function SuscripcionPage() {
 
   return (
     <main className="min-h-screen bg-[#F5FAFF] text-[#10233F] transition-colors duration-500 dark:bg-[#101827] dark:text-white">
+      <Script
+        src={paypalScript}
+        strategy="afterInteractive"
+        onError={() =>
+          mostrarNotificacion(
+            "No se pudo cargar PayPal."
+          )
+        }
+      />
+
       {/* OVERLAY MÓVIL */}
 
       {menuAbierto && (
@@ -1713,130 +1925,77 @@ export default function SuscripcionPage() {
                       </div>
                     </div>
 
-                    {plan.id !== "free" && (
+                    {plan.id === "year" && (
                       <div className="relative mt-auto pt-7">
                         <div className="flex items-center justify-center gap-2 rounded-xl bg-white/60 px-3 py-2 text-xs font-bold text-[#6085A5] dark:bg-slate-800/70 dark:text-slate-300">
                           <LockKeyhole
                             size={14}
                           />
-                          Pago procesado de forma segura
+                          Pago disponible actualmente mediante PayPal
                         </div>
                       </div>
                     )}
-                  </article>
+                    {plan.id === "year" && (
+                    <div className="relative mt-6 border-t border-[#DDEAF7] pt-6 dark:border-slate-700">
+                  <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#6085A5] dark:text-slate-400">
+                    Métodos de pago
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-[#DDEAF7] bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800">
+                      <span className="text-[16px] font-black italic">
+                        <span className="text-[#003087] dark:text-[#7DB8FF]">Pay</span><span className="text-[#009CDE]">Pal</span>
+                      </span>
+                      <span className="rounded-full bg-[#DDF7EA] px-2 py-0.5 text-[9px] font-black uppercase text-[#258A5B] dark:bg-[#1E3A32] dark:text-emerald-200">
+                        Disponible
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-xl border border-[#E4EBF3] bg-[#F8FAFC] px-3 py-2 opacity-70 dark:border-slate-700 dark:bg-slate-900/40">
+                      <span className="text-[14px] font-black italic text-[#1434CB] dark:text-[#8FA7FF]">VISA</span>
+                      <span className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300">Próximamente</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-xl border border-[#E4EBF3] bg-[#F8FAFC] px-3 py-2 opacity-70 dark:border-slate-700 dark:bg-slate-900/40">
+                      <span className="flex items-center"><span className="h-4 w-4 rounded-full bg-[#EB001B]" /><span className="-ml-1.5 h-4 w-4 rounded-full bg-[#F79E1B]" /></span>
+                      <span className="text-[10px] font-black">Mastercard</span>
+                      <span className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300">Próximamente</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-xl border border-[#E4EBF3] bg-[#F8FAFC] px-3 py-2 opacity-70 dark:border-slate-700 dark:bg-slate-900/40">
+                      <span className="text-[13px] font-black text-[#6F2C91] dark:text-[#C79AE1]">Yappy</span>
+                      <span className="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300">Próximamente</span>
+                    </div>
+                  </div>
+                </div>
+                  )}
+
+              </article>
                 );
               })}
             </div>
           </section>
 
 
-          {/* PLANES GRUPALES E INSTITUCIONALES */}
+          {/* PLAN INSTITUCIONAL */}
 
           <section className="mt-10">
             <div className="mb-6 text-center">
               <span className="inline-flex items-center gap-2 rounded-full bg-[#E8F8F2] px-4 py-2 text-sm font-bold text-[#258A5B] dark:bg-[#1E3A32] dark:text-emerald-200">
                 <Users size={16} />
-                Planes para estudiar juntos
+                Planes para instituciones
               </span>
 
               <h2 className="mt-4 text-3xl font-black sm:text-4xl">
-                Raccoon para grupos e instituciones
+                Raccoon para instituciones
               </h2>
 
               <p className="mx-auto mt-3 max-w-2xl leading-7 text-[#6085A5] dark:text-slate-400">
-                Opciones pensadas para amigos, familias, colegios,
-                universidades y programas educativos.
+                Una opción pensada para colegios, universidades y programas educativos.
               </p>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <article className="relative overflow-hidden rounded-[30px] border-2 border-[#B8D8FF] bg-gradient-to-br from-[#EFF8FF] via-white to-[#F1EEFF] p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-[#365A7A] dark:from-[#17304A] dark:via-[#182437] dark:to-[#28243E] sm:p-8">
-                <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[#55A8E8]/10" />
-
-                <div className="relative flex items-start justify-between gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#DDF3FF] text-[#1687D9] dark:bg-[#1D3558]">
-                    <Users size={31} />
-                  </div>
-
-                  <span className="rounded-full bg-[#DDF3FF] px-3 py-1.5 text-xs font-black text-[#1687D9] dark:bg-[#1D3558] dark:text-blue-300">
-                    Hasta 5 cuentas
-                  </span>
-                </div>
-
-                <div className="relative mt-6">
-                  <p className="text-sm font-bold text-[#6085A5] dark:text-slate-400">
-                    {planGrupal.subtitulo}
-                  </p>
-
-                  <h3 className="mt-1 text-3xl font-black">
-                    {planGrupal.nombre}
-                  </h3>
-                </div>
-
-                <div className="relative mt-6 flex flex-wrap items-end gap-2">
-                  <span className="text-5xl font-black sm:text-6xl">
-                    {planGrupal.precio}
-                  </span>
-
-                  <span className="mb-2 text-sm font-semibold text-[#6085A5] dark:text-slate-400">
-                    {planGrupal.periodo}
-                  </span>
-                </div>
-
-                <div className="relative mt-3 w-fit rounded-full bg-[#DDF7EA] px-3 py-1.5 text-xs font-black text-[#258A5B]">
-                  ≈ $3.40 por persona usando 5 cuentas
-                </div>
-
-                <p className="relative mt-5 text-sm leading-6 text-[#6085A5] dark:text-slate-300">
-                  {planGrupal.descripcion}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    void solicitarCambioPlan("group")
-                  }
-                  disabled={
-                    planActual === "group" ||
-                    Boolean(planProcesando) ||
-                    cargandoPlan
-                  }
-                  className="relative mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] px-4 py-4 font-black text-white shadow-lg shadow-[#55A8E8]/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <UserPlus size={19} />
-                  {planProcesando === "group"
-                    ? "Procesando..."
-                    : planActual === "group"
-                      ? "Tu plan grupal"
-                      : "Elegir plan grupal"}
-                </button>
-
-                <div className="relative mt-7 border-t border-[#DDEAF7] pt-6 dark:border-slate-700">
-                  <p className="text-sm font-black">
-                    Incluye:
-                  </p>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {planGrupal.caracteristicas.map(
-                      (caracteristica) => (
-                        <div
-                          key={caracteristica}
-                          className="flex items-start gap-3"
-                        >
-                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#DDF3FF] text-[#1687D9] dark:bg-[#1D3558]">
-                            <CheckCircle2 size={14} />
-                          </div>
-
-                          <span className="text-sm leading-6 text-[#506C88] dark:text-slate-300">
-                            {caracteristica}
-                          </span>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              </article>
-
+            <div className="mx-auto grid max-w-4xl gap-6">
               <article className="relative overflow-hidden rounded-[30px] border-2 border-[#C8B9FF] bg-gradient-to-br from-[#F7F2FF] via-white to-[#EEFAF5] p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-[#5B4B8A] dark:from-[#2B2442] dark:via-[#182437] dark:to-[#17352C] sm:p-8">
                 <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-[#7652D9]/10" />
 
@@ -1845,9 +2004,14 @@ export default function SuscripcionPage() {
                     <Building2 size={31} />
                   </div>
 
-                  <span className="rounded-full bg-[#E9E2FF] px-3 py-1.5 text-xs font-black text-[#7652D9] dark:bg-[#3B3156] dark:text-purple-200">
-                    B2B · Educación
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                      🚧 EN DESARROLLO
+                    </span>
+                    <span className="rounded-full bg-[#E9E2FF] px-3 py-1.5 text-xs font-black text-[#7652D9] dark:bg-[#3B3156] dark:text-purple-200">
+                      B2B · Educación
+                    </span>
+                  </div>
                 </div>
 
                 <div className="relative mt-6">
@@ -1880,13 +2044,11 @@ export default function SuscripcionPage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setMostrarPlanInstitucion(true)
-                  }
-                  className="relative mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7652D9] via-[#7771E8] to-[#55A8E8] px-4 py-4 font-black text-white shadow-lg shadow-[#7652D9]/20 transition hover:-translate-y-0.5"
+                  disabled
+                  className="relative mt-7 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 font-black text-amber-700 opacity-90 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
                 >
-                  <GraduationCap size={20} />
-                  Solicitar plan institucional
+                  <LoaderCircle size={19} />
+                  En desarrollo · Próximamente
                 </button>
 
                 <div className="relative mt-7 border-t border-[#E8E1F8] pt-6 dark:border-slate-700">
@@ -1982,13 +2144,15 @@ export default function SuscripcionPage() {
               </div>
             </div>
 
-            <Link
-              href="/Chat"
+            <button
+              type="button"
+              onClick={abrirWhatsAppRaccoon}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EAF1FF] px-5 py-3 font-bold text-[#1769E0] transition hover:bg-[#DDF3FF] dark:bg-[#1D3558] dark:text-blue-300 md:w-auto"
             >
-              Hablar con Raccoon
+              <MessageCircle size={18} />
+              Hablar con Raccoon por WhatsApp
               <ArrowRight size={17} />
-            </Link>
+            </button>
           </section>
         </div>
       </div>
@@ -1996,79 +2160,6 @@ export default function SuscripcionPage() {
 
       {/* MODAL PLAN GRUPAL */}
 
-      {mostrarPlanGrupo && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-xl rounded-[28px] bg-white p-7 shadow-2xl dark:bg-[#182437]">
-            <button
-              type="button"
-              onClick={() =>
-                setMostrarPlanGrupo(false)
-              }
-              className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F5FA] text-[#6085A5] dark:bg-slate-700"
-              aria-label="Cerrar"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#DDF3FF] text-[#1687D9] dark:bg-[#1D3558]">
-              <Users size={31} />
-            </div>
-
-            <h2 className="mt-6 text-2xl font-black">
-              Raccoon Grupo
-            </h2>
-
-            <p className="mt-2 text-3xl font-black text-[#1687D9]">
-              $16.99
-              <span className="ml-1 text-sm font-semibold text-[#6085A5]">
-                /mes
-              </span>
-            </p>
-
-            <p className="mt-4 leading-7 text-[#6085A5] dark:text-slate-300">
-              Incluye hasta 5 cuentas Premium independientes.
-              Cada integrante conserva sus propios materiales,
-              progreso, quizzes y estadísticas.
-            </p>
-
-            <div className="mt-6 rounded-2xl bg-[#F4FAFF] p-4 dark:bg-slate-800">
-              <p className="font-black">Ideal para:</p>
-              <div className="mt-3 grid gap-2 text-sm text-[#6085A5] dark:text-slate-300 sm:grid-cols-2">
-                <span>• Amigos</span>
-                <span>• Hermanos</span>
-                <span>• Grupos universitarios</span>
-                <span>• Equipos de estudio</span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => {
-                  setMostrarPlanGrupo(false);
-                  mostrarNotificacion(
-                    "El plan grupal ya está agregado visualmente. El checkout grupal debe conectarse en el backend."
-                  );
-                }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#55A8E8] to-[#7771E8] py-4 font-black text-white"
-              >
-                <UserPlus size={18} />
-                Continuar
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setMostrarPlanGrupo(false)
-                }
-                className="flex-1 rounded-xl bg-[#F1F8FD] py-4 font-bold text-[#1687D9] dark:bg-slate-700 dark:text-blue-300"
-              >
-                Ahora no
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODAL INSTITUCIONES */}
 
@@ -2313,9 +2404,7 @@ export default function SuscripcionPage() {
             <div className="mt-6 space-y-3">
               <button
                 onClick={() =>
-                  void solicitarCambioPlan(
-                    "free"
-                  )
+                  void solicitarCambioGratis()
                 }
                 disabled={
                   planProcesando === "free"

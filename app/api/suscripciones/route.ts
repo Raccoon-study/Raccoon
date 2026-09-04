@@ -10,19 +10,10 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/* =====================================================
-   TIPOS
-===================================================== */
-
 type PlanType =
-  | "year"
+  | "free"
   | "month"
-  | "group"
-  | "free";
-
-interface SolicitudPlan {
-  plan?: unknown;
-}
+  | "year";
 
 interface SuscripcionBD {
   id: string;
@@ -32,121 +23,69 @@ interface SuscripcionBD {
   status: string;
 }
 
-/* =====================================================
-   PRECIOS
-===================================================== */
-
 const PRECIOS: Record<
   PlanType,
   number
 > = {
   free: 0,
   month: 5.99,
-  year: 49.99,
-  group: 16.99,
+  year: 69.99,
 };
 
-/* =====================================================
-   CLIENTE SUPABASE DEL SERVIDOR
-===================================================== */
-
 function crearSupabaseAdmin() {
-  const supabaseUrl =
+  const url =
     process.env
       .NEXT_PUBLIC_SUPABASE_URL;
 
-  const serviceRoleKey =
+  const key =
     process.env
       .SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl) {
+  if (!url || !key) {
     throw new Error(
-      "Falta NEXT_PUBLIC_SUPABASE_URL en las variables de entorno."
+      "Faltan variables de Supabase."
     );
   }
 
-  if (!serviceRoleKey) {
-    throw new Error(
-      "Falta SUPABASE_SERVICE_ROLE_KEY en las variables de entorno."
-    );
-  }
-
-  return createClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-    }
-  );
-}
-
-/* =====================================================
-   FUNCIONES AUXILIARES
-===================================================== */
-
-function esObjeto(
-  valor: unknown
-): valor is Record<
-  string,
-  unknown
-> {
-  return (
-    typeof valor === "object" &&
-    valor !== null
-  );
-}
-
-function esPlanValido(
-  valor: unknown
-): valor is PlanType {
-  return (
-    valor === "free" ||
-    valor === "month" ||
-    valor === "year" ||
-    valor === "group"
-  );
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl:
+        false,
+    },
+  });
 }
 
 function normalizarPlan(
-  valor: unknown
+  value: unknown
 ): PlanType {
-  const texto = String(
-    valor || ""
-  )
-    .trim()
-    .toLowerCase();
+  const text =
+    String(value || "")
+      .trim()
+      .toLowerCase();
 
   if (
-    texto === "year" ||
-    texto === "annual" ||
-    texto === "anual" ||
-    texto === "premium_year" ||
-    texto === "premium_anual"
+    text === "year" ||
+    text === "annual" ||
+    text === "anual" ||
+    text ===
+      "premium_year" ||
+    text ===
+      "premium_anual"
   ) {
     return "year";
   }
 
   if (
-    texto === "group" ||
-    texto === "grupo" ||
-    texto === "group_plan" ||
-    texto === "premium_group" ||
-    texto === "plan_grupal"
-  ) {
-    return "group";
-  }
-
-  if (
-    texto === "month" ||
-    texto === "monthly" ||
-    texto === "mensual" ||
-    texto === "premium" ||
-    texto === "premium_month" ||
-    texto === "premium_mensual"
+    text === "month" ||
+    text === "monthly" ||
+    text === "mensual" ||
+    text ===
+      "premium_month" ||
+    text ===
+      "premium_mensual" ||
+    text === "premium"
   ) {
     return "month";
   }
@@ -154,22 +93,30 @@ function normalizarPlan(
   return "free";
 }
 
-function obtenerToken(
+function esPlanValido(
+  value: unknown
+): value is PlanType {
+  return (
+    value === "free" ||
+    value === "month" ||
+    value === "year"
+  );
+}
+
+function obtenerBearer(
   request: NextRequest
-): string | null {
-  const autorizacion =
+) {
+  const header =
     request.headers.get(
       "authorization"
     );
 
-  if (!autorizacion) {
+  if (!header) {
     return null;
   }
 
-  const [
-    tipo,
-    token,
-  ] = autorizacion.split(" ");
+  const [tipo, token] =
+    header.split(" ");
 
   if (
     tipo?.toLowerCase() !==
@@ -182,57 +129,62 @@ function obtenerToken(
   return token.trim();
 }
 
-/* =====================================================
-   OBTENER USUARIO AUTENTICADO
-===================================================== */
-
-async function obtenerUsuarioAutenticado(
+async function obtenerUsuario(
   request: NextRequest,
-  supabaseAdmin: ReturnType<
-    typeof crearSupabaseAdmin
-  >
+  supabaseAdmin:
+    ReturnType<
+      typeof crearSupabaseAdmin
+    >
 ) {
   const token =
-    obtenerToken(request);
+    obtenerBearer(request);
 
   if (!token) {
-    return {
-      user: null,
-      error:
-        "Debes iniciar sesión para administrar tu suscripción.",
-    };
+    return null;
   }
-
-  /*
-    getUser(token) verifica el JWT directamente
-    con Supabase Auth.
-  */
 
   const {
     data: { user },
-    error,
   } =
     await supabaseAdmin.auth.getUser(
       token
     );
 
-  if (error || !user) {
-    return {
-      user: null,
-      error:
-        "La sesión no es válida o ha expirado.",
-    };
-  }
-
-  return {
-    user,
-    error: null,
-  };
+  return user ?? null;
 }
 
-/* =====================================================
-   GET: CONSULTAR PLAN ACTUAL
-===================================================== */
+function premiumNoExpirado(
+  user: {
+    app_metadata?: Record<
+      string,
+      unknown
+    >;
+  }
+) {
+  const raw =
+    user.app_metadata
+      ?.premium_expires_at;
+
+  if (
+    typeof raw !==
+      "string" ||
+    !raw
+  ) {
+    return true;
+  }
+
+  const timestamp =
+    Date.parse(raw);
+
+  if (
+    Number.isNaN(timestamp)
+  ) {
+    return true;
+  }
+
+  return timestamp >
+    Date.now();
+}
 
 export async function GET(
   request: NextRequest
@@ -241,11 +193,8 @@ export async function GET(
     const supabaseAdmin =
       crearSupabaseAdmin();
 
-    const {
-      user,
-      error: errorUsuario,
-    } =
-      await obtenerUsuarioAutenticado(
+    const user =
+      await obtenerUsuario(
         request,
         supabaseAdmin
       );
@@ -255,112 +204,151 @@ export async function GET(
         {
           success: false,
           error:
-            errorUsuario ||
             "Usuario no autenticado.",
         },
-        {
-          status: 401,
-        }
+        { status: 401 }
       );
     }
-
-    /*
-      Busca la suscripción del usuario.
-      Utilizamos limit(1) para evitar errores
-      si existen registros duplicados antiguos.
-    */
 
     const {
-      data: suscripciones,
-      error: errorSuscripcion,
-    } = await supabaseAdmin
-      .from("subscriptions")
-      .select(
-        "id, usuario_id, plan, amount, status"
-      )
-      .eq(
-        "usuario_id",
-        user.id
-      )
-      .eq("status", "active")
-      .limit(1);
+      data: subscriptions,
+      error,
+    } =
+      await supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "id, usuario_id, plan, amount, status"
+        )
+        .eq(
+          "usuario_id",
+          user.id
+        )
+        .eq(
+          "status",
+          "active"
+        )
+        .limit(1);
 
-    if (errorSuscripcion) {
-      console.error(
-        "Error consultando suscripción:",
-        errorSuscripcion
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            errorSuscripcion.message,
-        },
-        {
-          status: 500,
-        }
+    if (error) {
+      throw new Error(
+        error.message
       );
     }
 
-    const suscripcion =
-      suscripciones?.[0] as
+    const subscription =
+      subscriptions?.[0] as
         | SuscripcionBD
         | undefined;
 
-    /*
-      Si todavía no existe un registro,
-      revisa app_metadata como respaldo.
-    */
-
-    const planMetadata =
+    const metadataPlan =
       normalizarPlan(
         user.app_metadata?.plan ||
           user.app_metadata
             ?.subscription ||
           user.app_metadata
-            ?.tipo_plan ||
-          user.user_metadata?.plan
+            ?.tipo_plan
       );
 
-    const planActual =
-      suscripcion?.plan &&
+    let planActual: PlanType =
+      subscription?.plan &&
       esPlanValido(
-        suscripcion.plan
+        subscription.plan
       )
-        ? suscripcion.plan
-        : planMetadata;
+        ? subscription.plan
+        : metadataPlan;
+
+    if (
+      planActual !== "free" &&
+      !premiumNoExpirado(
+        user
+      )
+    ) {
+      planActual = "free";
+
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          plan: "free",
+          amount: 0,
+          status: "active",
+        })
+        .eq(
+          "usuario_id",
+          user.id
+        );
+
+      const previousMetadata =
+        user.app_metadata &&
+        typeof user.app_metadata ===
+          "object"
+          ? user.app_metadata
+          : {};
+
+      await supabaseAdmin.auth.admin.updateUserById(
+        user.id,
+        {
+          app_metadata: {
+            ...previousMetadata,
+            plan: "free",
+            subscription:
+              "free",
+            tipo_plan:
+              "free",
+            premium: false,
+            is_premium:
+              false,
+            es_premium:
+              false,
+            premium_expires_at:
+              null,
+          },
+        }
+      );
+    }
 
     const premium =
       planActual === "month" ||
-      planActual === "year" ||
-      planActual === "group";
+      planActual === "year";
 
     return NextResponse.json(
       {
         success: true,
         plan: planActual,
-        subscription: planActual,
-        tipo_plan: planActual,
+        subscription:
+          planActual,
+        tipo_plan:
+          planActual,
         premium,
-        is_premium: premium,
-        es_premium: premium,
+        is_premium:
+          premium,
+        es_premium:
+          premium,
         amount:
-          suscripcion?.amount ??
-          PRECIOS[planActual],
-        status:
-          suscripcion?.status ??
-          "active",
+          planActual ===
+            "free"
+            ? 0
+            : subscription
+                ?.amount ??
+              PRECIOS[
+                planActual
+              ],
+        status: "active",
+        expiresAt:
+          premium
+            ? user
+                .app_metadata
+                ?.premium_expires_at ??
+              null
+            : null,
         data:
-          suscripcion || null,
+          subscription ??
+          null,
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error) {
     console.error(
-      "Error GET suscripciones:",
+      "GET suscripciones:",
       error
     );
 
@@ -372,16 +360,10 @@ export async function GET(
             ? error.message
             : "Error del servidor.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
-
-/* =====================================================
-   POST: CREAR O CAMBIAR PLAN
-===================================================== */
 
 export async function POST(
   request: NextRequest
@@ -390,11 +372,8 @@ export async function POST(
     const supabaseAdmin =
       crearSupabaseAdmin();
 
-    const {
-      user,
-      error: errorUsuario,
-    } =
-      await obtenerUsuarioAutenticado(
+    const user =
+      await obtenerUsuario(
         request,
         supabaseAdmin
       );
@@ -404,293 +383,167 @@ export async function POST(
         {
           success: false,
           error:
-            errorUsuario ||
             "Usuario no autenticado.",
         },
-        {
-          status: 401,
-        }
+        { status: 401 }
       );
     }
 
-    let cuerpo: unknown;
-
-    try {
-      cuerpo =
-        await request.json();
-    } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "El cuerpo de la solicitud no es válido.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!esObjeto(cuerpo)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "La solicitud no contiene información válida.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const solicitud =
-      cuerpo as SolicitudPlan;
+    const body =
+      await request.json();
 
     if (
-      !esPlanValido(
-        solicitud.plan
-      )
+      body?.plan !== "free"
     ) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "Plan no válido. Debe ser free, month, year o group.",
+            "Los planes Premium solo pueden activarse después de un pago confirmado por PayPal.",
         },
-        {
-          status: 400,
-        }
+        { status: 403 }
       );
     }
-
-    const plan =
-      solicitud.plan;
-
-    const amount =
-      PRECIOS[plan];
-
-    const premium =
-      plan === "month" ||
-      plan === "year" ||
-      plan === "group";
-
-    /*
-      Busca si el usuario ya tiene
-      una suscripción registrada.
-    */
 
     const {
-      data: suscripcionesExistentes,
-      error: errorBusqueda,
-    } = await supabaseAdmin
-      .from("subscriptions")
-      .select("id")
-      .eq(
-        "usuario_id",
-        user.id
-      )
-      .limit(1);
-
-    if (errorBusqueda) {
-      throw new Error(
-        `No se pudo consultar la suscripción: ${errorBusqueda.message}`
-      );
-    }
-
-    const suscripcionExistente =
-      suscripcionesExistentes?.[0];
-
-    let suscripcionGuardada:
-      | SuscripcionBD
-      | null = null;
-
-    /*
-      Si existe, actualiza el mismo registro.
-      Así no crea una suscripción nueva
-      cada vez que el usuario cambia de plan.
-    */
-
-    if (
-      suscripcionExistente?.id
-    ) {
-      const {
-        data,
-        error,
-      } = await supabaseAdmin
+      data: existing,
+      error: searchError,
+    } =
+      await supabaseAdmin
         .from("subscriptions")
-        .update({
-          plan,
-          amount,
-          status: "active",
-        })
-        .eq(
-          "id",
-          suscripcionExistente.id
-        )
+        .select("id")
         .eq(
           "usuario_id",
           user.id
         )
-        .select(
-          "id, usuario_id, plan, amount, status"
-        )
-        .single();
+        .limit(1);
 
-      if (error) {
-        throw new Error(
-          `No se pudo actualizar la suscripción: ${error.message}`
-        );
-      }
-
-      suscripcionGuardada =
-        data as SuscripcionBD;
-    } else {
-      const {
-        data,
-        error,
-      } = await supabaseAdmin
-        .from("subscriptions")
-        .insert({
-          usuario_id: user.id,
-          plan,
-          amount,
-          status: "active",
-        })
-        .select(
-          "id, usuario_id, plan, amount, status"
-        )
-        .single();
-
-      if (error) {
-        throw new Error(
-          `No se pudo crear la suscripción: ${error.message}`
-        );
-      }
-
-      suscripcionGuardada =
-        data as SuscripcionBD;
+    if (searchError) {
+      throw new Error(
+        searchError.message
+      );
     }
 
-    /*
-      Guarda el plan en app_metadata.
+    if (
+      existing?.[0]?.id
+    ) {
+      const {
+        error: updateError,
+      } =
+        await supabaseAdmin
+          .from(
+            "subscriptions"
+          )
+          .update({
+            plan: "free",
+            amount: 0,
+            status:
+              "active",
+          })
+          .eq(
+            "id",
+            existing[0].id
+          )
+          .eq(
+            "usuario_id",
+            user.id
+          );
 
-      De esta manera las demás páginas
-      pueden reconocer si el usuario
-      es Premium después de actualizar
-      su sesión.
-    */
+      if (updateError) {
+        throw new Error(
+          updateError.message
+        );
+      }
+    } else {
+      const {
+        error: insertError,
+      } =
+        await supabaseAdmin
+          .from(
+            "subscriptions"
+          )
+          .insert({
+            usuario_id:
+              user.id,
+            plan: "free",
+            amount: 0,
+            status:
+              "active",
+          });
 
-    const appMetadataAnterior =
-      esObjeto(
-        user.app_metadata
-      )
+      if (insertError) {
+        throw new Error(
+          insertError.message
+        );
+      }
+    }
+
+    const previousMetadata =
+      user.app_metadata &&
+      typeof user.app_metadata ===
+        "object"
         ? user.app_metadata
         : {};
 
     const {
-      error: errorMetadata,
+      error: metadataError,
     } =
       await supabaseAdmin.auth.admin.updateUserById(
         user.id,
         {
           app_metadata: {
-            ...appMetadataAnterior,
-
-            plan,
-            subscription: plan,
-            tipo_plan: plan,
-
-            premium,
-            is_premium: premium,
-            es_premium: premium,
-
-            group_plan:
-              plan === "group",
-            group_limit:
-              plan === "group"
-                ? 5
-                : null,
+            ...previousMetadata,
+            plan: "free",
+            subscription:
+              "free",
+            tipo_plan:
+              "free",
+            premium: false,
+            is_premium:
+              false,
+            es_premium:
+              false,
+            premium_started_at:
+              null,
+            premium_expires_at:
+              null,
           },
         }
       );
 
-    if (errorMetadata) {
-      console.error(
-        "Error actualizando metadata:",
-        errorMetadata
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "El plan fue guardado, pero no se pudo actualizar el estado Premium del usuario. Intenta nuevamente.",
-          plan,
-          premium,
-          data:
-            suscripcionGuardada,
-        },
-        {
-          status: 500,
-        }
+    if (metadataError) {
+      throw new Error(
+        metadataError.message
       );
     }
 
     return NextResponse.json(
       {
         success: true,
-
-        message: premium
-          ? `Plan ${
-              plan === "year"
-                ? "Premium anual"
-                : plan === "group"
-                  ? "Raccoon Grupo"
-                  : "Premium mensual"
-            } activado correctamente.`
-          : "Plan gratuito activado correctamente.",
-
-        plan,
-        subscription: plan,
-        tipo_plan: plan,
-
-        premium,
-        is_premium: premium,
-        es_premium: premium,
-
-        amount,
+        plan: "free",
+        premium: false,
+        amount: 0,
         status: "active",
-        group_limit:
-          plan === "group"
-            ? 5
-            : null,
-
-        data:
-          suscripcionGuardada,
+        message:
+          "Plan gratuito activado.",
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error) {
     console.error(
-      "Error POST suscripciones:",
+      "POST suscripciones:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
-
         error:
           error instanceof Error
             ? error.message
             : "Error del servidor.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

@@ -3311,7 +3311,7 @@ export default function PerfilScreen() {
 
                   <FilaConfiguracion
                     icono={ShieldCheck}
-                    titulo="Control parental"
+                    titulo="Informe de progreso"
                     valor={
                       controlParentalActivo
                         ? "Activado"
@@ -4335,7 +4335,7 @@ export default function PerfilScreen() {
 
       {mostrarControlParental && (
         <ModalBase
-          titulo="Control parental"
+          titulo="Informe de progreso"
           descripcion="Es opcional. Permite definir límites de uso y enviar al tutor un resumen semanal del progreso del estudiante."
           icono={ShieldCheck}
           onCerrar={() =>
@@ -4348,7 +4348,7 @@ export default function PerfilScreen() {
             <div className="flex items-center justify-between rounded-2xl border border-[#DDE8F2] bg-[#F8FBFE] p-4 dark:border-slate-700 dark:bg-slate-800">
               <div>
                 <p className="font-black">
-                  Activar control parental
+                  Activar Informe de progreso
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-[#6085A5] dark:text-slate-400">
@@ -4549,7 +4549,7 @@ export default function PerfilScreen() {
 
               {guardandoParental
                 ? "Guardando..."
-                : "Guardar control parental"}
+                : "Guardar informe de progreso"}
             </button>
           </div>
         </ModalBase>
